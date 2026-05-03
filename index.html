@@ -209,7 +209,7 @@
 </div>
 
 <!-- Supabase SDK -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
 
 <script>
 // ── SUPABASE CONFIG ──
@@ -279,15 +279,21 @@ async function adminLogin() {
     const { data, error } = await sb.auth.signInWithPassword({ email, password });
     if (error) throw error;
 
-    // Optional: check if user has admin role
     showToast('Login realizado com sucesso!');
-    setTimeout(() => { window.location.href = '/admin/dashboard'; }, 1200);
+    setTimeout(() => { window.location.href = 'https://marsgames1.github.io/ADMWexiolead/'; }, 1200);
   } catch (err) {
-    const msg = err.message || 'Erro ao entrar.';
-    if (msg.includes('Invalid login') || msg.includes('invalid_credentials')) {
-      showError('errAdminPassword', 'E-mail ou senha incorretos.');
+    console.error('Supabase error:', err);
+    const msg = err.message || err.error_description || JSON.stringify(err) || 'Erro ao entrar.';
+    if (
+      msg.includes('Invalid login') ||
+      msg.includes('invalid_credentials') ||
+      msg.includes('Invalid email') ||
+      msg.includes('Email not confirmed') ||
+      msg.includes('Bad Request')
+    ) {
+      showError('errAdminPassword', 'E-mail ou senha incorretos. Verifique seus dados.');
     } else {
-      showToast(msg, true);
+      showToast('Erro: ' + msg, true);
     }
   } finally {
     setLoading(false);
