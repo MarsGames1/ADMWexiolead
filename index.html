@@ -194,22 +194,30 @@ tbody td{padding:10px 13px;font-size:12.5px;color:var(--text);white-space:nowrap
 <div id="setup-screen">
   <div class="setup-box">
     <div class="setup-logo">Wexio<span>Lead</span></div>
-    <p class="setup-sub">Connect your Supabase project to get started</p>
-    <div class="form-group">
-      <label class="form-label">Supabase URL</label>
-      <input class="form-input" id="sb-url" placeholder="https://xxxx.supabase.co" value="">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Anon Key</label>
-      <input class="form-input" id="sb-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." value="">
-    </div>
-    <button class="btn btn-accent" style="width:100%;justify-content:center;padding:11px;" onclick="connectSupabase()">
-      Connect & Initialize
+    <p class="setup-sub">Acesso exclusivo para administradores</p>
+
+    <!-- Google Login -->
+    <button id="btnAdminGoogle" style="width:100%;display:flex;align-items:center;justify-content:center;gap:12px;padding:12px;background:#fff;color:#1f2937;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-weight:500;font-size:15px;cursor:pointer;transition:all 0.2s;margin-bottom:16px;" onclick="adminGoogleLogin()">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+      Entrar com Google
     </button>
-    <p class="setup-note">
-      Don't have a project? <a href="https://supabase.com" target="_blank">Create one free at supabase.com</a><br>
-      Tables will be created automatically on first connect.<br>
-      <strong style="color:var(--accent);">Demo mode:</strong> click Connect with empty fields to use local data.
+
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;"><div style="flex:1;height:1px;background:rgba(255,255,255,0.06);"></div><span style="font-size:12px;color:#6b7280;">ou acesso direto</span><div style="flex:1;height:1px;background:rgba(255,255,255,0.06);"></div></div>
+
+    <div class="form-group">
+      <label class="form-label">E-mail admin</label>
+      <input class="form-input" id="adminEmail" type="email" placeholder="rone.mars15@gmail.com" value="rone.mars15@gmail.com">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Senha</label>
+      <input class="form-input" id="adminPassword" type="password" placeholder="••••••••" value="">
+    </div>
+    <div id="adminLoginError" style="font-size:12px;color:#ff4f4f;margin-bottom:12px;display:none;"></div>
+    <button class="btn btn-accent" style="width:100%;justify-content:center;padding:11px;" onclick="adminEmailLogin()">
+      <span id="adminLoginBtnText">Entrar no admin →</span>
+    </button>
+    <p class="setup-note" style="margin-top:16px;color:#6b7280;font-size:12px;text-align:center;">
+      Apenas administradores autorizados têm acesso.
     </p>
   </div>
 </div>
@@ -713,33 +721,84 @@ const PLAN_LIMITS = {starter:300, pro:1000, agency:999999};
 // ══════════════════════════════════════════════════════
 // SUPABASE CONNECT
 // ══════════════════════════════════════════════════════
-async function connectSupabase() {
-  const url = 'https://heootuhrqwqacuveycpa.supabase.co';
-  const key = 'sb_publishable_UL9D7RQtH62T2j-abknE9A_qm7MZA5m';
+// ══════════════════════════════════════════════════════
+// ADMIN AUTH
+// ══════════════════════════════════════════════════════
+const ADMIN_EMAIL = 'rone.mars15@gmail.com';
+const SB_URL = 'https://heootuhrqwqacuveycpa.supabase.co';
+const SB_KEY = 'sb_publishable_UL9D7RQtH62T2j-abknE9A_qm7MZA5m';
 
-  try {
-    SB = supabase.createClient(url, key);
-    // Verificar se é admin
-    const { data: { session } } = await SB.auth.getSession();
-    if (session) {
-      const { data: profile } = await SB.from('profiles').select('full_name, is_admin').eq('id', session.user.id).single();
-      if (profile) {
-        const adminPill = document.querySelector('.pill-name');
-        const adminRole = document.querySelector('.pill-role');
-        if (adminPill) adminPill.textContent = profile.full_name || session.user.email;
-        if (adminRole) adminRole.textContent = profile.is_admin ? 'Administrator' : 'User';
-      }
-    }
-    toast('Conectado ao Supabase ✓', 'success');
+async function initAdminAuth() {
+  SB = supabase.createClient(SB_URL, SB_KEY);
+  // Check if already logged in
+  const { data: { session } } = await SB.auth.getSession();
+  if (session && session.user.email === ADMIN_EMAIL) {
     document.getElementById('setup-screen').style.display = 'none';
+    updateAdminUI(session.user);
+    await loadAll();
+    return;
+  }
+  // Handle OAuth redirect
+  SB.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session) {
+      if (session.user.email !== ADMIN_EMAIL) {
+        toast('Acesso negado. Esta conta não é administradora.', 'error');
+        await SB.auth.signOut();
+        return;
+      }
+      document.getElementById('setup-screen').style.display = 'none';
+      updateAdminUI(session.user);
+      await loadAll();
+    }
+  });
+}
+
+function updateAdminUI(user) {
+  const adminPill = document.querySelector('.pill-name');
+  const adminRole = document.querySelector('.pill-role');
+  if (adminPill) adminPill.textContent = user.user_metadata?.full_name || user.email;
+  if (adminRole) adminRole.textContent = 'Administrador';
+}
+
+async function adminGoogleLogin() {
+  const btn = document.getElementById('btnAdminGoogle');
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Conectando...';
+  const { error } = await SB.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.href }
+  });
+  if (error) { toast('Erro Google: ' + error.message, 'error'); btn.disabled = false; btn.innerHTML = '🔵 Entrar com Google'; }
+}
+
+async function adminEmailLogin() {
+  const email = document.getElementById('adminEmail').value.trim();
+  const password = document.getElementById('adminPassword').value;
+  const errEl = document.getElementById('adminLoginError');
+  const btn = document.getElementById('adminLoginBtnText');
+  errEl.style.display = 'none';
+  if (!email || !password) { errEl.textContent = 'Preencha e-mail e senha.'; errEl.style.display = 'block'; return; }
+  btn.textContent = 'Entrando...';
+  try {
+    const { data, error } = await SB.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    if (data.user.email !== ADMIN_EMAIL) {
+      await SB.auth.signOut();
+      throw new Error('Acesso negado. Conta não autorizada.');
+    }
+    document.getElementById('setup-screen').style.display = 'none';
+    updateAdminUI(data.user);
     await loadAll();
   } catch(e) {
-    // Fallback to demo if connection fails
-    DEMO = true;
-    toast('Modo demo ativo — ' + e.message, 'info');
-    initDemo();
-    document.getElementById('setup-screen').style.display = 'none';
+    errEl.textContent = e.message.includes('Invalid login') ? 'E-mail ou senha incorretos.' : e.message;
+    errEl.style.display = 'block';
+    btn.textContent = 'Entrar no admin →';
   }
+}
+
+async function connectSupabase() {
+  // Legacy - now auto-connects
+  await initAdminAuth();
 }
 
 async function initTables() {
@@ -1449,12 +1508,7 @@ function toast(msg, type='info') {
 // INIT
 // ══════════════════════════════════════════════════════
 window.addEventListener('load', () => {
-  const url = 'https://heootuhrqwqacuveycpa.supabase.co';
-  const key = 'sb_publishable_UL9D7RQtH62T2j-abknE9A_qm7MZA5m';
-  document.getElementById('set-url').value = url;
-  if (document.getElementById('sb-url')) document.getElementById('sb-url').value = url;
-  if (document.getElementById('sb-key')) document.getElementById('sb-key').value = key;
-  connectSupabase();
+  initAdminAuth();
 });
 </script>
 </body>
