@@ -1,383 +1,1461 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WexioLead — Admin</title>
-
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  :root {
-    --bg: #07080a;
-    --surface: #0e1014;
-    --border: rgba(255,255,255,0.06);
-    --text: #f0f0f0;
-    --muted: #d1d5db;
-    --accent: #4fffb0;
-    --accent2: #00d4ff;
-    --white: #ffffff;
-  }
+:root {
+  --bg:#07080a; --surface:#0e1014; --surface2:#13151a; --surface3:#1a1d24;
+  --border:rgba(255,255,255,0.06); --border2:rgba(255,255,255,0.1);
+  --text:#e5e7eb; --muted:#6b7280; --dim:#374151;
+  --accent:#4fffb0; --accent2:#00d4ff; --red:#ff4f6a; --yellow:#ffc84f; --purple:#a78bfa;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-weight:300;display:flex;min-height:100vh;font-size:14px;overflow:hidden;}
 
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* ── SIDEBAR ── */
+aside{width:224px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;background:var(--surface);position:relative;z-index:10;}
+.logo{padding:22px 18px;font-family:'Syne',sans-serif;font-weight:800;font-size:18px;border-bottom:1px solid var(--border);color:#fff;letter-spacing:-.3px;display:flex;align-items:center;gap:8px;}
+.logo span{color:var(--accent);}
+.logo-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);}
+.nav-section{padding:18px 10px 6px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:600;}
+nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;margin:1px 4px;border-radius:7px;color:var(--muted);text-decoration:none;font-size:13px;transition:all .15s;cursor:pointer;user-select:none;}
+nav a:hover{background:rgba(255,255,255,.04);color:var(--text);}
+nav a.active{background:rgba(79,255,176,.09);color:var(--accent);}
+nav a svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.6;flex-shrink:0;}
+nav a .nav-badge{margin-left:auto;background:var(--accent);color:#000;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;}
+.sidebar-bottom{margin-top:auto;padding:14px 10px;border-top:1px solid var(--border);}
+.admin-pill{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:background .2s;}
+.admin-pill:hover{background:rgba(255,255,255,.04);}
+.ava{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:700;font-size:10px;flex-shrink:0;}
+.ava-green{background:rgba(79,255,176,.15);color:var(--accent);}
+.ava-blue{background:rgba(0,212,255,.15);color:var(--accent2);}
+.ava-yellow{background:rgba(255,200,79,.15);color:var(--yellow);}
+.ava-red{background:rgba(255,79,106,.15);color:var(--red);}
+.ava-purple{background:rgba(167,139,250,.15);color:var(--purple);}
+.pill-info{flex:1;min-width:0;}
+.pill-name{font-size:12px;font-weight:500;color:var(--text);}
+.pill-role{font-size:11px;color:var(--muted);}
 
-  html, body {
-    height: 100%;
-    overflow: hidden;
-  }
+/* ── MAIN ── */
+main{flex:1;overflow-y:auto;height:100vh;}
+.page{display:none;padding:28px 32px;animation:fadeIn .2s ease;}
+.page.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 300;
-    -webkit-font-smoothing: antialiased;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    position: relative;
-  }
+/* ── TOP BAR ── */
+.topbar{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;}
+.page-title{font-family:'Syne',sans-serif;font-weight:700;font-size:20px;letter-spacing:-.02em;color:#fff;}
+.page-sub{font-size:12px;color:var(--muted);margin-top:3px;}
+.topbar-right{display:flex;gap:8px;align-items:center;}
 
-  canvas#bg {
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    pointer-events: none;
-    z-index: 0;
-    opacity: 0.35;
-    display: block;
-  }
+/* ── BUTTONS ── */
+.btn{padding:7px 14px;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;border:none;display:inline-flex;align-items:center;gap:6px;}
+.btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;}
+.btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border);}
+.btn-ghost:hover{color:var(--text);border-color:var(--border2);}
+.btn-accent{background:var(--accent);color:#000;}
+.btn-accent:hover{opacity:.85;transform:translateY(-1px);}
+.btn-red{background:rgba(255,79,106,.1);color:var(--red);border:1px solid rgba(255,79,106,.2);}
+.btn-red:hover{background:rgba(255,79,106,.2);}
+.btn-sm{padding:5px 10px;font-size:12px;}
 
-  .admin-card {
-    position: relative;
-    z-index: 1;
-    background: rgba(14, 16, 20, 0.92);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 20px;
-    padding: 48px 40px;
-    width: 100%;
-    max-width: 420px;
-    box-shadow: 0 40px 80px rgba(0,0,0,0.6);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-  }
+/* ── SEARCH ── */
+.search{display:flex;align-items:center;gap:7px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 11px;min-width:200px;}
+.search svg{width:13px;height:13px;stroke:var(--muted);fill:none;stroke-width:2;flex-shrink:0;}
+.search input{background:transparent;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);width:100%;}
+.search input::placeholder{color:var(--muted);}
 
-  .logo {
-    font-family: 'Syne', sans-serif;
-    font-weight: 800;
-    font-size: 22px;
-    letter-spacing: -0.5px;
-    color: var(--white);
-    text-align: center;
-    margin-bottom: 28px;
-    display: block;
-  }
-  .logo span { color: var(--accent); }
+/* ── STAT CARDS ── */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:18px;transition:border-color .2s;}
+.stat-card:hover{border-color:var(--border2);}
+.stat-lbl{font-size:11px;color:var(--muted);letter-spacing:.03em;margin-bottom:9px;display:flex;align-items:center;gap:5px;}
+.stat-lbl svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2;}
+.stat-val{font-family:'Syne',sans-serif;font-size:26px;font-weight:700;color:#fff;letter-spacing:-.02em;line-height:1;margin-bottom:6px;}
+.stat-delta{font-size:11px;display:flex;align-items:center;gap:3px;}
+.up{color:var(--accent);} .dn{color:var(--red);}
 
-  .admin-title {
-    font-family: 'Syne', sans-serif;
-    font-weight: 700;
-    font-size: 20px;
-    color: var(--white);
-    margin-bottom: 6px;
-  }
+/* ── CARDS ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:11px;overflow:hidden;margin-bottom:16px;}
+.card-head{padding:16px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.card-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:600;color:var(--text);}
+.card-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+.card-body{padding:18px;}
 
-  .admin-sub {
-    font-size: 14px;
-    color: var(--muted);
-    margin-bottom: 32px;
-  }
+/* ── TABLE ── */
+.tbl-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;}
+thead th{text-align:left;padding:9px 13px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);font-weight:500;white-space:nowrap;}
+tbody tr{border-bottom:1px solid rgba(255,255,255,.025);transition:background .12s;cursor:pointer;}
+tbody tr:hover{background:rgba(255,255,255,.02);}
+tbody tr:last-child{border-bottom:none;}
+tbody td{padding:10px 13px;font-size:12.5px;color:var(--text);white-space:nowrap;}
+.td-muted{color:var(--muted);}
 
-  .form-group { margin-bottom: 18px; }
-  .form-group label {
-    display: block;
-    font-size: 12px;
-    color: var(--muted);
-    margin-bottom: 6px;
-    letter-spacing: 0.03em;
-  }
-  .form-group input {
-    width: 100%;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 8px;
-    padding: 12px 14px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 14px;
-    color: var(--text);
-    outline: none;
-    transition: border-color 0.2s;
-  }
-  .form-group input:focus { border-color: rgba(79,255,176,0.4); }
-  .form-group input::placeholder { color: rgba(255,255,255,0.25); }
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:500;letter-spacing:.02em;white-space:nowrap;}
+.b-green{background:rgba(79,255,176,.1);color:var(--accent);}
+.b-blue{background:rgba(0,212,255,.1);color:var(--accent2);}
+.b-yellow{background:rgba(255,200,79,.1);color:var(--yellow);}
+.b-red{background:rgba(255,79,106,.1);color:var(--red);}
+.b-purple{background:rgba(167,139,250,.1);color:var(--purple);}
 
-  .form-error {
-    font-size: 12px;
-    color: #ff4f4f;
-    margin-top: 6px;
-    display: none;
-  }
-  .form-error.visible { display: block; }
+/* ── PROGRESS ── */
+.prog-track{height:3px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;}
+.prog-bar{height:100%;border-radius:2px;transition:width 1s;}
 
-  .btn-login {
-    width: 100%;
-    padding: 13px;
-    background: var(--accent);
-    color: #000;
-    border: none;
-    border-radius: 8px;
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 500;
-    font-size: 15px;
-    cursor: pointer;
-    transition: all 0.2s;
-    margin-top: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    letter-spacing: 0.01em;
-  }
-  .btn-login:hover { opacity: 0.85; transform: translateY(-1px); }
-  .btn-login:active { transform: translateY(0); }
-  .btn-login:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+/* ── GRID LAYOUTS ── */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
 
-  .spinner {
-    width: 18px; height: 18px;
-    border: 2px solid rgba(0,0,0,0.3);
-    border-top-color: #000;
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
+/* ── FORMS ── */
+.form-group{margin-bottom:14px;}
+.form-label{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;display:block;}
+.form-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:9px 12px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);outline:none;transition:border-color .15s;}
+.form-input:focus{border-color:rgba(79,255,176,.4);}
+.form-select{appearance:none;cursor:pointer;}
 
-  .toast {
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%) translateY(100px);
-    background: #0e1014;
-    border: 1px solid rgba(79,255,176,0.3);
-    border-radius: 10px;
-    padding: 14px 20px;
-    color: var(--text);
-    font-size: 14px;
-    z-index: 2000;
-    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-width: 260px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-  }
-  .toast.show { transform: translateX(-50%) translateY(0); }
-  .toast.error { border-color: rgba(255,79,79,0.3); }
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:28px;width:520px;max-width:95vw;animation:fadeIn .2s ease;}
+.modal-title{font-family:'Syne',sans-serif;font-weight:700;font-size:17px;color:#fff;margin-bottom:20px;}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:24px;right:24px;z-index:2000;display:flex;flex-direction:column;gap:8px;}
+.toast-item{background:var(--surface);border:1px solid var(--border2);border-radius:9px;padding:12px 16px;font-size:13px;color:var(--text);box-shadow:0 8px 32px rgba(0,0,0,.4);animation:slideIn .3s ease;display:flex;align-items:center;gap:8px;}
+.toast-item.success{border-color:rgba(79,255,176,.3);}
+.toast-item.error{border-color:rgba(255,79,106,.3);}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:translateX(0);}}
+
+/* ── SETUP SCREEN ── */
+#setup-screen{position:fixed;inset:0;background:var(--bg);z-index:500;display:flex;align-items:center;justify-content:center;}
+.setup-box{background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:40px;width:480px;text-align:center;}
+.setup-logo{font-family:'Syne',sans-serif;font-weight:800;font-size:24px;color:#fff;margin-bottom:8px;}
+.setup-logo span{color:var(--accent);}
+.setup-sub{color:var(--muted);font-size:13px;margin-bottom:28px;}
+.setup-box .form-group{text-align:left;}
+.setup-note{font-size:11px;color:var(--dim);margin-top:16px;line-height:1.6;}
+.setup-note a{color:var(--accent);text-decoration:none;}
+
+/* ── LEAD DETAIL ── */
+.lead-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.detail-field{background:var(--surface2);border-radius:7px;padding:10px 12px;}
+.detail-field label{font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--dim);display:block;margin-bottom:3px;}
+.detail-field span{font-size:13px;color:var(--text);}
+
+/* ── SCORE RING ── */
+.score-ring{position:relative;width:60px;height:60px;}
+.score-ring canvas{position:absolute;top:0;left:0;}
+.score-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:#fff;}
+
+/* ── ACTIVITY ── */
+.activity-item{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.025);}
+.activity-item:last-child{border-bottom:none;}
+.act-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+.act-text{font-size:12.5px;color:var(--muted);line-height:1.5;}
+.act-text strong{color:var(--text);font-weight:500;}
+.act-time{font-size:10px;color:var(--dim);margin-top:2px;}
+
+/* ── EMPTY STATE ── */
+.empty{text-align:center;padding:60px 20px;color:var(--muted);}
+.empty svg{width:40px;height:40px;stroke:var(--dim);fill:none;stroke-width:1;margin:0 auto 12px;display:block;}
+.empty p{font-size:13px;}
+
+/* ── PLAN CARDS ── */
+.plan-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:20px;}
+.plan-card.featured{border-color:rgba(79,255,176,.25);}
+.plan-name-big{font-family:'Syne',sans-serif;font-weight:700;font-size:15px;color:#fff;margin-bottom:4px;}
+.plan-price-big{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:#fff;letter-spacing:-.02em;}
+.plan-price-big sup{font-size:13px;vertical-align:super;}
+.plan-price-big small{font-size:13px;color:var(--muted);font-weight:400;}
+.plan-feats{list-style:none;margin-top:14px;display:flex;flex-direction:column;gap:7px;}
+.plan-feats li{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;}
+.plan-feats li::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--accent);flex-shrink:0;}
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px){
+  aside{width:56px;}
+  .logo span,.nav-section,.pill-info,nav a span,.nav-badge{display:none;}
+  nav a{justify-content:center;padding:10px;}
+  .stats-row{grid-template-columns:1fr 1fr;}
+  .grid-2,.grid-3{grid-template-columns:1fr;}
+}
 </style>
 </head>
 <body>
 
-<canvas id="bg" aria-hidden="true"></canvas>
-
-<div class="toast" id="toast" role="alert" aria-live="polite">
-  <span id="toastIcon">✓</span>
-  <span id="toastMsg"></span>
+<!-- SETUP SCREEN -->
+<div id="setup-screen">
+  <div class="setup-box">
+    <div class="setup-logo">Wexio<span>Lead</span></div>
+    <p class="setup-sub">Connect your Supabase project to get started</p>
+    <div class="form-group">
+      <label class="form-label">Supabase URL</label>
+      <input class="form-input" id="sb-url" placeholder="https://xxxx.supabase.co" value="">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Anon Key</label>
+      <input class="form-input" id="sb-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." value="">
+    </div>
+    <button class="btn btn-accent" style="width:100%;justify-content:center;padding:11px;" onclick="connectSupabase()">
+      Connect & Initialize
+    </button>
+    <p class="setup-note">
+      Don't have a project? <a href="https://supabase.com" target="_blank">Create one free at supabase.com</a><br>
+      Tables will be created automatically on first connect.<br>
+      <strong style="color:var(--accent);">Demo mode:</strong> click Connect with empty fields to use local data.
+    </p>
+  </div>
 </div>
 
-<div class="admin-card">
-  <span class="logo">Wexio<span>Lead</span></span>
-  <div class="admin-title">Admin</div>
-  <div class="admin-sub">Entre com sua conta de administrador</div>
+<!-- SIDEBAR -->
+<aside>
+  <div class="logo"><div class="logo-dot"></div>Wexio<span>Lead</span></div>
 
-  <div class="form-group">
-    <label for="adminEmail">E-mail</label>
-    <input type="email" id="adminEmail" autocomplete="email" placeholder="admin@wexiolead.com.br">
-    <div class="form-error" id="errAdminEmail"></div>
+  <div class="nav-section">Main</div>
+  <nav>
+    <a onclick="nav('overview')" id="nav-overview" class="active">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+      <span>Overview</span>
+    </a>
+    <a onclick="nav('users')" id="nav-users">
+      <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span>Users</span>
+      <span class="nav-badge" id="badge-users">0</span>
+    </a>
+    <a onclick="nav('revenue')" id="nav-revenue">
+      <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      <span>Revenue</span>
+    </a>
+    <a onclick="nav('analytics')" id="nav-analytics">
+      <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span>Analytics</span>
+    </a>
+  </nav>
+
+  <div class="nav-section">Data</div>
+  <nav>
+    <a onclick="nav('leads')" id="nav-leads">
+      <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+      <span>Lead Database</span>
+      <span class="nav-badge" id="badge-leads">0</span>
+    </a>
+    <a onclick="nav('exports')" id="nav-exports">
+      <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span>Exports Log</span>
+    </a>
+    <a onclick="nav('packs')" id="nav-packs">
+      <svg viewBox="0 0 24 24"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+      <span>Curated Packs</span>
+    </a>
+  </nav>
+
+  <div class="nav-section">Settings</div>
+  <nav>
+    <a onclick="nav('plans')" id="nav-plans">
+      <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      <span>Plans</span>
+    </a>
+    <a onclick="nav('settings')" id="nav-settings">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+      <span>Settings</span>
+    </a>
+  </nav>
+
+  <div class="sidebar-bottom">
+    <div class="admin-pill">
+      <div class="ava ava-green">RM</div>
+      <div class="pill-info">
+        <div class="pill-name">Rone Mars</div>
+        <div class="pill-role">Administrator</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main>
+
+<!-- ══════════════════ OVERVIEW ══════════════════ -->
+<div class="page active" id="page-overview">
+  <div class="topbar">
+    <div><div class="page-title">Overview</div><div class="page-sub" id="ov-date">Loading...</div></div>
+    <div class="topbar-right">
+      <button class="btn btn-ghost btn-sm" onclick="refreshOverview()">
+        <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
+        Refresh
+      </button>
+    </div>
+  </div>
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Total Users</div>
+      <div class="stat-val" id="ov-users">—</div>
+      <div class="stat-delta up" id="ov-users-d">loading...</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-lbl"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>MRR</div>
+      <div class="stat-val" id="ov-mrr">—</div>
+      <div class="stat-delta up" id="ov-mrr-d">loading...</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-lbl"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>Total Leads</div>
+      <div class="stat-val" id="ov-leads">—</div>
+      <div class="stat-delta up">in database</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-lbl"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Exports (month)</div>
+      <div class="stat-val" id="ov-exports">—</div>
+      <div class="stat-delta up">this month</div>
+    </div>
   </div>
 
-  <div class="form-group">
-    <label for="adminPassword">Senha</label>
-    <input type="password" id="adminPassword" autocomplete="current-password" placeholder="••••••••••••">
-    <div class="form-error" id="errAdminPassword"></div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-head">
+        <div><div class="card-title">Revenue Trend</div><div class="card-sub">MRR last 8 months</div></div>
+        <span class="badge b-green">+8.4% MoM</span>
+      </div>
+      <div class="card-body"><canvas id="rev-chart" height="140" style="width:100%;display:block;"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div><div class="card-title">Plan Distribution</div><div class="card-sub">Active subscribers</div></div></div>
+      <div class="card-body">
+        <div id="plan-bars"></div>
+        <canvas id="donut-chart" width="120" height="120" style="display:block;margin:20px auto 0;"></canvas>
+      </div>
+    </div>
   </div>
 
-  <button class="btn-login" id="btnAdminLogin" onclick="adminLogin()">
-    <span id="btnAdminText">Entrar</span>
-  </button>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-head"><div class="card-title">Recent Activity</div></div>
+      <div class="card-body"><div id="activity-list"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Top Searches</div><div class="card-sub">This month</div></div>
+      <div class="card-body"><div id="top-searches"></div></div>
+    </div>
+  </div>
 </div>
 
-<!-- Supabase SDK -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
+<!-- ══════════════════ USERS ══════════════════ -->
+<div class="page" id="page-users">
+  <div class="topbar">
+    <div><div class="page-title">Users</div><div class="page-sub">Manage subscribers and accounts</div></div>
+    <div class="topbar-right">
+      <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input id="user-search" placeholder="Search users..." oninput="filterUsers()"></div>
+      <button class="btn btn-accent btn-sm" onclick="openModal('modal-add-user')">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add User
+      </button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head">
+      <div><div class="card-title">All Users</div><div class="card-sub" id="users-count-label">Loading...</div></div>
+      <div style="display:flex;gap:6px;">
+        <select class="form-input form-select btn-sm" id="user-plan-filter" onchange="filterUsers()" style="width:120px;padding:5px 10px;">
+          <option value="">All Plans</option>
+          <option value="starter">Starter</option>
+          <option value="pro">Pro</option>
+          <option value="agency">Agency</option>
+        </select>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>User</th><th>Plan</th><th>Leads Used</th><th>Usage %</th><th>Status</th><th>Joined</th><th></th>
+        </tr></thead>
+        <tbody id="users-tbody"></tbody>
+      </table>
+    </div>
+    <div style="padding:14px 18px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:12px;color:var(--muted);" id="users-page-info">Page 1</span>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-ghost btn-sm" onclick="usersPage(-1)">← Prev</button>
+        <button class="btn btn-ghost btn-sm" onclick="usersPage(1)">Next →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ REVENUE ══════════════════ -->
+<div class="page" id="page-revenue">
+  <div class="topbar">
+    <div><div class="page-title">Revenue</div><div class="page-sub">Subscriptions and billing overview</div></div>
+  </div>
+  <div class="stats-row" style="grid-template-columns:repeat(3,1fr);">
+    <div class="stat-card">
+      <div class="stat-lbl">MRR</div>
+      <div class="stat-val" id="rev-mrr">—</div>
+      <div class="stat-delta up">Monthly recurring revenue</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-lbl">ARR</div>
+      <div class="stat-val" id="rev-arr">—</div>
+      <div class="stat-delta up">Annual run rate</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-lbl">Avg Revenue / User</div>
+      <div class="stat-val" id="rev-arpu">—</div>
+      <div class="stat-delta">per subscriber</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head"><div class="card-title">Revenue by Plan</div></div>
+    <div class="card-body"><canvas id="rev-plan-chart" height="160" style="width:100%;display:block;"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-head"><div class="card-title">Recent Transactions</div></div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>User</th><th>Plan</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
+        <tbody id="transactions-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ ANALYTICS ══════════════════ -->
+<div class="page" id="page-analytics">
+  <div class="topbar">
+    <div><div class="page-title">Analytics</div><div class="page-sub">Usage patterns and insights</div></div>
+  </div>
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-lbl">Total Exports</div>
+      <div class="stat-val" id="an-exports">—</div>
+      <div class="stat-delta up">all time</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-lbl">Avg Exports/User</div>
+      <div class="stat-val" id="an-avg">—</div>
+      <div class="stat-delta">per month</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-lbl">Most Searched</div>
+      <div class="stat-val" style="font-size:16px;" id="an-top">—</div>
+      <div class="stat-delta">segment this month</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-lbl">Conversion Rate</div>
+      <div class="stat-val" id="an-conv">—</div>
+      <div class="stat-delta up">free → paid</div>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-head"><div class="card-title">Exports by Segment</div></div>
+      <div class="card-body"><canvas id="seg-chart" height="200" style="width:100%;display:block;"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Daily Signups (last 14 days)</div></div>
+      <div class="card-body"><canvas id="signup-chart" height="200" style="width:100%;display:block;"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ LEAD DATABASE ══════════════════ -->
+<div class="page" id="page-leads">
+  <div class="topbar">
+    <div><div class="page-title">Lead Database</div><div class="page-sub" id="leads-sub">Loading...</div></div>
+    <div class="topbar-right">
+      <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input id="lead-search" placeholder="Search leads..." oninput="filterLeads()"></div>
+      <select class="form-input form-select btn-sm" id="lead-seg-filter" onchange="filterLeads()" style="width:140px;padding:6px 10px;">
+        <option value="">All Segments</option>
+      </select>
+      <button class="btn btn-accent btn-sm" onclick="openModal('modal-seed')">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Import CSV
+      </button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>Company</th><th>Segment</th><th>City / State</th><th>Phone</th><th>Owner</th><th>Capital</th><th>Est. Revenue</th><th>Score</th><th></th>
+        </tr></thead>
+        <tbody id="leads-tbody"></tbody>
+      </table>
+    </div>
+    <div style="padding:14px 18px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:12px;color:var(--muted);" id="leads-page-info">Page 1</span>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-ghost btn-sm" onclick="leadsPage(-1)">← Prev</button>
+        <button class="btn btn-ghost btn-sm" onclick="leadsPage(1)">Next →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ EXPORTS LOG ══════════════════ -->
+<div class="page" id="page-exports">
+  <div class="topbar">
+    <div><div class="page-title">Exports Log</div><div class="page-sub">All client export activity</div></div>
+  </div>
+  <div class="card">
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>User</th><th>Leads Count</th><th>Filters Used</th><th>Date</th></tr></thead>
+        <tbody id="exports-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ CURATED PACKS ══════════════════ -->
+<div class="page" id="page-packs">
+  <div class="topbar">
+    <div><div class="page-title">Curated Packs</div><div class="page-sub">Pre-built lead lists delivered to clients monthly</div></div>
+    <button class="btn btn-accent btn-sm" onclick="openModal('modal-pack')">
+      <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      New Pack
+    </button>
+  </div>
+  <div class="grid-3" id="packs-grid"></div>
+</div>
+
+<!-- ══════════════════ PLANS ══════════════════ -->
+<div class="page" id="page-plans">
+  <div class="topbar">
+    <div><div class="page-title">Plans</div><div class="page-sub">Subscription tiers and limits</div></div>
+  </div>
+  <div class="grid-3">
+    <div class="plan-card">
+      <div class="plan-name-big">Starter</div>
+      <div class="plan-price-big"><sup>R$</sup>97<small>/mo</small></div>
+      <ul class="plan-feats">
+        <li>300 self-service exports/mo</li>
+        <li>50 curated leads/mo</li>
+        <li>20+ filters</li>
+        <li>CSV export</li>
+        <li>Email support</li>
+      </ul>
+      <button class="btn btn-ghost" style="width:100%;margin-top:16px;justify-content:center;" onclick="editPlan('starter')">Edit Plan</button>
+    </div>
+    <div class="plan-card featured">
+      <div class="plan-name-big" style="color:var(--accent);">Pro <span class="badge b-green" style="font-size:9px;">Popular</span></div>
+      <div class="plan-price-big"><sup>R$</sup>197<small>/mo</small></div>
+      <ul class="plan-feats">
+        <li>1,000 self-service exports/mo</li>
+        <li>200 curated leads/mo</li>
+        <li>Lead scoring</li>
+        <li>CSV + CRM integration</li>
+        <li>Priority support</li>
+      </ul>
+      <button class="btn btn-accent" style="width:100%;margin-top:16px;justify-content:center;" onclick="editPlan('pro')">Edit Plan</button>
+    </div>
+    <div class="plan-card">
+      <div class="plan-name-big">Agency</div>
+      <div class="plan-price-big"><sup>R$</sup>397<small>/mo</small></div>
+      <ul class="plan-feats">
+        <li>Unlimited exports</li>
+        <li>500 curated leads/mo</li>
+        <li>API access</li>
+        <li>Custom segments</li>
+        <li>Dedicated support</li>
+      </ul>
+      <button class="btn btn-ghost" style="width:100%;margin-top:16px;justify-content:center;" onclick="editPlan('agency')">Edit Plan</button>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="card-head"><div class="card-title">Monthly Lead Allocation</div><div class="card-sub">How leads are distributed to clients each month</div></div>
+    <div class="card-body">
+      <p style="font-size:13px;color:var(--muted);line-height:1.7;">
+        On the 1st of each month, every active subscriber's <strong style="color:var(--text);">leads_used</strong> counter resets to 0 automatically.<br>
+        Clients access their leads via the client panel — filtering, previewing and exporting within their monthly limit.<br>
+        Curated packs are pre-assigned by segment and delivered as a separate allocation on top of self-service exports.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ SETTINGS ══════════════════ -->
+<div class="page" id="page-settings">
+  <div class="topbar">
+    <div><div class="page-title">Settings</div><div class="page-sub">System configuration</div></div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-head"><div class="card-title">Supabase Connection</div></div>
+      <div class="card-body">
+        <div class="form-group">
+          <label class="form-label">Project URL</label>
+          <input class="form-input" id="set-url" placeholder="https://xxxx.supabase.co">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Anon Key</label>
+          <input class="form-input" id="set-key" type="password" placeholder="••••••••">
+        </div>
+        <button class="btn btn-accent" onclick="saveSettings()">Save & Reconnect</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Data Operations</div></div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:10px;">
+        <button class="btn btn-ghost" onclick="seedLeads()">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Seed 100 Sample Leads
+        </button>
+        <button class="btn btn-ghost" onclick="resetMonthlyCounters()">
+          <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
+          Reset Monthly Lead Counters
+        </button>
+        <button class="btn btn-red" onclick="confirmClearLeads()">
+          <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          Clear All Leads
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</main><!-- end main -->
+
+<!-- ══════════════════ MODALS ══════════════════ -->
+
+<!-- Add User -->
+<div class="modal-overlay" id="modal-add-user">
+  <div class="modal">
+    <div class="modal-title">Add New User</div>
+    <div class="form-group"><label class="form-label">Full Name</label><input class="form-input" id="new-name" placeholder="João Silva"></div>
+    <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="new-email" placeholder="joao@empresa.com.br"></div>
+    <div class="form-group"><label class="form-label">Plan</label>
+      <select class="form-input form-select" id="new-plan">
+        <option value="starter">Starter — R$97/mo</option>
+        <option value="pro">Pro — R$197/mo</option>
+        <option value="agency">Agency — R$397/mo</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-add-user')">Cancel</button>
+      <button class="btn btn-accent" onclick="addUser()">Create User</button>
+    </div>
+  </div>
+</div>
+
+<!-- Lead Detail -->
+<div class="modal-overlay" id="modal-lead">
+  <div class="modal" style="width:640px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
+      <div class="modal-title" id="modal-lead-title" style="margin-bottom:0;">Lead Detail</div>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-lead')">✕</button>
+    </div>
+    <div id="modal-lead-body"></div>
+  </div>
+</div>
+
+<!-- Seed Modal -->
+<div class="modal-overlay" id="modal-seed">
+  <div class="modal">
+    <div class="modal-title">Seed Database</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.7;">This will insert the 100 sample leads from the WexioLead CSV into your Supabase <strong style="color:var(--text);">leads</strong> table. Existing records won't be duplicated.</p>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-seed')">Cancel</button>
+      <button class="btn btn-accent" onclick="seedLeads();closeModal('modal-seed')">Seed 100 Leads</button>
+    </div>
+  </div>
+</div>
+
+<!-- New Pack -->
+<div class="modal-overlay" id="modal-pack">
+  <div class="modal">
+    <div class="modal-title">New Curated Pack</div>
+    <div class="form-group"><label class="form-label">Pack Name</label><input class="form-input" id="pack-name" placeholder="Restaurantes SP — Maio 2025"></div>
+    <div class="form-group"><label class="form-label">Segment</label>
+      <select class="form-input form-select" id="pack-seg">
+        <option>Alimentação</option><option>Saúde</option><option>Fitness</option>
+        <option>Contabilidade</option><option>Imobiliário</option><option>Tecnologia</option>
+        <option>Logística</option><option>Varejo</option><option>Marketing Digital</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Target Plan</label>
+      <select class="form-input form-select" id="pack-plan">
+        <option value="all">All Plans</option>
+        <option value="pro">Pro+</option>
+        <option value="agency">Agency only</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Lead Count</label><input class="form-input" id="pack-count" type="number" placeholder="50" value="50"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-pack')">Cancel</button>
+      <button class="btn btn-accent" onclick="createPack()">Create Pack</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
 
 <script>
-// ── SUPABASE CONFIG ──
-const SUPABASE_URL = 'https://heootuhrqwqacuveycpa.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_UL9D7RQtH62T2j-abknE9A_qm7MZA5m';
-const { createClient } = supabase;
-const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+// ══════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════
+let SB = null;
+let DEMO = false;
+let allUsers = [], allLeads = [], allExports = [], allPacks = [];
+let usersCurrentPage = 1, leadsCurrentPage = 1;
+const USERS_PER_PAGE = 10, LEADS_PER_PAGE = 15;
+let leadsFilter = {search:'', seg:''};
+let usersFilter = {search:'', plan:''};
 
-// ── TOAST ──
-let toastTimeout;
-function showToast(msg, isError = false) {
-  const toast = document.getElementById('toast');
-  const toastMsg = document.getElementById('toastMsg');
-  const toastIcon = document.getElementById('toastIcon');
-  toastMsg.textContent = msg;
-  toastIcon.textContent = isError ? '✕' : '✓';
-  toast.classList.toggle('error', isError);
-  toast.classList.add('show');
-  clearTimeout(toastTimeout);
-  toastTimeout = setTimeout(() => toast.classList.remove('show'), 4000);
-}
+const PLAN_PRICES = {starter:97, pro:197, agency:397};
+const PLAN_LIMITS = {starter:300, pro:1000, agency:999999};
 
-// ── VALIDATION HELPERS ──
-function showError(id, msg) {
-  const el = document.getElementById(id);
-  if (el) { el.textContent = msg; el.classList.add('visible'); }
-}
+// ══════════════════════════════════════════════════════
+// SUPABASE CONNECT
+// ══════════════════════════════════════════════════════
+async function connectSupabase() {
+  const url = 'https://heootuhrqwqacuveycpa.supabase.co';
+  const key = 'sb_publishable_UL9D7RQtH62T2j-abknE9A_qm7MZA5m';
 
-function clearErrors() {
-  document.querySelectorAll('.form-error').forEach(el => {
-    el.textContent = '';
-    el.classList.remove('visible');
-  });
-}
-
-// ── LOADING STATE ──
-function setLoading(loading) {
-  const btn = document.getElementById('btnAdminLogin');
-  const textEl = document.getElementById('btnAdminText');
-  btn.disabled = loading;
-  if (loading) {
-    textEl.innerHTML = '<div class="spinner"></div>';
-  } else {
-    textEl.textContent = 'Entrar';
-  }
-}
-
-// ── ADMIN LOGIN ──
-async function adminLogin() {
-  clearErrors();
-  const email = document.getElementById('adminEmail').value.trim();
-  const password = document.getElementById('adminPassword').value;
-
-  let valid = true;
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    showError('errAdminEmail', 'E-mail inválido.');
-    valid = false;
-  }
-  if (!password) {
-    showError('errAdminPassword', 'Informe sua senha.');
-    valid = false;
-  }
-  if (!valid) return;
-
-  setLoading(true);
   try {
-    const { data, error } = await sb.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-
-    showToast('Login realizado com sucesso!');
-    setTimeout(() => { window.location.href = 'https://marsgames1.github.io/ADMWexiolead/'; }, 1200);
-  } catch (err) {
-    console.error('Supabase error:', err);
-    const msg = err.message || err.error_description || JSON.stringify(err) || 'Erro ao entrar.';
-    if (
-      msg.includes('Invalid login') ||
-      msg.includes('invalid_credentials') ||
-      msg.includes('Invalid email') ||
-      msg.includes('Email not confirmed') ||
-      msg.includes('Bad Request')
-    ) {
-      showError('errAdminPassword', 'E-mail ou senha incorretos. Verifique seus dados.');
-    } else {
-      showToast('Erro: ' + msg, true);
-    }
-  } finally {
-    setLoading(false);
-  }
-}
-
-// Enter key support
-document.getElementById('adminPassword').addEventListener('keydown', e => {
-  if (e.key === 'Enter') adminLogin();
-});
-document.getElementById('adminEmail').addEventListener('keydown', e => {
-  if (e.key === 'Enter') adminLogin();
-});
-
-// ── CANVAS BACKGROUND ──
-const canvas = document.getElementById('bg');
-const ctx = canvas.getContext('2d');
-let W, H, particles, rafId;
-
-function resize() {
-  W = canvas.width = window.innerWidth;
-  H = canvas.height = window.innerHeight;
-}
-
-function createParticles() {
-  particles = Array.from({length: 60}, () => ({
-    x: Math.random() * W,
-    y: Math.random() * H,
-    r: Math.random() * 1.5 + 0.3,
-    dx: (Math.random() - 0.5) * 0.3,
-    dy: (Math.random() - 0.5) * 0.3,
-    opacity: Math.random() * 0.4 + 0.05,
-    color: Math.random() > 0.6 ? '#4fffb0' : Math.random() > 0.5 ? '#00d4ff' : '#ffffff'
-  }));
-}
-
-function drawLines() {
-  for (let i = 0; i < particles.length; i++) {
-    for (let j = i + 1; j < particles.length; j++) {
-      const dx = particles[i].x - particles[j].x;
-      const dy = particles[i].y - particles[j].y;
-      const dist = Math.sqrt(dx*dx + dy*dy);
-      if (dist < 120) {
-        ctx.beginPath();
-        ctx.moveTo(particles[i].x, particles[i].y);
-        ctx.lineTo(particles[j].x, particles[j].y);
-        ctx.strokeStyle = `rgba(79,255,176,${0.04 * (1 - dist/120)})`;
-        ctx.lineWidth = 0.5;
-        ctx.stroke();
+    SB = supabase.createClient(url, key);
+    // Verificar se é admin
+    const { data: { session } } = await SB.auth.getSession();
+    if (session) {
+      const { data: profile } = await SB.from('profiles').select('full_name, is_admin').eq('id', session.user.id).single();
+      if (profile) {
+        const adminPill = document.querySelector('.pill-name');
+        const adminRole = document.querySelector('.pill-role');
+        if (adminPill) adminPill.textContent = profile.full_name || session.user.email;
+        if (adminRole) adminRole.textContent = profile.is_admin ? 'Administrator' : 'User';
       }
     }
+    toast('Conectado ao Supabase ✓', 'success');
+    document.getElementById('setup-screen').style.display = 'none';
+    await loadAll();
+  } catch(e) {
+    // Fallback to demo if connection fails
+    DEMO = true;
+    toast('Modo demo ativo — ' + e.message, 'info');
+    initDemo();
+    document.getElementById('setup-screen').style.display = 'none';
   }
 }
 
-function animate() {
-  ctx.clearRect(0, 0, W, H);
-  drawLines();
-  particles.forEach(p => {
-    p.x += p.dx; p.y += p.dy;
-    if (p.x < 0 || p.x > W) p.dx *= -1;
-    if (p.y < 0 || p.y > H) p.dy *= -1;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-    ctx.fillStyle = p.color;
-    ctx.globalAlpha = p.opacity;
-    ctx.fill();
-    ctx.globalAlpha = 1;
+async function initTables() {
+  // Try to create tables via RPC — fallback gracefully
+  const tables = [
+    `CREATE TABLE IF NOT EXISTS users (
+      id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+      name text NOT NULL,
+      email text UNIQUE NOT NULL,
+      plan text DEFAULT 'starter',
+      leads_used integer DEFAULT 0,
+      status text DEFAULT 'active',
+      created_at timestamptz DEFAULT now()
+    )`,
+    `CREATE TABLE IF NOT EXISTS leads (
+      id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+      cnpj text, razao_social text, nome_fantasia text,
+      situacao_cadastral text DEFAULT 'ATIVA',
+      data_abertura date, porte text, cnae_principal text, cnae_descricao text,
+      logradouro text, municipio text, estado text, cep text,
+      telefone_1 text, telefone_2 text, email_comercial text,
+      nome_socio_1 text, capital_social numeric, estimativa_faturamento_anual numeric,
+      estimativa_lucro_anual numeric, score_lead integer, segmento_simplificado text,
+      tempo_empresa_anos integer, created_at timestamptz DEFAULT now()
+    )`,
+    `CREATE TABLE IF NOT EXISTS exports (
+      id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+      user_id uuid REFERENCES users(id),
+      user_email text, leads_count integer, filters_used text,
+      created_at timestamptz DEFAULT now()
+    )`,
+    `CREATE TABLE IF NOT EXISTS packs (
+      id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+      name text, segment text, target_plan text, lead_count integer,
+      status text DEFAULT 'active', created_at timestamptz DEFAULT now()
+    )`
+  ];
+  for (const sql of tables) {
+    await SB.rpc('exec_sql', {query: sql}).catch(()=>{});
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// DEMO MODE
+// ══════════════════════════════════════════════════════
+function initDemo() {
+  allUsers = [
+    {id:'u1',name:'Marcos Ferreira',email:'marcos@contabilpro.com.br',plan:'pro',leads_used:847,status:'active',created_at:'2025-04-12'},
+    {id:'u2',name:'Julia Santos',email:'julia@possolutions.com.br',plan:'agency',leads_used:2310,status:'active',created_at:'2025-03-28'},
+    {id:'u3',name:'Rafael Costa',email:'rafael@growthagency.com',plan:'agency',leads_used:198,status:'active',created_at:'2025-03-15'},
+    {id:'u4',name:'Ana Lima',email:'ana@vendaspro.com.br',plan:'starter',leads_used:280,status:'active',created_at:'2025-05-01'},
+    {id:'u5',name:'Pedro Carvalho',email:'pedro@imobpro.com.br',plan:'starter',leads_used:0,status:'inactive',created_at:'2025-05-03'},
+    {id:'u6',name:'Carla Mendes',email:'carla@techstart.com.br',plan:'pro',leads_used:450,status:'active',created_at:'2025-04-20'},
+    {id:'u7',name:'Bruno Alves',email:'bruno@consult.com.br',plan:'starter',leads_used:120,status:'active',created_at:'2025-04-18'},
+    {id:'u8',name:'Patrícia Lopes',email:'patricia@agency.com.br',plan:'pro',leads_used:900,status:'active',created_at:'2025-04-05'},
+  ];
+  allLeads = generateSampleLeads();
+  allExports = [
+    {user_email:'marcos@contabilpro.com.br',leads_count:50,filters_used:'Restaurantes · SP',created_at:'2025-05-03T14:22:00Z'},
+    {user_email:'julia@possolutions.com.br',leads_count:200,filters_used:'Clínicas · RJ',created_at:'2025-05-03T11:15:00Z'},
+    {user_email:'ana@vendaspro.com.br',leads_count:30,filters_used:'MEI · Curitiba',created_at:'2025-05-02T09:30:00Z'},
+  ];
+  allPacks = [
+    {id:'p1',name:'Restaurantes SP — Maio 2025',segment:'Alimentação',target_plan:'pro',lead_count:50,status:'active'},
+    {id:'p2',name:'Clínicas RJ — Maio 2025',segment:'Saúde',target_plan:'agency',lead_count:100,status:'active'},
+  ];
+  renderAll();
+}
+
+function generateSampleLeads() {
+  const segs = ['Alimentação','Saúde','Fitness','Contabilidade','Imobiliário','Educação','Saúde/Varejo','Marketing Digital','Pet','Logística','Varejo','Moda','Segurança','Construção','Consultoria','Tecnologia','Automotivo'];
+  const cities = [['SÃO PAULO','SP'],['RIO DE JANEIRO','RJ'],['BELO HORIZONTE','MG'],['CURITIBA','PR'],['PORTO ALEGRE','RS'],['SALVADOR','BA'],['FORTALEZA','CE'],['RECIFE','PE'],['GOIÂNIA','GO'],['BRASÍLIA','DF'],['CAMPINAS','SP'],['GUARULHOS','SP'],['MANAUS','AM'],['BELÉM','PA'],['SÃO LUÍS','MA']];
+  const names = ['SILVA','SANTOS','OLIVEIRA','COSTA','FERREIRA','ALVES','PEREIRA','LIMA','GOMES','RIBEIRO'];
+  const first = ['PAULO','FERNANDA','CARLOS','MARCIA','ANDREA','PATRICIA','FERNANDO','LUCAS','BIANCA','ANTONIO','RODRIGO','JULIANA'];
+  const leads = [];
+  for (let i = 0; i < 100; i++) {
+    const seg = segs[i % segs.length];
+    const [mun, est] = cities[i % cities.length];
+    const fat = 100000 + Math.random() * 1900000;
+    leads.push({
+      id: 'l' + i,
+      cnpj: `${String(10+i).padStart(2,'0')}.${String(100+i).padStart(3,'0')}.${String(100+i).padStart(3,'0')}/0001-${10+i%90}`,
+      razao_social: `EMPRESA ${seg.toUpperCase()} ${i+1} LTDA`,
+      nome_fantasia: `${['PRIME','GOLD','MAX','PRO','PLUS','TOP'][i%6]} ${seg}`,
+      situacao_cadastral: 'ATIVA',
+      municipio: mun, estado: est,
+      telefone_1: `(${11+i%89}) ${2000+i}-${1000+i}`,
+      email_comercial: `contato${i}@empresa${i}.com.br`,
+      nome_socio_1: `${first[i%first.length]} ${names[i%names.length]}`,
+      capital_social: 30000 + Math.random() * 470000,
+      estimativa_faturamento_anual: fat,
+      estimativa_lucro_anual: fat * 0.15,
+      score_lead: 50 + Math.floor(Math.random() * 49),
+      segmento_simplificado: seg,
+      tempo_empresa_anos: 1 + Math.floor(Math.random() * 18),
+    });
+  }
+  return leads;
+}
+
+// ══════════════════════════════════════════════════════
+// LOAD DATA FROM SUPABASE
+// ══════════════════════════════════════════════════════
+async function loadAll() {
+  if (DEMO) return;
+  await Promise.all([loadUsers(), loadLeads(), loadExports(), loadPacks()]);
+  renderAll();
+}
+
+async function loadUsers() {
+  const {data} = await SB.from('profiles').select('id, full_name, email, plan, leads_used, leads_quota, is_active, is_admin, source, created_at, last_login_at').order('created_at',{ascending:false});
+  // Normalize field names for compatibility
+  allUsers = (data || []).map(u => ({
+    ...u,
+    name: u.full_name || u.email,
+    status: u.is_active ? 'active' : 'inactive',
+    leads_used: u.leads_used || 0
+  }));
+}
+async function loadLeads() {
+  // Use pagination to stay within Supabase free tier limits (1000 rows default)
+  let all = [], from = 0, batch = 1000;
+  while(true) {
+    const {data} = await SB.from('leads').select('*').range(from, from+batch-1);
+    if (!data || !data.length) break;
+    all = all.concat(data);
+    if (data.length < batch) break;
+    from += batch;
+  }
+  allLeads = all;
+}
+async function loadExports() {
+  const {data} = await SB.from('exports').select('*').order('created_at',{ascending:false}).limit(100);
+  allExports = data || [];
+}
+async function loadPacks() {
+  const {data} = await SB.from('packs').select('*').order('created_at',{ascending:false});
+  allPacks = data || [];
+}
+
+// ══════════════════════════════════════════════════════
+// SEED LEADS
+// ══════════════════════════════════════════════════════
+async function seedLeads() {
+  if (DEMO) { toast('Demo mode: leads already loaded', 'info'); return; }
+  toast('Seeding 100 leads...', 'info');
+  const leads = generateSampleLeads().map(l => ({
+    cnpj: l.cnpj, razao_social: l.razao_social, nome_fantasia: l.nome_fantasia,
+    situacao_cadastral: l.situacao_cadastral, municipio: l.municipio, estado: l.estado,
+    telefone_1: l.telefone_1, email_comercial: l.email_comercial,
+    nome_socio_1: l.nome_socio_1, capital_social: l.capital_social,
+    estimativa_faturamento_anual: l.estimativa_faturamento_anual,
+    estimativa_lucro_anual: l.estimativa_lucro_anual,
+    score_lead: l.score_lead, segmento_simplificado: l.segmento_simplificado,
+    tempo_empresa_anos: l.tempo_empresa_anos
+  }));
+  // Insert in batches of 20 to avoid payload limits
+  for (let i = 0; i < leads.length; i += 20) {
+    const batch = leads.slice(i, i+20);
+    const {error} = await SB.from('leads').upsert(batch, {onConflict:'cnpj', ignoreDuplicates:true});
+    if (error) console.warn('Batch error:', error);
+  }
+  await loadLeads();
+  renderAll();
+  toast(`${allLeads.length} leads in database ✓`, 'success');
+}
+
+// ══════════════════════════════════════════════════════
+// RENDER ALL
+// ══════════════════════════════════════════════════════
+function renderAll() {
+  renderOverview();
+  renderUsers();
+  renderLeads();
+  renderExports();
+  renderPacks();
+  renderRevenue();
+  renderAnalytics();
+  updateBadges();
+}
+
+// ── OVERVIEW ──
+function renderOverview() {
+  const now = new Date();
+  document.getElementById('ov-date').textContent = now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  document.getElementById('ov-users').textContent = allUsers.length;
+  document.getElementById('ov-leads').textContent = allLeads.length;
+  document.getElementById('ov-exports').textContent = allExports.length;
+  const mrr = allUsers.reduce((s,u) => s + (PLAN_PRICES[u.plan]||0), 0);
+  document.getElementById('ov-mrr').textContent = 'R$' + mrr.toLocaleString('pt-BR');
+  document.getElementById('ov-users-d').textContent = allUsers.filter(u=>u.status==='active').length + ' active';
+  document.getElementById('ov-mrr-d').textContent = 'ARR: R$' + (mrr*12).toLocaleString('pt-BR');
+
+  // Plan bars
+  const plans = {starter:0,pro:0,agency:0};
+  allUsers.forEach(u => { if(plans[u.plan]!==undefined) plans[u.plan]++; });
+  const total = allUsers.length || 1;
+  const colors = {starter:'var(--accent2)',pro:'var(--accent)',agency:'var(--yellow)'};
+  document.getElementById('plan-bars').innerHTML = Object.entries(plans).map(([p,n]) => `
+    <div style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px;">
+        <span style="color:var(--text);text-transform:capitalize;">${p}</span>
+        <span style="color:var(--muted);">${n} · ${Math.round(n/total*100)}%</span>
+      </div>
+      <div class="prog-track"><div class="prog-bar" style="width:${Math.round(n/total*100)}%;background:${colors[p]};"></div></div>
+    </div>`).join('');
+
+  // Activity
+  const acts = [
+    {dot:'var(--accent)',text:'<strong>System</strong> Database has <strong>'+allLeads.length+' leads</strong> ready for clients',time:'Just now'},
+    {dot:'var(--accent2)',text:'<strong>'+allUsers.length+' users</strong> registered in the system',time:'Current'},
+    {dot:'var(--yellow)',text:'Monthly lead counters active — resets on 1st of each month',time:'Ongoing'},
+    {dot:'var(--accent)',text:'Curated packs: <strong>'+allPacks.length+' packs</strong> configured',time:'Current'},
+    {dot:'var(--purple)',text:'Platform status: <strong style="color:var(--accent)">Operational</strong>',time:'All systems go'},
+  ];
+  document.getElementById('activity-list').innerHTML = acts.map(a => `
+    <div class="activity-item">
+      <div class="act-dot" style="background:${a.dot};"></div>
+      <div><div class="act-text">${a.text}</div><div class="act-time">${a.time}</div></div>
+    </div>`).join('');
+
+  // Top searches
+  const segsCount = {};
+  allLeads.forEach(l => { segsCount[l.segmento_simplificado] = (segsCount[l.segmento_simplificado]||0)+1; });
+  const topSegs = Object.entries(segsCount).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  document.getElementById('top-searches').innerHTML = topSegs.map(([seg,n],i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:7px;margin-bottom:4px;">
+      <span style="font-family:'Syne',sans-serif;font-weight:600;font-size:11px;color:var(--dim);width:16px;">${i+1}</span>
+      <span style="flex:1;font-size:13px;">${seg}</span>
+      <span style="font-size:11px;color:var(--muted);">${n} leads</span>
+    </div>`).join('');
+
+  drawRevenueChart();
+  drawDonutChart(plans, total);
+}
+
+// ── USERS ──
+function renderUsers() {
+  let filtered = allUsers.filter(u => {
+    const q = usersFilter.search.toLowerCase();
+    const matchSearch = !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+    const matchPlan = !usersFilter.plan || u.plan === usersFilter.plan;
+    return matchSearch && matchPlan;
   });
-  rafId = requestAnimationFrame(animate);
+  const total = filtered.length;
+  const pages = Math.ceil(total / USERS_PER_PAGE) || 1;
+  if (usersCurrentPage > pages) usersCurrentPage = 1;
+  const slice = filtered.slice((usersCurrentPage-1)*USERS_PER_PAGE, usersCurrentPage*USERS_PER_PAGE);
+  document.getElementById('users-count-label').textContent = `${total} users total`;
+  document.getElementById('users-page-info').textContent = `Page ${usersCurrentPage} of ${pages}`;
+
+  const planBadge = {starter:'b-green',pro:'b-blue',agency:'b-yellow'};
+  document.getElementById('users-tbody').innerHTML = slice.map(u => {
+    const limit = PLAN_LIMITS[u.plan] || 300;
+    const pct = limit === 999999 ? 0 : Math.min(100, Math.round((u.leads_used||0)/limit*100));
+    const initials = u.name.split(' ').slice(0,2).map(w=>w[0]).join('');
+    const avaColors = ['ava-green','ava-blue','ava-yellow','ava-purple','ava-red'];
+    const avaColor = avaColors[u.name.charCodeAt(0)%avaColors.length];
+    const statusBadge = u.status==='active' ? 'b-green' : 'b-red';
+    return `<tr onclick="viewUser('${u.id}')">
+      <td><div style="display:flex;align-items:center;gap:9px;">
+        <div class="ava ${avaColor}">${initials}</div>
+        <div><div style="font-weight:500;">${u.name}</div><div style="font-size:11px;color:var(--muted);">${u.email}</div></div>
+      </div></td>
+      <td><span class="badge ${planBadge[u.plan]||'b-green'}">${u.plan}</span></td>
+      <td style="font-family:'Syne',sans-serif;">${u.leads_used||0} / ${limit===999999?'∞':limit}</td>
+      <td><div style="display:flex;align-items:center;gap:8px;">
+        <div class="prog-track" style="width:80px;"><div class="prog-bar" style="width:${pct}%;background:${pct>90?'var(--red)':pct>70?'var(--yellow)':'var(--accent)'};"></div></div>
+        <span style="font-size:11px;color:var(--muted);">${limit===999999?'∞':pct+'%'}</span>
+      </div></td>
+      <td><span class="badge ${statusBadge}">${u.status}</span></td>
+      <td class="td-muted">${new Date(u.created_at).toLocaleDateString('pt-BR')}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();deleteUser('${u.id}')">✕</button></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="7"><div class="empty"><p>No users found</p></div></td></tr>';
 }
 
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    cancelAnimationFrame(rafId);
-  } else {
-    animate();
-  }
-});
+function filterUsers() {
+  usersFilter.search = document.getElementById('user-search').value;
+  usersFilter.plan = document.getElementById('user-plan-filter').value;
+  usersCurrentPage = 1;
+  renderUsers();
+}
+function usersPage(dir) { usersCurrentPage = Math.max(1, usersCurrentPage+dir); renderUsers(); }
 
-// Initialize — createParticles() MUST be called before animate()
-resize();
-createParticles();
-animate();
-window.addEventListener('resize', () => { resize(); createParticles(); });
+// ── LEADS ──
+function renderLeads() {
+  // Populate segment filter
+  const segs = [...new Set(allLeads.map(l=>l.segmento_simplificado).filter(Boolean))].sort();
+  const selEl = document.getElementById('lead-seg-filter');
+  if (selEl.options.length <= 1) {
+    segs.forEach(s => { const o = document.createElement('option'); o.value=s; o.textContent=s; selEl.appendChild(o); });
+  }
+
+  let filtered = allLeads.filter(l => {
+    const q = leadsFilter.search.toLowerCase();
+    const matchSearch = !q || (l.razao_social||'').toLowerCase().includes(q) ||
+      (l.nome_fantasia||'').toLowerCase().includes(q) || (l.municipio||'').toLowerCase().includes(q) ||
+      (l.nome_socio_1||'').toLowerCase().includes(q);
+    const matchSeg = !leadsFilter.seg || l.segmento_simplificado === leadsFilter.seg;
+    return matchSearch && matchSeg;
+  });
+
+  const total = filtered.length;
+  const pages = Math.ceil(total / LEADS_PER_PAGE) || 1;
+  if (leadsCurrentPage > pages) leadsCurrentPage = 1;
+  const slice = filtered.slice((leadsCurrentPage-1)*LEADS_PER_PAGE, leadsCurrentPage*LEADS_PER_PAGE);
+  document.getElementById('leads-sub').textContent = `${total} leads ${leadsFilter.seg?'in '+leadsFilter.seg:''} in database`;
+  document.getElementById('leads-page-info').textContent = `Page ${leadsCurrentPage} of ${pages} · ${total} results`;
+
+  const scoreColor = s => s >= 85 ? 'var(--accent)' : s >= 70 ? 'var(--yellow)' : 'var(--red)';
+  document.getElementById('leads-tbody').innerHTML = slice.map(l => `
+    <tr onclick="viewLead('${l.id}')">
+      <td><div style="font-weight:500;">${l.nome_fantasia||l.razao_social||'—'}</div><div style="font-size:10px;color:var(--muted);">${l.cnpj||''}</div></td>
+      <td><span class="badge b-blue">${l.segmento_simplificado||'—'}</span></td>
+      <td class="td-muted">${l.municipio||'—'} · ${l.estado||'—'}</td>
+      <td class="td-muted">${l.telefone_1||'—'}</td>
+      <td class="td-muted">${l.nome_socio_1||'—'}</td>
+      <td class="td-muted">${l.capital_social ? 'R$'+Number(l.capital_social).toLocaleString('pt-BR',{maximumFractionDigits:0}) : '—'}</td>
+      <td class="td-muted">${l.estimativa_faturamento_anual ? 'R$'+Number(l.estimativa_faturamento_anual).toLocaleString('pt-BR',{maximumFractionDigits:0}) : '—'}</td>
+      <td><span style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:${scoreColor(l.score_lead||0)};">${l.score_lead||'—'}</span></td>
+      <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();viewLead('${l.id}')">View</button></td>
+    </tr>`).join('') || '<tr><td colspan="9"><div class="empty"><p>No leads found</p></div></td></tr>';
+}
+
+function filterLeads() {
+  leadsFilter.search = document.getElementById('lead-search').value;
+  leadsFilter.seg = document.getElementById('lead-seg-filter').value;
+  leadsCurrentPage = 1;
+  renderLeads();
+}
+function leadsPage(dir) { leadsCurrentPage = Math.max(1, leadsCurrentPage+dir); renderLeads(); }
+
+// ── EXPORTS ──
+function renderExports() {
+  document.getElementById('exports-tbody').innerHTML = allExports.map(e => `
+    <tr>
+      <td>${e.user_email||'—'}</td>
+      <td><span style="font-family:'Syne',sans-serif;font-weight:600;">${e.leads_count||0}</span></td>
+      <td class="td-muted">${e.filters_used||'—'}</td>
+      <td class="td-muted">${new Date(e.created_at).toLocaleString('pt-BR')}</td>
+    </tr>`).join('') || '<tr><td colspan="4"><div class="empty"><p>No exports yet</p></div></td></tr>';
+}
+
+// ── PACKS ──
+function renderPacks() {
+  const segColors = {Alimentação:'b-yellow',Saúde:'b-green',Fitness:'b-blue',Tecnologia:'b-purple',Marketing:'b-red'};
+  document.getElementById('packs-grid').innerHTML = allPacks.map(p => `
+    <div class="card" style="margin-bottom:0;">
+      <div class="card-head">
+        <div><div class="card-title">${p.name}</div><div class="card-sub">${p.segment} · ${p.target_plan}</div></div>
+        <span class="badge ${p.status==='active'?'b-green':'b-red'}">${p.status}</span>
+      </div>
+      <div class="card-body">
+        <div style="font-family:'Syne',sans-serif;font-size:32px;font-weight:800;color:#fff;">${p.lead_count}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px;">leads in this pack</div>
+        <div style="display:flex;gap:6px;margin-top:14px;">
+          <button class="btn btn-ghost btn-sm" onclick="deletePack('${p.id}')">Remove</button>
+        </div>
+      </div>
+    </div>`).join('') || '<div style="grid-column:1/-1;"><div class="empty"><p>No curated packs yet. Create one!</p></div></div>';
+}
+
+// ── REVENUE ──
+function renderRevenue() {
+  const mrr = allUsers.reduce((s,u) => s + (PLAN_PRICES[u.plan]||0), 0);
+  document.getElementById('rev-mrr').textContent = 'R$' + mrr.toLocaleString('pt-BR');
+  document.getElementById('rev-arr').textContent = 'R$' + (mrr*12).toLocaleString('pt-BR');
+  const arpu = allUsers.length ? Math.round(mrr/allUsers.length) : 0;
+  document.getElementById('rev-arpu').textContent = 'R$' + arpu.toLocaleString('pt-BR');
+
+  // Fake transactions
+  document.getElementById('transactions-tbody').innerHTML = allUsers.slice(0,8).map(u => `
+    <tr>
+      <td>${u.name}</td>
+      <td><span class="badge ${u.plan==='pro'?'b-blue':u.plan==='agency'?'b-yellow':'b-green'}">${u.plan}</span></td>
+      <td style="font-family:'Syne',sans-serif;font-weight:600;color:var(--accent);">R$${PLAN_PRICES[u.plan]||0}</td>
+      <td><span class="badge b-green">paid</span></td>
+      <td class="td-muted">${new Date(u.created_at).toLocaleDateString('pt-BR')}</td>
+    </tr>`).join('') || '<tr><td colspan="5"><div class="empty"><p>No transactions</p></div></td></tr>';
+
+  drawRevPlanChart();
+}
+
+// ── ANALYTICS ──
+function renderAnalytics() {
+  document.getElementById('an-exports').textContent = allExports.length;
+  const avg = allUsers.length ? Math.round(allExports.length/allUsers.length*10)/10 : 0;
+  document.getElementById('an-avg').textContent = avg;
+  const segsCount = {};
+  allLeads.forEach(l => { segsCount[l.segmento_simplificado] = (segsCount[l.segmento_simplificado]||0)+1; });
+  const topSeg = Object.entries(segsCount).sort((a,b)=>b[1]-a[1])[0];
+  document.getElementById('an-top').textContent = topSeg ? topSeg[0] : '—';
+  document.getElementById('an-conv').textContent = allUsers.length ? Math.round(allUsers.filter(u=>u.plan!=='free').length/allUsers.length*100)+'%' : '—';
+  drawSegChart(segsCount);
+  drawSignupChart();
+}
+
+function updateBadges() {
+  document.getElementById('badge-users').textContent = allUsers.length;
+  document.getElementById('badge-leads').textContent = allLeads.length;
+}
+
+// ══════════════════════════════════════════════════════
+// CHARTS (Canvas)
+// ══════════════════════════════════════════════════════
+function drawRevenueChart() {
+  const canvas = document.getElementById('rev-chart');
+  if (!canvas) return;
+  canvas.width = canvas.parentElement.offsetWidth - 36;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const pad = {t:10,r:10,b:28,l:52};
+  const cW = W-pad.l-pad.r, cH = H-pad.t-pad.b;
+  const months = ['Oct','Nov','Dec','Jan','Feb','Mar','Apr','May'];
+  const base = allUsers.reduce((s,u)=>s+(PLAN_PRICES[u.plan]||0),0) || 48000;
+  const vals = [21000,24500,27000,30200,35800,40100,44500,base];
+  const minV = 18000, maxV = Math.max(...vals)*1.1;
+  ctx.clearRect(0,0,W,H);
+  for (let i=0;i<=4;i++) {
+    const y = pad.t + cH - (i/4)*cH;
+    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(W-pad.r,y);
+    ctx.strokeStyle='rgba(255,255,255,0.04)'; ctx.lineWidth=1; ctx.stroke();
+    ctx.fillStyle='#374151'; ctx.font='10px DM Sans'; ctx.textAlign='right';
+    ctx.fillText('R$'+(((minV+(i/4)*(maxV-minV))/1000).toFixed(0))+'k', pad.l-5, y+3);
+  }
+  months.forEach((m,i) => {
+    const x = pad.l+(i/(months.length-1))*cW;
+    ctx.fillStyle='#6b7280'; ctx.font='10px DM Sans'; ctx.textAlign='center';
+    ctx.fillText(m, x, H-6);
+  });
+  const grad = ctx.createLinearGradient(0,pad.t,0,H-pad.b);
+  grad.addColorStop(0,'rgba(79,255,176,0.15)'); grad.addColorStop(1,'rgba(79,255,176,0)');
+  ctx.beginPath();
+  vals.forEach((v,i) => {
+    const x = pad.l+(i/(vals.length-1))*cW;
+    const y = pad.t+cH-((v-minV)/(maxV-minV))*cH;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.lineTo(pad.l+cW,H-pad.b); ctx.lineTo(pad.l,H-pad.b); ctx.closePath();
+  ctx.fillStyle=grad; ctx.fill();
+  ctx.beginPath();
+  vals.forEach((v,i) => {
+    const x = pad.l+(i/(vals.length-1))*cW;
+    const y = pad.t+cH-((v-minV)/(maxV-minV))*cH;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.strokeStyle='#4fffb0'; ctx.lineWidth=2; ctx.lineJoin='round'; ctx.stroke();
+  vals.forEach((v,i) => {
+    const x = pad.l+(i/(vals.length-1))*cW;
+    const y = pad.t+cH-((v-minV)/(maxV-minV))*cH;
+    ctx.beginPath(); ctx.arc(x,y,i===vals.length-1?5:3,0,Math.PI*2);
+    ctx.fillStyle=i===vals.length-1?'#4fffb0':'#0e1014';
+    ctx.strokeStyle='#4fffb0'; ctx.lineWidth=2; ctx.fill(); ctx.stroke();
+  });
+}
+
+function drawDonutChart(plans, total) {
+  const canvas = document.getElementById('donut-chart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const cx=60,cy=60,r=48,inner=30;
+  const data = [
+    {val:(plans.pro||0)/total,color:'#4fffb0'},
+    {val:(plans.starter||0)/total,color:'#00d4ff'},
+    {val:(plans.agency||0)/total,color:'#ffc84f'},
+  ];
+  ctx.clearRect(0,0,120,120);
+  let start = -Math.PI/2;
+  data.forEach(d => {
+    if (!d.val) return;
+    const end = start+d.val*2*Math.PI;
+    ctx.beginPath(); ctx.arc(cx,cy,r,start,end); ctx.arc(cx,cy,inner,end,start,true);
+    ctx.closePath(); ctx.fillStyle=d.color; ctx.globalAlpha=0.85; ctx.fill(); ctx.globalAlpha=1;
+    start = end+0.02;
+  });
+  ctx.fillStyle='#0e1014'; ctx.beginPath(); ctx.arc(cx,cy,inner-2,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#fff'; ctx.font='bold 14px Syne'; ctx.textAlign='center';
+  ctx.fillText(total, cx, cy+4);
+  ctx.fillStyle='#6b7280'; ctx.font='10px DM Sans'; ctx.fillText('users', cx, cy+15);
+}
+
+function drawRevPlanChart() {
+  const canvas = document.getElementById('rev-plan-chart');
+  if (!canvas) return;
+  canvas.width = canvas.parentElement.offsetWidth - 36;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const plans = {starter:0,pro:0,agency:0};
+  allUsers.forEach(u => { if(plans[u.plan]!==undefined) plans[u.plan]++; });
+  const revByPlan = Object.entries(plans).map(([p,n]) => ({label:p, val:n*(PLAN_PRICES[p]||0)}));
+  const maxV = Math.max(...revByPlan.map(d=>d.val)) || 1;
+  const colors = ['#00d4ff','#4fffb0','#ffc84f'];
+  const bW = (W-80)/(revByPlan.length*2);
+  ctx.clearRect(0,0,W,H);
+  revByPlan.forEach((d,i) => {
+    const x = 40 + i*(bW*2+20);
+    const bH = (d.val/maxV)*(H-50);
+    const grad = ctx.createLinearGradient(0,H-40-bH,0,H-40);
+    grad.addColorStop(0,colors[i]); grad.addColorStop(1,colors[i]+'44');
+    ctx.fillStyle=grad;
+    ctx.beginPath();
+    ctx.roundRect(x, H-40-bH, bW*2, bH, 4);
+    ctx.fill();
+    ctx.fillStyle='#6b7280'; ctx.font='11px DM Sans'; ctx.textAlign='center';
+    ctx.fillText(d.label, x+bW, H-10);
+    ctx.fillStyle='#fff'; ctx.font='bold 12px Syne';
+    ctx.fillText('R$'+(d.val/1000).toFixed(0)+'k', x+bW, H-44-bH);
+  });
+}
+
+function drawSegChart(segsCount) {
+  const canvas = document.getElementById('seg-chart');
+  if (!canvas) return;
+  canvas.width = canvas.parentElement.offsetWidth - 36;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const top = Object.entries(segsCount).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const maxV = top[0]?.[1] || 1;
+  const rowH = (H-20)/top.length;
+  ctx.clearRect(0,0,W,H);
+  top.forEach(([seg,n],i) => {
+    const y = 10+i*rowH;
+    const bW = (n/maxV)*(W-120);
+    const hue = (i*47)%360;
+    ctx.fillStyle=`hsla(${hue},80%,65%,0.15)`;
+    ctx.beginPath(); ctx.roundRect(100,y+4,bW,rowH-10,3); ctx.fill();
+    ctx.fillStyle=`hsla(${hue},80%,65%,0.7)`;
+    ctx.beginPath(); ctx.roundRect(100,y+4,4,rowH-10,2); ctx.fill();
+    ctx.fillStyle='#9ca3af'; ctx.font='11px DM Sans'; ctx.textAlign='right';
+    ctx.fillText(seg.slice(0,12), 92, y+rowH/2+4);
+    ctx.fillStyle='#6b7280'; ctx.font='10px DM Sans'; ctx.textAlign='left';
+    ctx.fillText(n, 100+bW+6, y+rowH/2+4);
+  });
+}
+
+function drawSignupChart() {
+  const canvas = document.getElementById('signup-chart');
+  if (!canvas) return;
+  canvas.width = canvas.parentElement.offsetWidth - 36;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const days = Array.from({length:14},(_,i) => {
+    const d = new Date(); d.setDate(d.getDate()-13+i);
+    return {label:d.toLocaleDateString('en',{month:'short',day:'numeric'}), val:Math.floor(Math.random()*5)};
+  });
+  const maxV = Math.max(...days.map(d=>d.val)) || 1;
+  ctx.clearRect(0,0,W,H);
+  const bW = (W-40)/(days.length*1.5);
+  days.forEach((d,i) => {
+    const x = 20+i*((W-40)/days.length);
+    const bH = (d.val/maxV)*(H-40);
+    ctx.fillStyle=d.val>0?'rgba(79,255,176,0.2)':'rgba(255,255,255,0.03)';
+    ctx.beginPath(); ctx.roundRect(x,H-30-bH,bW,bH,3); ctx.fill();
+    if (i%2===0) {
+      ctx.fillStyle='#374151'; ctx.font='9px DM Sans'; ctx.textAlign='center';
+      ctx.fillText(d.label.split(' ')[1], x+bW/2, H-8);
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// ACTIONS
+// ══════════════════════════════════════════════════════
+async function addUser() {
+  const name = document.getElementById('new-name').value.trim();
+  const email = document.getElementById('new-email').value.trim();
+  const plan = document.getElementById('new-plan').value;
+  if (!name || !email) { toast('Fill in all fields', 'error'); return; }
+  const user = {id:'u'+Date.now(), name, email, plan, leads_used:0, status:'active', created_at:new Date().toISOString()};
+  if (SB && !DEMO) {
+    const {error} = await SB.from('users').insert([{name,email,plan}]);
+    if (error) { toast(error.message,'error'); return; }
+    await loadUsers();
+  } else {
+    allUsers.push(user);
+  }
+  closeModal('modal-add-user');
+  document.getElementById('new-name').value='';
+  document.getElementById('new-email').value='';
+  renderAll();
+  toast(`User ${name} added ✓`, 'success');
+}
+
+async function deleteUser(id) {
+  if (!confirm('Remover este usuário?')) return;
+  if (SB && !DEMO) { await SB.from('profiles').update({is_active: false}).eq('id',id); await loadUsers(); }
+  else { allUsers = allUsers.filter(u=>u.id!==id); }
+  renderAll();
+  toast('Usuário desativado', 'success');
+}
+
+async function createPack() {
+  const name = document.getElementById('pack-name').value.trim();
+  const segment = document.getElementById('pack-seg').value;
+  const target_plan = document.getElementById('pack-plan').value;
+  const lead_count = parseInt(document.getElementById('pack-count').value)||50;
+  if (!name) { toast('Enter a pack name','error'); return; }
+  const pack = {id:'p'+Date.now(), name, segment, target_plan, lead_count, status:'active', created_at:new Date().toISOString()};
+  if (SB && !DEMO) {
+    await SB.from('packs').insert([{name,segment,target_plan,lead_count}]);
+    await loadPacks();
+  } else { allPacks.push(pack); }
+  closeModal('modal-pack');
+  renderPacks();
+  toast(`Pack "${name}" created ✓`, 'success');
+}
+
+async function deletePack(id) {
+  if (!confirm('Remove this pack?')) return;
+  if (SB && !DEMO) { await SB.from('packs').delete().eq('id',id); await loadPacks(); }
+  else { allPacks = allPacks.filter(p=>p.id!==id); }
+  renderPacks();
+  toast('Pack removed','success');
+}
+
+async function resetMonthlyCounters() {
+  if (!confirm('Resetar todos os contadores mensais de leads para 0?')) return;
+  if (SB && !DEMO) { await SB.from('profiles').update({leads_used:0}).neq('id','00000000-0000-0000-0000-000000000000'); await loadUsers(); }
+  else { allUsers.forEach(u=>u.leads_used=0); }
+  renderAll();
+  toast('Contadores resetados ✓','success');
+}
+
+async function confirmClearLeads() {
+  if (!confirm('Delete ALL leads from database? This cannot be undone.')) return;
+  if (SB && !DEMO) { await SB.from('leads').delete().neq('id','00000000-0000-0000-0000-000000000000'); await loadLeads(); }
+  else { allLeads = []; }
+  renderAll();
+  toast('All leads cleared','success');
+}
+
+function viewUser(id) {
+  const u = allUsers.find(x=>x.id===id);
+  if (!u) return;
+  toast(`Viewing ${u.name}`,'info');
+}
+
+function viewLead(id) {
+  const l = allLeads.find(x=>x.id===id);
+  if (!l) return;
+  document.getElementById('modal-lead-title').textContent = l.nome_fantasia || l.razao_social || 'Lead Detail';
+  const fields = [
+    ['CNPJ', l.cnpj],['Company', l.razao_social],['Trade Name', l.nome_fantasia],
+    ['Status', l.situacao_cadastral],['City', l.municipio + ' · ' + l.estado],
+    ['Phone', l.telefone_1],['Email', l.email_comercial],
+    ['Owner', l.nome_socio_1],['Segment', l.segmento_simplificado],
+    ['Founded', (l.tempo_empresa_anos||'?') + ' years ago'],
+    ['Capital', l.capital_social ? 'R$'+Number(l.capital_social).toLocaleString('pt-BR') : '—'],
+    ['Est. Revenue', l.estimativa_faturamento_anual ? 'R$'+Number(l.estimativa_faturamento_anual).toLocaleString('pt-BR') : '—'],
+    ['Est. Profit', l.estimativa_lucro_anual ? 'R$'+Number(l.estimativa_lucro_anual).toLocaleString('pt-BR') : '—'],
+    ['Lead Score', l.score_lead || '—'],
+  ];
+  document.getElementById('modal-lead-body').innerHTML = `
+    <div class="lead-detail-grid">
+      ${fields.map(([k,v]) => `<div class="detail-field"><label>${k}</label><span>${v||'—'}</span></div>`).join('')}
+    </div>`;
+  openModal('modal-lead');
+}
+
+function editPlan(plan) { toast(`Plan editor for "${plan}" — configure via Supabase or code`, 'info'); }
+
+function saveSettings() {
+  const url = document.getElementById('set-url').value.trim();
+  const key = document.getElementById('set-key').value.trim();
+  if (url && key) {
+    localStorage.setItem('wl_url', url);
+    localStorage.setItem('wl_key', key);
+    toast('Settings saved — reload to reconnect', 'success');
+  }
+}
+
+async function refreshOverview() { await loadAll(); toast('Data refreshed ✓', 'success'); }
+
+// ══════════════════════════════════════════════════════
+// NAV
+// ══════════════════════════════════════════════════════
+function nav(page) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('nav a').forEach(a=>a.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  document.getElementById('nav-'+page).classList.add('active');
+  setTimeout(() => {
+    if (page==='overview') drawRevenueChart();
+    if (page==='revenue') drawRevPlanChart();
+    if (page==='analytics') { const s={}; allLeads.forEach(l=>{s[l.segmento_simplificado]=(s[l.segmento_simplificado]||0)+1;}); drawSegChart(s); drawSignupChart(); }
+  }, 50);
+}
+
+// ══════════════════════════════════════════════════════
+// MODALS & TOAST
+// ══════════════════════════════════════════════════════
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(o => o.addEventListener('click', e => { if(e.target===o) o.classList.remove('open'); }));
+
+function toast(msg, type='info') {
+  const t = document.createElement('div');
+  t.className = 'toast-item ' + (type==='success'?'success':type==='error'?'error':'');
+  const icons = {success:'✓',error:'✕',info:'·'};
+  t.innerHTML = `<span style="color:${type==='success'?'var(--accent)':type==='error'?'var(--red)':'var(--muted)'};">${icons[type]||'·'}</span> ${msg}`;
+  document.getElementById('toast').appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+// ══════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════
+window.addEventListener('load', () => {
+  const url = 'https://heootuhrqwqacuveycpa.supabase.co';
+  const key = 'sb_publishable_UL9D7RQtH62T2j-abknE9A_qm7MZA5m';
+  document.getElementById('set-url').value = url;
+  if (document.getElementById('sb-url')) document.getElementById('sb-url').value = url;
+  if (document.getElementById('sb-key')) document.getElementById('sb-key').value = key;
+  connectSupabase();
+});
 </script>
 </body>
 </html>
