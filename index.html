@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,332 +8,424 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
-  --bg:#07080a; --surface:#0e1014; --surface2:#13151a; --surface3:#1a1d24;
-  --border:rgba(255,255,255,0.06); --border2:rgba(255,255,255,0.1);
-  --text:#e5e7eb; --muted:#6b7280; --dim:#374151;
-  --accent:#4fffb0; --accent2:#00d4ff; --red:#ff4f6a; --yellow:#ffc84f; --purple:#a78bfa;
+  --bg:#FAF9F7; --surface:#FFFFFF; --surface2:#F5F4F1; --surface3:#EEEDEA;
+  --border:#E8E6E1; --border2:#D4D2CC;
+  --text:#1C1917; --muted:#78716C; --dim:#A8A29E;
+  --accent:#F97316; --accent2:#FBBF24; --accent-bg:rgba(249,115,22,.08);
+  --green:#10B981; --green-bg:rgba(16,185,129,.1);
+  --red:#EF4444; --red-bg:rgba(239,68,68,.1);
+  --blue:#3B82F6; --blue-bg:rgba(59,130,246,.1);
+  --purple:#8B5CF6; --purple-bg:rgba(139,92,246,.1);
+  --shadow:0 1px 4px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:0 4px 16px rgba(0,0,0,.08);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-weight:300;display:flex;min-height:100vh;font-size:14px;overflow:hidden;}
+html{font-size:14px;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-weight:400;display:flex;min-height:100vh;-webkit-font-smoothing:antialiased;}
 
 /* ── SIDEBAR ── */
-aside{width:224px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;background:var(--surface);position:relative;z-index:10;}
-.logo{padding:22px 18px;font-family:'Syne',sans-serif;font-weight:800;font-size:18px;border-bottom:1px solid var(--border);color:#fff;letter-spacing:-.3px;display:flex;align-items:center;gap:8px;}
+aside{width:228px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;background:var(--surface);position:sticky;top:0;z-index:100;overflow:hidden;}
+.logo{padding:20px 18px 18px;font-family:'Syne',sans-serif;font-weight:800;font-size:18px;border-bottom:1px solid var(--border);color:var(--text);letter-spacing:-.3px;display:flex;align-items:center;gap:9px;}
+.logo-mark{width:28px;height:28px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.logo-mark svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2.5;}
 .logo span{color:var(--accent);}
-.logo-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);}
-.nav-section{padding:18px 10px 6px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:600;}
-nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;margin:1px 4px;border-radius:7px;color:var(--muted);text-decoration:none;font-size:13px;transition:all .15s;cursor:pointer;user-select:none;}
-nav a:hover{background:rgba(255,255,255,.04);color:var(--text);}
-nav a.active{background:rgba(79,255,176,.09);color:var(--accent);}
-nav a svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.6;flex-shrink:0;}
-nav a .nav-badge{margin-left:auto;background:var(--accent);color:#000;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;}
-.sidebar-bottom{margin-top:auto;padding:14px 10px;border-top:1px solid var(--border);}
-.admin-pill{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:background .2s;}
-.admin-pill:hover{background:rgba(255,255,255,.04);}
-.ava{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:700;font-size:10px;flex-shrink:0;}
-.ava-green{background:rgba(79,255,176,.15);color:var(--accent);}
-.ava-blue{background:rgba(0,212,255,.15);color:var(--accent2);}
-.ava-yellow{background:rgba(255,200,79,.15);color:var(--yellow);}
-.ava-red{background:rgba(255,79,106,.15);color:var(--red);}
-.ava-purple{background:rgba(167,139,250,.15);color:var(--purple);}
+.nav-section{padding:18px 16px 5px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:600;}
+nav a{display:flex;align-items:center;gap:10px;padding:9px 12px;margin:1px 8px;border-radius:9px;color:var(--muted);text-decoration:none;font-size:13px;transition:all .15s;cursor:pointer;user-select:none;}
+nav a:hover{background:var(--surface2);color:var(--text);}
+nav a.active{background:var(--accent-bg);color:var(--accent);}
+nav a svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.7;flex-shrink:0;}
+nav a .nav-badge{margin-left:auto;background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;line-height:1.6;}
+.sidebar-bottom{margin-top:auto;padding:12px 8px;border-top:1px solid var(--border);}
+.admin-pill{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:9px;cursor:pointer;transition:background .2s;}
+.admin-pill:hover{background:var(--surface2);}
+.ava{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:700;font-size:11px;flex-shrink:0;}
+.ava-orange{background:rgba(249,115,22,.15);color:var(--accent);}
+.ava-green{background:rgba(16,185,129,.15);color:var(--green);}
+.ava-blue{background:rgba(59,130,246,.15);color:var(--blue);}
+.ava-purple{background:rgba(139,92,246,.15);color:var(--purple);}
+.ava-red{background:rgba(239,68,68,.15);color:var(--red);}
 .pill-info{flex:1;min-width:0;}
-.pill-name{font-size:12px;font-weight:500;color:var(--text);}
+.pill-name{font-size:12.5px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .pill-role{font-size:11px;color:var(--muted);}
 
+/* Wex sidebar button */
+.wex-btn{display:flex;align-items:center;gap:9px;margin:8px;padding:10px 12px;background:linear-gradient(135deg,rgba(249,115,22,.12),rgba(251,191,36,.08));border:1px solid rgba(249,115,22,.2);border-radius:10px;cursor:pointer;transition:all .2s;}
+.wex-btn:hover{background:linear-gradient(135deg,rgba(249,115,22,.18),rgba(251,191,36,.12));transform:translateY(-1px);}
+.wex-dot{width:8px;height:8px;background:var(--accent);border-radius:50%;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.7;transform:scale(1.2);}}
+.wex-label{font-size:12.5px;font-weight:500;color:var(--accent);}
+
 /* ── MAIN ── */
-main{flex:1;overflow-y:auto;height:100vh;}
+main{flex:1;overflow-y:auto;height:100vh;min-width:0;}
 .page{display:none;padding:28px 32px;animation:fadeIn .2s ease;}
 .page.active{display:block;}
-@keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
 
-/* ── TOP BAR ── */
-.topbar{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;}
-.page-title{font-family:'Syne',sans-serif;font-weight:700;font-size:20px;letter-spacing:-.02em;color:#fff;}
+/* ── TOPBAR ── */
+.topbar{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;gap:12px;flex-wrap:wrap;}
+.page-title{font-family:'Syne',sans-serif;font-weight:800;font-size:22px;letter-spacing:-.03em;color:var(--text);}
 .page-sub{font-size:12px;color:var(--muted);margin-top:3px;}
-.topbar-right{display:flex;gap:8px;align-items:center;}
+.topbar-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
 
 /* ── BUTTONS ── */
-.btn{padding:7px 14px;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;border:none;display:inline-flex;align-items:center;gap:6px;}
-.btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;}
+.btn{padding:8px 15px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;border:none;display:inline-flex;align-items:center;gap:6px;line-height:1;}
+.btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0;}
 .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border);}
-.btn-ghost:hover{color:var(--text);border-color:var(--border2);}
-.btn-accent{background:var(--accent);color:#000;}
-.btn-accent:hover{opacity:.85;transform:translateY(-1px);}
-.btn-red{background:rgba(255,79,106,.1);color:var(--red);border:1px solid rgba(255,79,106,.2);}
-.btn-red:hover{background:rgba(255,79,106,.2);}
-.btn-sm{padding:5px 10px;font-size:12px;}
+.btn-ghost:hover{color:var(--text);border-color:var(--border2);background:var(--surface2);}
+.btn-accent{background:var(--accent);color:#fff;}
+.btn-accent:hover{background:#EA6C0C;transform:translateY(-1px);box-shadow:0 4px 12px rgba(249,115,22,.3);}
+.btn-red{background:var(--red-bg);color:var(--red);border:1px solid rgba(239,68,68,.2);}
+.btn-red:hover{background:rgba(239,68,68,.18);}
+.btn-sm{padding:6px 11px;font-size:12px;}
 
 /* ── SEARCH ── */
-.search{display:flex;align-items:center;gap:7px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 11px;min-width:200px;}
-.search svg{width:13px;height:13px;stroke:var(--muted);fill:none;stroke-width:2;flex-shrink:0;}
-.search input{background:transparent;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);width:100%;}
-.search input::placeholder{color:var(--muted);}
+.search{display:flex;align-items:center;gap:7px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 12px;}
+.search svg{width:13px;height:13px;stroke:var(--dim);fill:none;stroke-width:2;flex-shrink:0;}
+.search input{background:transparent;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);width:180px;}
+.search input::placeholder{color:var(--dim);}
 
 /* ── STAT CARDS ── */
-.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
-.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:18px;transition:border-color .2s;}
-.stat-card:hover{border-color:var(--border2);}
-.stat-lbl{font-size:11px;color:var(--muted);letter-spacing:.03em;margin-bottom:9px;display:flex;align-items:center;gap:5px;}
-.stat-lbl svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2;}
-.stat-val{font-family:'Syne',sans-serif;font-size:26px;font-weight:700;color:#fff;letter-spacing:-.02em;line-height:1;margin-bottom:6px;}
-.stat-delta{font-size:11px;display:flex;align-items:center;gap:3px;}
-.up{color:var(--accent);} .dn{color:var(--red);}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;box-shadow:var(--shadow);transition:box-shadow .2s,transform .2s;}
+.stat-card:hover{box-shadow:var(--shadow-md);transform:translateY(-1px);}
+.stat-lbl{font-size:11px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.stat-lbl svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;}
+.stat-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;}
+.stat-icon svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;}
+.stat-val{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--text);letter-spacing:-.03em;line-height:1;margin-bottom:7px;}
+.stat-delta{font-size:11px;display:flex;align-items:center;gap:4px;color:var(--muted);}
+.up{color:var(--green);} .dn{color:var(--red);}
 
 /* ── CARDS ── */
-.card{background:var(--surface);border:1px solid var(--border);border-radius:11px;overflow:hidden;margin-bottom:16px;}
-.card-head{padding:16px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
-.card-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:600;color:var(--text);}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:16px;box-shadow:var(--shadow);}
+.card-head{padding:17px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.card-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--text);}
 .card-sub{font-size:11px;color:var(--muted);margin-top:2px;}
-.card-body{padding:18px;}
+.card-body{padding:20px;}
 
 /* ── TABLE ── */
 .tbl-wrap{overflow-x:auto;}
 table{width:100%;border-collapse:collapse;}
-thead th{text-align:left;padding:9px 13px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);font-weight:500;white-space:nowrap;}
-tbody tr{border-bottom:1px solid rgba(255,255,255,.025);transition:background .12s;cursor:pointer;}
-tbody tr:hover{background:rgba(255,255,255,.02);}
+thead th{text-align:left;padding:10px 15px;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);font-weight:600;white-space:nowrap;background:var(--surface2);}
+tbody tr{border-bottom:1px solid rgba(0,0,0,.04);transition:background .1s;cursor:pointer;}
+tbody tr:hover{background:var(--surface2);}
 tbody tr:last-child{border-bottom:none;}
-tbody td{padding:10px 13px;font-size:12.5px;color:var(--text);white-space:nowrap;}
+tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
 .td-muted{color:var(--muted);}
 
 /* ── BADGES ── */
-.badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:500;letter-spacing:.02em;white-space:nowrap;}
-.b-green{background:rgba(79,255,176,.1);color:var(--accent);}
-.b-blue{background:rgba(0,212,255,.1);color:var(--accent2);}
-.b-yellow{background:rgba(255,200,79,.1);color:var(--yellow);}
-.b-red{background:rgba(255,79,106,.1);color:var(--red);}
-.b-purple{background:rgba(167,139,250,.1);color:var(--purple);}
+.badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:5px;font-size:10px;font-weight:600;letter-spacing:.03em;white-space:nowrap;gap:4px;}
+.b-orange{background:rgba(249,115,22,.12);color:var(--accent);}
+.b-green{background:rgba(16,185,129,.12);color:var(--green);}
+.b-blue{background:rgba(59,130,246,.12);color:var(--blue);}
+.b-yellow{background:rgba(251,191,36,.15);color:#B45309;}
+.b-red{background:rgba(239,68,68,.12);color:var(--red);}
+.b-purple{background:rgba(139,92,246,.12);color:var(--purple);}
+.b-gray{background:var(--surface3);color:var(--muted);}
 
 /* ── PROGRESS ── */
-.prog-track{height:3px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;}
-.prog-bar{height:100%;border-radius:2px;transition:width 1s;}
+.prog-track{height:4px;background:var(--surface3);border-radius:2px;overflow:hidden;}
+.prog-bar{height:100%;border-radius:2px;transition:width 1s ease;}
 
 /* ── GRID LAYOUTS ── */
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
 
 /* ── FORMS ── */
-.form-group{margin-bottom:14px;}
-.form-label{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;display:block;}
-.form-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:9px 12px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);outline:none;transition:border-color .15s;}
-.form-input:focus{border-color:rgba(79,255,176,.4);}
-.form-select{appearance:none;cursor:pointer;}
+.form-group{margin-bottom:15px;}
+.form-label{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;display:block;font-weight:600;}
+.form-input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 13px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);outline:none;transition:border-color .15s,box-shadow .15s;}
+.form-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(249,115,22,.12);}
+.form-select{appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2378716C' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:30px;}
 
 /* ── MODAL ── */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
 .modal-overlay.open{display:flex;}
-.modal{background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:28px;width:520px;max-width:95vw;animation:fadeIn .2s ease;}
-.modal-title{font-family:'Syne',sans-serif;font-weight:700;font-size:17px;color:#fff;margin-bottom:20px;}
-.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;width:520px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.15);animation:fadeIn .2s ease;}
+.modal-title{font-family:'Syne',sans-serif;font-weight:800;font-size:18px;color:var(--text);margin-bottom:20px;}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--border);}
 
 /* ── TOAST ── */
 #toast{position:fixed;bottom:24px;right:24px;z-index:2000;display:flex;flex-direction:column;gap:8px;}
-.toast-item{background:var(--surface);border:1px solid var(--border2);border-radius:9px;padding:12px 16px;font-size:13px;color:var(--text);box-shadow:0 8px 32px rgba(0,0,0,.4);animation:slideIn .3s ease;display:flex;align-items:center;gap:8px;}
-.toast-item.success{border-color:rgba(79,255,176,.3);}
-.toast-item.error{border-color:rgba(255,79,106,.3);}
+.toast-item{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;font-size:13px;color:var(--text);box-shadow:var(--shadow-md);animation:slideIn .3s ease;display:flex;align-items:center;gap:8px;min-width:220px;}
+.toast-item.success{border-left:3px solid var(--green);}
+.toast-item.error{border-left:3px solid var(--red);}
+.toast-item.info{border-left:3px solid var(--accent);}
 @keyframes slideIn{from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:translateX(0);}}
 
-/* ── SETUP SCREEN ── */
-#setup-screen{position:fixed;inset:0;background:var(--bg);z-index:500;display:flex;align-items:center;justify-content:center;}
-.setup-box{background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:40px;width:480px;text-align:center;}
-.setup-logo{font-family:'Syne',sans-serif;font-weight:800;font-size:24px;color:#fff;margin-bottom:8px;}
+/* ── LOGIN ── */
+#setup-screen{position:fixed;inset:0;background:var(--bg);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;}
+.setup-box{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:44px;width:460px;max-width:100%;box-shadow:var(--shadow-md);}
+.setup-logo{font-family:'Syne',sans-serif;font-weight:800;font-size:26px;color:var(--text);margin-bottom:6px;display:flex;align-items:center;gap:10px;}
+.setup-logo .mark{background:var(--accent);color:#fff;width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;}
 .setup-logo span{color:var(--accent);}
-.setup-sub{color:var(--muted);font-size:13px;margin-bottom:28px;}
-.setup-box .form-group{text-align:left;}
-.setup-note{font-size:11px;color:var(--dim);margin-top:16px;line-height:1.6;}
-.setup-note a{color:var(--accent);text-decoration:none;}
+.setup-sub{color:var(--muted);font-size:13px;margin-bottom:32px;margin-top:4px;}
 
 /* ── LEAD DETAIL ── */
 .lead-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.detail-field{background:var(--surface2);border-radius:7px;padding:10px 12px;}
-.detail-field label{font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--dim);display:block;margin-bottom:3px;}
-.detail-field span{font-size:13px;color:var(--text);}
-
-/* ── SCORE RING ── */
-.score-ring{position:relative;width:60px;height:60px;}
-.score-ring canvas{position:absolute;top:0;left:0;}
-.score-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:#fff;}
+.detail-field{background:var(--surface2);border-radius:9px;padding:11px 13px;border:1px solid var(--border);}
+.detail-field label{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);display:block;margin-bottom:4px;font-weight:600;}
+.detail-field span{font-size:13px;color:var(--text);font-weight:500;}
 
 /* ── ACTIVITY ── */
-.activity-item{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.025);}
+.activity-item{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--border);}
 .activity-item:last-child{border-bottom:none;}
-.act-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:4px;}
-.act-text{font-size:12.5px;color:var(--muted);line-height:1.5;}
+.act-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px;}
+.act-text{font-size:13px;color:var(--muted);line-height:1.5;}
 .act-text strong{color:var(--text);font-weight:500;}
-.act-time{font-size:10px;color:var(--dim);margin-top:2px;}
+.act-time{font-size:11px;color:var(--dim);margin-top:3px;}
 
-/* ── EMPTY STATE ── */
+/* ── EMPTY ── */
 .empty{text-align:center;padding:60px 20px;color:var(--muted);}
-.empty svg{width:40px;height:40px;stroke:var(--dim);fill:none;stroke-width:1;margin:0 auto 12px;display:block;}
+.empty svg{width:40px;height:40px;stroke:var(--dim);fill:none;stroke-width:1.2;margin:0 auto 14px;display:block;}
 .empty p{font-size:13px;}
 
 /* ── PLAN CARDS ── */
-.plan-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:20px;}
-.plan-card.featured{border-color:rgba(79,255,176,.25);}
-.plan-name-big{font-family:'Syne',sans-serif;font-weight:700;font-size:15px;color:#fff;margin-bottom:4px;}
-.plan-price-big{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:#fff;letter-spacing:-.02em;}
-.plan-price-big sup{font-size:13px;vertical-align:super;}
-.plan-price-big small{font-size:13px;color:var(--muted);font-weight:400;}
-.plan-feats{list-style:none;margin-top:14px;display:flex;flex-direction:column;gap:7px;}
-.plan-feats li{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;}
-.plan-feats li::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--accent);flex-shrink:0;}
+.plan-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;box-shadow:var(--shadow);}
+.plan-card.featured{border-color:rgba(249,115,22,.3);background:linear-gradient(135deg,rgba(249,115,22,.04),var(--surface));}
+.plan-name-big{font-family:'Syne',sans-serif;font-weight:800;font-size:16px;color:var(--text);margin-bottom:6px;}
+.plan-price-big{font-family:'Syne',sans-serif;font-size:30px;font-weight:800;color:var(--text);letter-spacing:-.03em;}
+.plan-price-big sup{font-size:14px;vertical-align:super;}
+.plan-price-big small{font-size:14px;color:var(--muted);font-weight:400;}
+.plan-feats{list-style:none;margin-top:16px;display:flex;flex-direction:column;gap:8px;}
+.plan-feats li{font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:8px;}
+.plan-feats li::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0;}
+
+/* ── WEX CHAT PANEL ── */
+#wex-panel{position:fixed;right:0;top:0;bottom:0;width:380px;background:var(--surface);border-left:1px solid var(--border);z-index:200;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);box-shadow:-8px 0 32px rgba(0,0,0,.08);}
+#wex-panel.open{transform:translateX(0);}
+.wex-header{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,rgba(249,115,22,.06),var(--surface));}
+.wex-avatar{width:40px;height:40px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:12px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:15px;color:#fff;flex-shrink:0;position:relative;}
+.wex-status-dot{position:absolute;bottom:-2px;right:-2px;width:10px;height:10px;background:var(--green);border-radius:50%;border:2px solid var(--surface);}
+.wex-title{font-family:'Syne',sans-serif;font-weight:800;font-size:15px;color:var(--text);}
+.wex-subtitle{font-size:11px;color:var(--muted);margin-top:1px;}
+#wex-close{margin-left:auto;background:none;border:none;cursor:pointer;color:var(--muted);padding:4px;border-radius:6px;display:flex;}
+#wex-close:hover{background:var(--surface2);color:var(--text);}
+#wex-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;}
+.msg{display:flex;gap:8px;animation:fadeIn .2s ease;}
+.msg.user{flex-direction:row-reverse;}
+.msg-bubble{max-width:85%;padding:11px 14px;border-radius:12px;font-size:13px;line-height:1.55;}
+.msg.bot .msg-bubble{background:var(--surface2);color:var(--text);border-bottom-left-radius:4px;}
+.msg.user .msg-bubble{background:var(--accent);color:#fff;border-bottom-right-radius:4px;}
+.msg-avatar{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;align-self:flex-end;}
+.wex-thinking{display:flex;gap:4px;align-items:center;padding:4px 0;}
+.wex-thinking span{width:6px;height:6px;background:var(--dim);border-radius:50%;animation:bounce .9s infinite;}
+.wex-thinking span:nth-child(2){animation-delay:.15s;}
+.wex-thinking span:nth-child(3){animation-delay:.3s;}
+@keyframes bounce{0%,60%,100%{transform:translateY(0);}30%{transform:translateY(-5px);}}
+.wex-input-area{padding:14px;border-top:1px solid var(--border);display:flex;gap:8px;background:var(--surface);}
+#wex-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 13px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);outline:none;resize:none;max-height:80px;}
+#wex-input:focus{border-color:var(--accent);}
+#wex-send{background:var(--accent);border:none;border-radius:9px;width:36px;height:36px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;align-self:flex-end;}
+#wex-send:hover{background:#EA6C0C;transform:scale(1.05);}
+#wex-send svg{width:15px;height:15px;stroke:#fff;fill:none;stroke-width:2;}
+.wex-chips{padding:0 16px 12px;display:flex;flex-wrap:wrap;gap:6px;}
+.wex-chip{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 11px;font-size:11.5px;color:var(--muted);cursor:pointer;transition:all .15s;}
+.wex-chip:hover{background:var(--accent-bg);color:var(--accent);border-color:rgba(249,115,22,.3);}
+
+/* ── SEGMENTO TIPO badge ── */
+.tipo-fornecedor{background:rgba(59,130,246,.1);color:var(--blue);}
+.tipo-construtora{background:rgba(249,115,22,.1);color:var(--accent);}
 
 /* ── RESPONSIVE ── */
+@media(max-width:1200px){
+  .stats-row{grid-template-columns:repeat(2,1fr);}
+}
 @media(max-width:900px){
   aside{width:56px;}
-  .logo span,.nav-section,.pill-info,nav a span,.nav-badge{display:none;}
-  nav a{justify-content:center;padding:10px;}
-  .stats-row{grid-template-columns:1fr 1fr;}
+  .logo-text,.nav-section,.pill-info,.wex-label,nav a span,.nav-badge{display:none;}
+  .logo-mark{margin:0 auto;}
+  nav a{justify-content:center;padding:10px 0;}
+  .logo{justify-content:center;padding:14px 0;}
+  .wex-btn{justify-content:center;padding:10px 0;}
+  .page{padding:20px 16px;}
+  #wex-panel{width:100%;}
+}
+@media(max-width:640px){
   .grid-2,.grid-3{grid-template-columns:1fr;}
+  .stats-row{grid-template-columns:1fr 1fr;}
 }
 </style>
 </head>
 <body>
 
-<!-- SETUP SCREEN -->
+<!-- ══════════ LOGIN ══════════ -->
 <div id="setup-screen">
   <div class="setup-box">
-    <div class="setup-logo">Wexio<span>Lead</span></div>
+    <div class="setup-logo">
+      <div class="mark">W</div>
+      Wexio<span>Lead</span>
+    </div>
     <p class="setup-sub">Acesso exclusivo para administradores</p>
 
-    <!-- Google Login -->
-    <button id="btnAdminGoogle" style="width:100%;display:flex;align-items:center;justify-content:center;gap:12px;padding:12px;background:#fff;color:#1f2937;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-weight:500;font-size:15px;cursor:pointer;transition:all 0.2s;margin-bottom:16px;" onclick="adminGoogleLogin()">
-      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+    <button id="btnAdminGoogle" style="width:100%;display:flex;align-items:center;justify-content:center;gap:12px;padding:12px;background:#fff;color:#1f2937;border:1px solid var(--border);border-radius:10px;font-family:'DM Sans',sans-serif;font-weight:500;font-size:14px;cursor:pointer;transition:all .2s;margin-bottom:20px;box-shadow:var(--shadow);" onclick="adminGoogleLogin()">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
       Entrar com Google
     </button>
 
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;"><div style="flex:1;height:1px;background:rgba(255,255,255,0.06);"></div><span style="font-size:12px;color:#6b7280;">ou acesso direto</span><div style="flex:1;height:1px;background:rgba(255,255,255,0.06);"></div></div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+      <div style="flex:1;height:1px;background:var(--border);"></div>
+      <span style="font-size:11px;color:var(--dim);">ou acesso direto</span>
+      <div style="flex:1;height:1px;background:var(--border);"></div>
+    </div>
 
     <div class="form-group">
       <label class="form-label">E-mail admin</label>
-      <input class="form-input" id="adminEmail" type="email" placeholder="rone.mars15@gmail.com" value="rone.mars15@gmail.com">
+      <input class="form-input" id="adminEmail" type="email" placeholder="admin@wexiolead.com.br">
     </div>
     <div class="form-group">
       <label class="form-label">Senha</label>
-      <input class="form-input" id="adminPassword" type="password" placeholder="••••••••" value="">
+      <input class="form-input" id="adminPassword" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')adminEmailLogin()">
     </div>
-    <div id="adminLoginError" style="font-size:12px;color:#ff4f4f;margin-bottom:12px;display:none;"></div>
-    <button class="btn btn-accent" style="width:100%;justify-content:center;padding:11px;" onclick="adminEmailLogin()">
-      <span id="adminLoginBtnText">Entrar no admin →</span>
+    <div id="adminLoginError" style="font-size:12.5px;color:var(--red);margin-bottom:12px;display:none;padding:10px 12px;background:var(--red-bg);border-radius:8px;border:1px solid rgba(239,68,68,.2);"></div>
+    <button class="btn btn-accent" style="width:100%;justify-content:center;padding:13px;font-size:14px;" onclick="adminEmailLogin()">
+      <span id="adminLoginBtnText">Entrar no painel →</span>
     </button>
-    <p class="setup-note" style="margin-top:16px;color:#6b7280;font-size:12px;text-align:center;">
-      Apenas administradores autorizados têm acesso.
-    </p>
+    <p style="font-size:11px;color:var(--dim);margin-top:16px;text-align:center;">Acesso restrito a administradores autorizados.</p>
   </div>
 </div>
 
-<!-- SIDEBAR -->
+<!-- ══════════ SIDEBAR ══════════ -->
 <aside>
-  <div class="logo"><div class="logo-dot"></div>Wexio<span>Lead</span></div>
+  <div class="logo">
+    <div class="logo-mark"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+    <span class="logo-text" style="font-family:'Syne',sans-serif;font-weight:800;">Wexio<span>Lead</span></span>
+  </div>
 
-  <div class="nav-section">Main</div>
+  <div class="nav-section">Principal</div>
   <nav>
     <a onclick="nav('overview')" id="nav-overview" class="active">
-      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
-      <span>Overview</span>
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>
+      <span>Visão Geral</span>
     </a>
     <a onclick="nav('users')" id="nav-users">
       <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      <span>Users</span>
+      <span>Usuários</span>
       <span class="nav-badge" id="badge-users">0</span>
     </a>
     <a onclick="nav('revenue')" id="nav-revenue">
       <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-      <span>Revenue</span>
+      <span>Receita</span>
     </a>
     <a onclick="nav('analytics')" id="nav-analytics">
       <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-      <span>Analytics</span>
+      <span>Análises</span>
     </a>
   </nav>
 
-  <div class="nav-section">Data</div>
+  <div class="nav-section">Dados</div>
   <nav>
     <a onclick="nav('leads')" id="nav-leads">
       <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
-      <span>Lead Database</span>
+      <span>Base de Leads</span>
       <span class="nav-badge" id="badge-leads">0</span>
     </a>
     <a onclick="nav('exports')" id="nav-exports">
       <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      <span>Exports Log</span>
+      <span>Log de Exportações</span>
     </a>
     <a onclick="nav('packs')" id="nav-packs">
       <svg viewBox="0 0 24 24"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
-      <span>Curated Packs</span>
+      <span>Pacotes Curados</span>
     </a>
   </nav>
 
-  <div class="nav-section">Settings</div>
+  <div class="nav-section">Sistema</div>
   <nav>
     <a onclick="nav('plans')" id="nav-plans">
       <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-      <span>Plans</span>
+      <span>Planos</span>
     </a>
     <a onclick="nav('settings')" id="nav-settings">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-      <span>Settings</span>
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 0 0 0 0 14.14"/></svg>
+      <span>Configurações</span>
     </a>
   </nav>
 
+  <!-- Wex button -->
+  <div class="wex-btn" onclick="toggleWex()">
+    <div class="wex-dot"></div>
+    <span class="wex-label">Assistente Wex</span>
+  </div>
+
   <div class="sidebar-bottom">
     <div class="admin-pill">
-      <div class="ava ava-green">RM</div>
+      <div class="ava ava-orange" id="admin-ava">RM</div>
       <div class="pill-info">
-        <div class="pill-name">Rone Mars</div>
-        <div class="pill-role">Administrator</div>
+        <div class="pill-name" id="admin-name">Rone Mars</div>
+        <div class="pill-role">Administrador</div>
       </div>
     </div>
   </div>
 </aside>
 
-<!-- MAIN -->
+<!-- ══════════ MAIN ══════════ -->
 <main>
 
-<!-- ══════════════════ OVERVIEW ══════════════════ -->
+<!-- ══════════════════ VISÃO GERAL ══════════════════ -->
 <div class="page active" id="page-overview">
   <div class="topbar">
-    <div><div class="page-title">Overview</div><div class="page-sub" id="ov-date">Loading...</div></div>
+    <div>
+      <div class="page-title">Visão Geral</div>
+      <div class="page-sub" id="ov-date">Carregando...</div>
+    </div>
     <div class="topbar-right">
       <button class="btn btn-ghost btn-sm" onclick="refreshOverview()">
         <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
-        Refresh
+        Atualizar
+      </button>
+      <button class="btn btn-accent btn-sm" onclick="toggleWex()">
+        <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Perguntar à Wex
       </button>
     </div>
   </div>
+
   <div class="stats-row">
     <div class="stat-card">
-      <div class="stat-lbl"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Total Users</div>
+      <div class="stat-icon" style="background:rgba(249,115,22,.1);color:var(--accent);">
+        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+      </div>
+      <div class="stat-lbl">Total de Usuários</div>
       <div class="stat-val" id="ov-users">—</div>
-      <div class="stat-delta up" id="ov-users-d">loading...</div>
+      <div class="stat-delta" id="ov-users-d">carregando...</div>
     </div>
     <div class="stat-card">
-      <div class="stat-lbl"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>MRR</div>
+      <div class="stat-icon" style="background:rgba(16,185,129,.1);color:var(--green);">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      </div>
+      <div class="stat-lbl">MRR</div>
       <div class="stat-val" id="ov-mrr">—</div>
-      <div class="stat-delta up" id="ov-mrr-d">loading...</div>
+      <div class="stat-delta" id="ov-mrr-d">receita mensal recorrente</div>
     </div>
     <div class="stat-card">
-      <div class="stat-lbl"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>Total Leads</div>
+      <div class="stat-icon" style="background:rgba(59,130,246,.1);color:var(--blue);">
+        <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+      </div>
+      <div class="stat-lbl">Leads na Base</div>
       <div class="stat-val" id="ov-leads">—</div>
-      <div class="stat-delta up">in database</div>
+      <div class="stat-delta up">na base de dados</div>
     </div>
     <div class="stat-card">
-      <div class="stat-lbl"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Exports (month)</div>
+      <div class="stat-icon" style="background:rgba(139,92,246,.1);color:var(--purple);">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </div>
+      <div class="stat-lbl">Exportações (mês)</div>
       <div class="stat-val" id="ov-exports">—</div>
-      <div class="stat-delta up">this month</div>
+      <div class="stat-delta">este mês</div>
     </div>
   </div>
 
   <div class="grid-2">
     <div class="card">
       <div class="card-head">
-        <div><div class="card-title">Revenue Trend</div><div class="card-sub">MRR last 8 months</div></div>
-        <span class="badge b-green">+8.4% MoM</span>
+        <div><div class="card-title">Tendência de Receita</div><div class="card-sub">MRR últimos 8 meses</div></div>
+        <span class="badge b-green">+8,4% MoM</span>
       </div>
       <div class="card-body"><canvas id="rev-chart" height="140" style="width:100%;display:block;"></canvas></div>
     </div>
     <div class="card">
-      <div class="card-head"><div><div class="card-title">Plan Distribution</div><div class="card-sub">Active subscribers</div></div></div>
+      <div class="card-head"><div><div class="card-title">Distribuição de Planos</div><div class="card-sub">Assinantes ativos</div></div></div>
       <div class="card-body">
         <div id="plan-bars"></div>
         <canvas id="donut-chart" width="120" height="120" style="display:block;margin:20px auto 0;"></canvas>
@@ -343,146 +435,165 @@ tbody td{padding:10px 13px;font-size:12.5px;color:var(--text);white-space:nowrap
 
   <div class="grid-2">
     <div class="card">
-      <div class="card-head"><div class="card-title">Recent Activity</div></div>
+      <div class="card-head"><div class="card-title">Atividade Recente</div></div>
       <div class="card-body"><div id="activity-list"></div></div>
     </div>
     <div class="card">
-      <div class="card-head"><div class="card-title">Top Searches</div><div class="card-sub">This month</div></div>
+      <div class="card-head"><div class="card-title">Segmentos em Destaque</div><div class="card-sub">Este mês</div></div>
       <div class="card-body"><div id="top-searches"></div></div>
     </div>
   </div>
 </div>
 
-<!-- ══════════════════ USERS ══════════════════ -->
+<!-- ══════════════════ USUÁRIOS ══════════════════ -->
 <div class="page" id="page-users">
   <div class="topbar">
-    <div><div class="page-title">Users</div><div class="page-sub">Manage subscribers and accounts</div></div>
+    <div><div class="page-title">Usuários</div><div class="page-sub">Gerencie assinantes e contas</div></div>
     <div class="topbar-right">
-      <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input id="user-search" placeholder="Search users..." oninput="filterUsers()"></div>
+      <div class="search">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input id="user-search" placeholder="Buscar usuários..." oninput="filterUsers()">
+      </div>
+      <select class="form-input form-select btn-sm" id="user-plan-filter" onchange="filterUsers()" style="width:130px;">
+        <option value="">Todos os planos</option>
+        <option value="free">Free</option>
+        <option value="starter">Starter</option>
+        <option value="pro">Pro</option>
+        <option value="agency">Agency</option>
+      </select>
+      <select class="form-input form-select btn-sm" id="user-tipo-filter" onchange="filterUsers()" style="width:140px;">
+        <option value="">Todos os tipos</option>
+        <option value="fornecedor">Fornecedor</option>
+        <option value="construtora">Construtora</option>
+      </select>
       <button class="btn btn-accent btn-sm" onclick="openModal('modal-add-user')">
         <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Add User
+        Novo Usuário
       </button>
     </div>
   </div>
   <div class="card">
     <div class="card-head">
-      <div><div class="card-title">All Users</div><div class="card-sub" id="users-count-label">Loading...</div></div>
-      <div style="display:flex;gap:6px;">
-        <select class="form-input form-select btn-sm" id="user-plan-filter" onchange="filterUsers()" style="width:120px;padding:5px 10px;">
-          <option value="">All Plans</option>
-          <option value="starter">Starter</option>
-          <option value="pro">Pro</option>
-          <option value="agency">Agency</option>
-        </select>
-      </div>
+      <div><div class="card-title">Todos os Usuários</div><div class="card-sub" id="users-count-label">Carregando...</div></div>
+      <button class="btn btn-ghost btn-sm" onclick="resetMonthlyCounters()">
+        <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
+        Resetar contadores
+      </button>
     </div>
     <div class="tbl-wrap">
       <table>
         <thead><tr>
-          <th>User</th><th>Plan</th><th>Leads Used</th><th>Usage %</th><th>Status</th><th>Joined</th><th></th>
+          <th>Usuário</th><th>Tipo</th><th>Plano</th><th>Leads Usados</th><th>Uso %</th><th>Status</th><th>Cadastro</th><th></th>
         </tr></thead>
         <tbody id="users-tbody"></tbody>
       </table>
     </div>
     <div style="padding:14px 18px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
-      <span style="font-size:12px;color:var(--muted);" id="users-page-info">Page 1</span>
+      <span style="font-size:12px;color:var(--muted);" id="users-page-info">Página 1</span>
       <div style="display:flex;gap:6px;">
-        <button class="btn btn-ghost btn-sm" onclick="usersPage(-1)">← Prev</button>
-        <button class="btn btn-ghost btn-sm" onclick="usersPage(1)">Next →</button>
+        <button class="btn btn-ghost btn-sm" onclick="usersPage(-1)">← Anterior</button>
+        <button class="btn btn-ghost btn-sm" onclick="usersPage(1)">Próxima →</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ══════════════════ REVENUE ══════════════════ -->
+<!-- ══════════════════ RECEITA ══════════════════ -->
 <div class="page" id="page-revenue">
   <div class="topbar">
-    <div><div class="page-title">Revenue</div><div class="page-sub">Subscriptions and billing overview</div></div>
+    <div><div class="page-title">Receita</div><div class="page-sub">Assinaturas e faturamento</div></div>
   </div>
   <div class="stats-row" style="grid-template-columns:repeat(3,1fr);">
     <div class="stat-card">
       <div class="stat-lbl">MRR</div>
       <div class="stat-val" id="rev-mrr">—</div>
-      <div class="stat-delta up">Monthly recurring revenue</div>
+      <div class="stat-delta up">Receita mensal recorrente</div>
     </div>
     <div class="stat-card">
       <div class="stat-lbl">ARR</div>
       <div class="stat-val" id="rev-arr">—</div>
-      <div class="stat-delta up">Annual run rate</div>
+      <div class="stat-delta">Projeção anual</div>
     </div>
     <div class="stat-card">
-      <div class="stat-lbl">Avg Revenue / User</div>
+      <div class="stat-lbl">Ticket Médio / Usuário</div>
       <div class="stat-val" id="rev-arpu">—</div>
-      <div class="stat-delta">per subscriber</div>
+      <div class="stat-delta">por assinante</div>
     </div>
   </div>
   <div class="card">
-    <div class="card-head"><div class="card-title">Revenue by Plan</div></div>
+    <div class="card-head"><div class="card-title">Receita por Plano</div></div>
     <div class="card-body"><canvas id="rev-plan-chart" height="160" style="width:100%;display:block;"></canvas></div>
   </div>
   <div class="card">
-    <div class="card-head"><div class="card-title">Recent Transactions</div></div>
+    <div class="card-head"><div class="card-title">Transações Recentes</div></div>
     <div class="tbl-wrap">
       <table>
-        <thead><tr><th>User</th><th>Plan</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
+        <thead><tr><th>Usuário</th><th>Plano</th><th>Valor</th><th>Status</th><th>Data</th></tr></thead>
         <tbody id="transactions-tbody"></tbody>
       </table>
     </div>
   </div>
 </div>
 
-<!-- ══════════════════ ANALYTICS ══════════════════ -->
+<!-- ══════════════════ ANÁLISES ══════════════════ -->
 <div class="page" id="page-analytics">
   <div class="topbar">
-    <div><div class="page-title">Analytics</div><div class="page-sub">Usage patterns and insights</div></div>
+    <div><div class="page-title">Análises</div><div class="page-sub">Padrões de uso e insights</div></div>
   </div>
   <div class="stats-row">
     <div class="stat-card">
-      <div class="stat-lbl">Total Exports</div>
+      <div class="stat-lbl">Total de Exportações</div>
       <div class="stat-val" id="an-exports">—</div>
-      <div class="stat-delta up">all time</div>
+      <div class="stat-delta up">acumulado</div>
     </div>
     <div class="stat-card">
-      <div class="stat-lbl">Avg Exports/User</div>
+      <div class="stat-lbl">Média Exportações/Usuário</div>
       <div class="stat-val" id="an-avg">—</div>
-      <div class="stat-delta">per month</div>
+      <div class="stat-delta">por mês</div>
     </div>
     <div class="stat-card">
-      <div class="stat-lbl">Most Searched</div>
+      <div class="stat-lbl">Segmento Mais Buscado</div>
       <div class="stat-val" style="font-size:16px;" id="an-top">—</div>
-      <div class="stat-delta">segment this month</div>
+      <div class="stat-delta">este mês</div>
     </div>
     <div class="stat-card">
-      <div class="stat-lbl">Conversion Rate</div>
+      <div class="stat-lbl">Taxa de Conversão</div>
       <div class="stat-val" id="an-conv">—</div>
-      <div class="stat-delta up">free → paid</div>
+      <div class="stat-delta up">free → pago</div>
     </div>
   </div>
   <div class="grid-2">
     <div class="card">
-      <div class="card-head"><div class="card-title">Exports by Segment</div></div>
+      <div class="card-head"><div class="card-title">Exportações por Segmento</div></div>
       <div class="card-body"><canvas id="seg-chart" height="200" style="width:100%;display:block;"></canvas></div>
     </div>
     <div class="card">
-      <div class="card-head"><div class="card-title">Daily Signups (last 14 days)</div></div>
+      <div class="card-head"><div class="card-title">Cadastros Diários (últimos 14 dias)</div></div>
       <div class="card-body"><canvas id="signup-chart" height="200" style="width:100%;display:block;"></canvas></div>
     </div>
   </div>
 </div>
 
-<!-- ══════════════════ LEAD DATABASE ══════════════════ -->
+<!-- ══════════════════ BASE DE LEADS ══════════════════ -->
 <div class="page" id="page-leads">
   <div class="topbar">
-    <div><div class="page-title">Lead Database</div><div class="page-sub" id="leads-sub">Loading...</div></div>
+    <div><div class="page-title">Base de Leads</div><div class="page-sub" id="leads-sub">Carregando...</div></div>
     <div class="topbar-right">
-      <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input id="lead-search" placeholder="Search leads..." oninput="filterLeads()"></div>
-      <select class="form-input form-select btn-sm" id="lead-seg-filter" onchange="filterLeads()" style="width:140px;padding:6px 10px;">
-        <option value="">All Segments</option>
+      <div class="search">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input id="lead-search" placeholder="Buscar leads..." oninput="filterLeads()">
+      </div>
+      <select class="form-input form-select btn-sm" id="lead-seg-filter" onchange="filterLeads()" style="width:150px;">
+        <option value="">Todos os segmentos</option>
+      </select>
+      <select class="form-input form-select btn-sm" id="lead-tipo-filter" onchange="filterLeads()" style="width:140px;">
+        <option value="">Tipo de empresa</option>
+        <option value="construtora">Construtora</option>
+        <option value="fornecedor">Fornecedor</option>
       </select>
       <button class="btn btn-accent btn-sm" onclick="openModal('modal-seed')">
         <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        Import CSV
+        Importar CSV
       </button>
     </div>
   </div>
@@ -490,213 +601,273 @@ tbody td{padding:10px 13px;font-size:12.5px;color:var(--text);white-space:nowrap
     <div class="tbl-wrap">
       <table>
         <thead><tr>
-          <th>Company</th><th>Segment</th><th>City / State</th><th>Phone</th><th>Owner</th><th>Capital</th><th>Est. Revenue</th><th>Score</th><th></th>
+          <th>Empresa</th><th>Tipo</th><th>Segmento</th><th>Cidade / UF</th><th>Telefone</th><th>Sócio</th><th>Capital</th><th>Fat. Estimado</th><th>Score</th><th></th>
         </tr></thead>
         <tbody id="leads-tbody"></tbody>
       </table>
     </div>
     <div style="padding:14px 18px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
-      <span style="font-size:12px;color:var(--muted);" id="leads-page-info">Page 1</span>
+      <span style="font-size:12px;color:var(--muted);" id="leads-page-info">Página 1</span>
       <div style="display:flex;gap:6px;">
-        <button class="btn btn-ghost btn-sm" onclick="leadsPage(-1)">← Prev</button>
-        <button class="btn btn-ghost btn-sm" onclick="leadsPage(1)">Next →</button>
+        <button class="btn btn-ghost btn-sm" onclick="leadsPage(-1)">← Anterior</button>
+        <button class="btn btn-ghost btn-sm" onclick="leadsPage(1)">Próxima →</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ══════════════════ EXPORTS LOG ══════════════════ -->
+<!-- ══════════════════ LOG DE EXPORTAÇÕES ══════════════════ -->
 <div class="page" id="page-exports">
   <div class="topbar">
-    <div><div class="page-title">Exports Log</div><div class="page-sub">All client export activity</div></div>
+    <div><div class="page-title">Log de Exportações</div><div class="page-sub">Toda atividade de exportação dos clientes</div></div>
   </div>
   <div class="card">
     <div class="tbl-wrap">
       <table>
-        <thead><tr><th>User</th><th>Leads Count</th><th>Filters Used</th><th>Date</th></tr></thead>
+        <thead><tr><th>Usuário</th><th>Qtd de Leads</th><th>Filtros Usados</th><th>Data</th></tr></thead>
         <tbody id="exports-tbody"></tbody>
       </table>
     </div>
   </div>
 </div>
 
-<!-- ══════════════════ CURATED PACKS ══════════════════ -->
+<!-- ══════════════════ PACOTES CURADOS ══════════════════ -->
 <div class="page" id="page-packs">
   <div class="topbar">
-    <div><div class="page-title">Curated Packs</div><div class="page-sub">Pre-built lead lists delivered to clients monthly</div></div>
+    <div><div class="page-title">Pacotes Curados</div><div class="page-sub">Listas de leads pré-montadas entregues mensalmente</div></div>
     <button class="btn btn-accent btn-sm" onclick="openModal('modal-pack')">
       <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      New Pack
+      Novo Pacote
     </button>
   </div>
   <div class="grid-3" id="packs-grid"></div>
 </div>
 
-<!-- ══════════════════ PLANS ══════════════════ -->
+<!-- ══════════════════ PLANOS ══════════════════ -->
 <div class="page" id="page-plans">
   <div class="topbar">
-    <div><div class="page-title">Plans</div><div class="page-sub">Subscription tiers and limits</div></div>
+    <div><div class="page-title">Planos</div><div class="page-sub">Tiers de assinatura e limites</div></div>
   </div>
   <div class="grid-3">
     <div class="plan-card">
-      <div class="plan-name-big">Starter</div>
-      <div class="plan-price-big"><sup>R$</sup>97<small>/mo</small></div>
+      <div style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">GRATUITO</div>
+      <div class="plan-name-big">Free</div>
+      <div class="plan-price-big"><sup>R$</sup>0<small>/mês</small></div>
       <ul class="plan-feats">
-        <li>300 self-service exports/mo</li>
-        <li>50 curated leads/mo</li>
-        <li>20+ filters</li>
-        <li>CSV export</li>
-        <li>Email support</li>
+        <li>10 consultas/mês</li>
+        <li>Score parcial</li>
+        <li>Wex limitada</li>
+        <li>Sem exportação CSV</li>
+        <li>Suporte por e-mail</li>
       </ul>
-      <button class="btn btn-ghost" style="width:100%;margin-top:16px;justify-content:center;" onclick="editPlan('starter')">Edit Plan</button>
-    </div>
-    <div class="plan-card featured">
-      <div class="plan-name-big" style="color:var(--accent);">Pro <span class="badge b-green" style="font-size:9px;">Popular</span></div>
-      <div class="plan-price-big"><sup>R$</sup>197<small>/mo</small></div>
-      <ul class="plan-feats">
-        <li>1,000 self-service exports/mo</li>
-        <li>200 curated leads/mo</li>
-        <li>Lead scoring</li>
-        <li>CSV + CRM integration</li>
-        <li>Priority support</li>
-      </ul>
-      <button class="btn btn-accent" style="width:100%;margin-top:16px;justify-content:center;" onclick="editPlan('pro')">Edit Plan</button>
+      <button class="btn btn-ghost" style="width:100%;margin-top:16px;justify-content:center;" onclick="editPlan('free')">Editar Plano</button>
     </div>
     <div class="plan-card">
-      <div class="plan-name-big">Agency</div>
-      <div class="plan-price-big"><sup>R$</sup>397<small>/mo</small></div>
+      <div style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">ENTRADA</div>
+      <div class="plan-name-big">Starter</div>
+      <div class="plan-price-big"><sup>R$</sup>97<small>/mês</small></div>
       <ul class="plan-feats">
-        <li>Unlimited exports</li>
-        <li>500 curated leads/mo</li>
-        <li>API access</li>
-        <li>Custom segments</li>
-        <li>Dedicated support</li>
+        <li>300 exportações/mês</li>
+        <li>50 leads curados/mês</li>
+        <li>20+ filtros</li>
+        <li>Exportação CSV</li>
+        <li>Perfil público</li>
       </ul>
-      <button class="btn btn-ghost" style="width:100%;margin-top:16px;justify-content:center;" onclick="editPlan('agency')">Edit Plan</button>
+      <button class="btn btn-ghost" style="width:100%;margin-top:16px;justify-content:center;" onclick="editPlan('starter')">Editar Plano</button>
+    </div>
+    <div class="plan-card featured">
+      <div style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:10px;">MAIS POPULAR</div>
+      <div class="plan-name-big" style="color:var(--accent);">Pro <span class="badge b-orange" style="font-size:9px;">Popular</span></div>
+      <div class="plan-price-big"><sup>R$</sup>197<small>/mês</small></div>
+      <ul class="plan-feats">
+        <li>1.000 exportações/mês</li>
+        <li>200 leads curados/mês</li>
+        <li>Score completo + CRM leve</li>
+        <li>Alertas por e-mail</li>
+        <li>Suporte prioritário</li>
+      </ul>
+      <button class="btn btn-accent" style="width:100%;margin-top:16px;justify-content:center;" onclick="editPlan('pro')">Editar Plano</button>
+    </div>
+  </div>
+  <div style="margin-top:16px;">
+    <div class="plan-card">
+      <div style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">AGÊNCIAS</div>
+      <div class="plan-name-big">Agency</div>
+      <div class="plan-price-big"><sup>R$</sup>397<small>/mês</small></div>
+      <ul class="plan-feats" style="display:grid;grid-template-columns:1fr 1fr;">
+        <li>Exportações ilimitadas</li>
+        <li>500 leads curados/mês</li>
+        <li>Acesso à API</li>
+        <li>Segmentos personalizados</li>
+        <li>Inteligência de mercado</li>
+        <li>Suporte dedicado</li>
+      </ul>
+      <button class="btn btn-ghost" style="margin-top:16px;" onclick="editPlan('agency')">Editar Plano</button>
     </div>
   </div>
   <div class="card" style="margin-top:16px;">
-    <div class="card-head"><div class="card-title">Monthly Lead Allocation</div><div class="card-sub">How leads are distributed to clients each month</div></div>
+    <div class="card-head"><div class="card-title">Alocação Mensal de Leads</div><div class="card-sub">Como os leads são distribuídos cada mês</div></div>
     <div class="card-body">
-      <p style="font-size:13px;color:var(--muted);line-height:1.7;">
-        On the 1st of each month, every active subscriber's <strong style="color:var(--text);">leads_used</strong> counter resets to 0 automatically.<br>
-        Clients access their leads via the client panel — filtering, previewing and exporting within their monthly limit.<br>
-        Curated packs are pre-assigned by segment and delivered as a separate allocation on top of self-service exports.
+      <p style="font-size:13px;color:var(--muted);line-height:1.8;">
+        No dia 1º de cada mês, o contador <strong style="color:var(--text);">leads_used</strong> de todos os assinantes ativos é zerado automaticamente.<br>
+        Clientes acessam seus leads pelo painel — filtrando, visualizando e exportando dentro do limite mensal.<br>
+        Pacotes curados são pré-atribuídos por segmento e entregues como alocação separada.
       </p>
     </div>
   </div>
 </div>
 
-<!-- ══════════════════ SETTINGS ══════════════════ -->
+<!-- ══════════════════ CONFIGURAÇÕES ══════════════════ -->
 <div class="page" id="page-settings">
   <div class="topbar">
-    <div><div class="page-title">Settings</div><div class="page-sub">System configuration</div></div>
+    <div><div class="page-title">Configurações</div><div class="page-sub">Configuração do sistema</div></div>
   </div>
   <div class="grid-2">
     <div class="card">
-      <div class="card-head"><div class="card-title">Supabase Connection</div></div>
+      <div class="card-head"><div class="card-title">Conexão Supabase</div></div>
       <div class="card-body">
         <div class="form-group">
-          <label class="form-label">Project URL</label>
+          <label class="form-label">URL do Projeto</label>
           <input class="form-input" id="set-url" placeholder="https://xxxx.supabase.co">
         </div>
         <div class="form-group">
-          <label class="form-label">Anon Key</label>
+          <label class="form-label">Chave Anon</label>
           <input class="form-input" id="set-key" type="password" placeholder="••••••••">
         </div>
-        <button class="btn btn-accent" onclick="saveSettings()">Save & Reconnect</button>
+        <button class="btn btn-accent" onclick="saveSettings()">Salvar e Reconectar</button>
       </div>
     </div>
     <div class="card">
-      <div class="card-head"><div class="card-title">Data Operations</div></div>
+      <div class="card-head"><div class="card-title">Operações de Dados</div></div>
       <div class="card-body" style="display:flex;flex-direction:column;gap:10px;">
         <button class="btn btn-ghost" onclick="seedLeads()">
           <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          Seed 100 Sample Leads
+          Importar 100 Leads de Exemplo
         </button>
         <button class="btn btn-ghost" onclick="resetMonthlyCounters()">
           <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
-          Reset Monthly Lead Counters
+          Resetar Contadores Mensais
         </button>
         <button class="btn btn-red" onclick="confirmClearLeads()">
           <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-          Clear All Leads
+          Limpar Todos os Leads
         </button>
       </div>
     </div>
   </div>
 </div>
 
-</main><!-- end main -->
+</main>
 
-<!-- ══════════════════ MODALS ══════════════════ -->
+<!-- ══════════ WEX PAINEL LATERAL ══════════ -->
+<div id="wex-panel">
+  <div class="wex-header">
+    <div class="wex-avatar">W<div class="wex-status-dot"></div></div>
+    <div>
+      <div class="wex-title">Wex — Assistente Admin</div>
+      <div class="wex-subtitle">IA especialista em construção civil</div>
+    </div>
+    <button id="wex-close" onclick="toggleWex()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div id="wex-messages"></div>
+  <div class="wex-chips" id="wex-chips">
+    <span class="wex-chip" onclick="sendWexChip('Resumir métricas do painel')">📊 Resumir métricas</span>
+    <span class="wex-chip" onclick="sendWexChip('Quais usuários estão próximos do limite de consultas?')">⚠️ Usuários no limite</span>
+    <span class="wex-chip" onclick="sendWexChip('Qual segmento de construção civil tem mais leads na base?')">🏗️ Top segmentos</span>
+    <span class="wex-chip" onclick="sendWexChip('Me dê sugestões para aumentar a conversão Free→Pago')">💡 Dicas de conversão</span>
+  </div>
+  <div class="wex-input-area">
+    <textarea id="wex-input" placeholder="Pergunte algo à Wex..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendWexMessage();}"></textarea>
+    <button id="wex-send" onclick="sendWexMessage()">
+      <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+    </button>
+  </div>
+</div>
 
-<!-- Add User -->
+<!-- ══════════ MODAIS ══════════ -->
+
+<!-- Novo Usuário -->
 <div class="modal-overlay" id="modal-add-user">
   <div class="modal">
-    <div class="modal-title">Add New User</div>
-    <div class="form-group"><label class="form-label">Full Name</label><input class="form-input" id="new-name" placeholder="João Silva"></div>
-    <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="new-email" placeholder="joao@empresa.com.br"></div>
-    <div class="form-group"><label class="form-label">Plan</label>
+    <div class="modal-title">Adicionar Novo Usuário</div>
+    <div class="form-group"><label class="form-label">Nome Completo</label><input class="form-input" id="new-name" placeholder="João Silva"></div>
+    <div class="form-group"><label class="form-label">E-mail</label><input class="form-input" id="new-email" placeholder="joao@empresa.com.br"></div>
+    <div class="form-group"><label class="form-label">Tipo de Empresa</label>
+      <select class="form-input form-select" id="new-tipo">
+        <option value="fornecedor">Fornecedor</option>
+        <option value="construtora">Construtora</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Plano</label>
       <select class="form-input form-select" id="new-plan">
-        <option value="starter">Starter — R$97/mo</option>
-        <option value="pro">Pro — R$197/mo</option>
-        <option value="agency">Agency — R$397/mo</option>
+        <option value="free">Free — Gratuito</option>
+        <option value="starter">Starter — R$97/mês</option>
+        <option value="pro">Pro — R$197/mês</option>
+        <option value="agency">Agency — R$397/mês</option>
       </select>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('modal-add-user')">Cancel</button>
-      <button class="btn btn-accent" onclick="addUser()">Create User</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-add-user')">Cancelar</button>
+      <button class="btn btn-accent" onclick="addUser()">Criar Usuário</button>
     </div>
   </div>
 </div>
 
-<!-- Lead Detail -->
+<!-- Detalhe do Lead -->
 <div class="modal-overlay" id="modal-lead">
   <div class="modal" style="width:640px;">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
-      <div class="modal-title" id="modal-lead-title" style="margin-bottom:0;">Lead Detail</div>
+      <div class="modal-title" id="modal-lead-title" style="margin-bottom:0;">Detalhes do Lead</div>
       <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-lead')">✕</button>
     </div>
     <div id="modal-lead-body"></div>
   </div>
 </div>
 
-<!-- Seed Modal -->
+<!-- Importar Leads -->
 <div class="modal-overlay" id="modal-seed">
   <div class="modal">
-    <div class="modal-title">Seed Database</div>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.7;">This will insert the 100 sample leads from the WexioLead CSV into your Supabase <strong style="color:var(--text);">leads</strong> table. Existing records won't be duplicated.</p>
+    <div class="modal-title">Importar Base de Leads</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.7;">Isso irá inserir 100 leads de exemplo de construção civil no Supabase (tabela <strong style="color:var(--text);">leads</strong>). Registros existentes não serão duplicados.</p>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('modal-seed')">Cancel</button>
-      <button class="btn btn-accent" onclick="seedLeads();closeModal('modal-seed')">Seed 100 Leads</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-seed')">Cancelar</button>
+      <button class="btn btn-accent" onclick="seedLeads();closeModal('modal-seed')">Importar 100 Leads</button>
     </div>
   </div>
 </div>
 
-<!-- New Pack -->
+<!-- Novo Pacote -->
 <div class="modal-overlay" id="modal-pack">
   <div class="modal">
-    <div class="modal-title">New Curated Pack</div>
-    <div class="form-group"><label class="form-label">Pack Name</label><input class="form-input" id="pack-name" placeholder="Restaurantes SP — Maio 2025"></div>
-    <div class="form-group"><label class="form-label">Segment</label>
+    <div class="modal-title">Novo Pacote Curado</div>
+    <div class="form-group"><label class="form-label">Nome do Pacote</label><input class="form-input" id="pack-name" placeholder="Construtoras SP — Maio 2026"></div>
+    <div class="form-group"><label class="form-label">Segmento</label>
       <select class="form-input form-select" id="pack-seg">
-        <option>Alimentação</option><option>Saúde</option><option>Fitness</option>
-        <option>Contabilidade</option><option>Imobiliário</option><option>Tecnologia</option>
-        <option>Logística</option><option>Varejo</option><option>Marketing Digital</option>
+        <option>Construção Civil</option><option>Instalações Elétricas</option><option>Hidráulica e Saneamento</option>
+        <option>Fornecimento de Materiais</option><option>Acabamento</option><option>Estrutura e Fundações</option>
+        <option>Locação de Equipamentos</option><option>Projetos e Engenharia</option><option>Outros</option>
       </select>
     </div>
-    <div class="form-group"><label class="form-label">Target Plan</label>
+    <div class="form-group"><label class="form-label">Público-alvo</label>
+      <select class="form-input form-select" id="pack-tipo">
+        <option value="todos">Todos</option>
+        <option value="fornecedor">Fornecedores</option>
+        <option value="construtora">Construtoras</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Plano Mínimo</label>
       <select class="form-input form-select" id="pack-plan">
-        <option value="all">All Plans</option>
+        <option value="all">Todos os planos</option>
         <option value="pro">Pro+</option>
-        <option value="agency">Agency only</option>
+        <option value="agency">Apenas Agency</option>
       </select>
     </div>
-    <div class="form-group"><label class="form-label">Lead Count</label><input class="form-input" id="pack-count" type="number" placeholder="50" value="50"></div>
+    <div class="form-group"><label class="form-label">Quantidade de Leads</label><input class="form-input" id="pack-count" type="number" placeholder="50" value="50"></div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('modal-pack')">Cancel</button>
-      <button class="btn btn-accent" onclick="createPack()">Create Pack</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-pack')">Cancelar</button>
+      <button class="btn btn-accent" onclick="createPack()">Criar Pacote</button>
     </div>
   </div>
 </div>
@@ -705,59 +876,60 @@ tbody td{padding:10px 13px;font-size:12.5px;color:var(--text);white-space:nowrap
 
 <script>
 // ══════════════════════════════════════════════════════
-// STATE
+// CONFIGURAÇÕES
 // ══════════════════════════════════════════════════════
+const ADMIN_EMAIL = 'rone.mars15@gmail.com';
+const SB_URL = 'https://tbnoiwkproawwncuorpw.supabase.co';
+const SB_KEY = 'sb_publishable_6sJeXecAy_M6gBP_b-j0QQ_0Ybgx_ng';
+const GEMINI_KEY = 'AIzaSyAxEvGm7kOQoux0SBEjdnCpj7uvDnsmfc8';
+
+const PLAN_PRICES = {free:0, starter:97, pro:197, agency:397};
+const PLAN_LIMITS = {free:10, starter:300, pro:1000, agency:999999};
+
 let SB = null;
 let DEMO = false;
 let allUsers = [], allLeads = [], allExports = [], allPacks = [];
 let usersCurrentPage = 1, leadsCurrentPage = 1;
 const USERS_PER_PAGE = 10, LEADS_PER_PAGE = 15;
-let leadsFilter = {search:'', seg:''};
-let usersFilter = {search:'', plan:''};
-
-const PLAN_PRICES = {starter:97, pro:197, agency:397};
-const PLAN_LIMITS = {starter:300, pro:1000, agency:999999};
+let leadsFilter = {search:'', seg:'', tipo:''};
+let usersFilter = {search:'', plan:'', tipo:''};
 
 // ══════════════════════════════════════════════════════
-// SUPABASE CONNECT
+// AUTH
 // ══════════════════════════════════════════════════════
-// ══════════════════════════════════════════════════════
-// ADMIN AUTH
-// ══════════════════════════════════════════════════════
-const ADMIN_EMAIL = 'rone.mars15@gmail.com';
-const SB_URL = 'https://heootuhrqwqacuveycpa.supabase.co';
-const SB_KEY = 'sb_publishable_UL9D7RQtH62T2j-abknE9A_qm7MZA5m';
-
 async function initAdminAuth() {
   SB = supabase.createClient(SB_URL, SB_KEY);
-  // Check if already logged in
   const { data: { session } } = await SB.auth.getSession();
   if (session && session.user.email === ADMIN_EMAIL) {
-    document.getElementById('setup-screen').style.display = 'none';
+    hideLogin();
     updateAdminUI(session.user);
     await loadAll();
     return;
   }
-  // Handle OAuth redirect
   SB.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_IN' && session) {
       if (session.user.email !== ADMIN_EMAIL) {
-        toast('Acesso negado. Esta conta não é administradora.', 'error');
+        toast('Acesso negado. Conta não autorizada.', 'error');
         await SB.auth.signOut();
         return;
       }
-      document.getElementById('setup-screen').style.display = 'none';
+      hideLogin();
       updateAdminUI(session.user);
       await loadAll();
     }
   });
 }
 
+function hideLogin() {
+  document.getElementById('setup-screen').style.display = 'none';
+}
+
 function updateAdminUI(user) {
-  const adminPill = document.querySelector('.pill-name');
-  const adminRole = document.querySelector('.pill-role');
-  if (adminPill) adminPill.textContent = user.user_metadata?.full_name || user.email;
-  if (adminRole) adminRole.textContent = 'Administrador';
+  const name = user.user_metadata?.full_name || user.email;
+  const el = document.getElementById('admin-name');
+  const ava = document.getElementById('admin-ava');
+  if (el) el.textContent = name;
+  if (ava) ava.textContent = name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
 }
 
 async function adminGoogleLogin() {
@@ -768,7 +940,11 @@ async function adminGoogleLogin() {
     provider: 'google',
     options: { redirectTo: window.location.href }
   });
-  if (error) { toast('Erro Google: ' + error.message, 'error'); btn.disabled = false; btn.innerHTML = '🔵 Entrar com Google'; }
+  if (error) {
+    toast('Erro Google: ' + error.message, 'error');
+    btn.disabled = false;
+    btn.innerHTML = 'Entrar com Google';
+  }
 }
 
 async function adminEmailLogin() {
@@ -777,7 +953,11 @@ async function adminEmailLogin() {
   const errEl = document.getElementById('adminLoginError');
   const btn = document.getElementById('adminLoginBtnText');
   errEl.style.display = 'none';
-  if (!email || !password) { errEl.textContent = 'Preencha e-mail e senha.'; errEl.style.display = 'block'; return; }
+  if (!email || !password) {
+    errEl.textContent = 'Preencha e-mail e senha.';
+    errEl.style.display = 'block';
+    return;
+  }
   btn.textContent = 'Entrando...';
   try {
     const { data, error } = await SB.auth.signInWithPassword({ email, password });
@@ -786,96 +966,97 @@ async function adminEmailLogin() {
       await SB.auth.signOut();
       throw new Error('Acesso negado. Conta não autorizada.');
     }
-    document.getElementById('setup-screen').style.display = 'none';
+    hideLogin();
     updateAdminUI(data.user);
     await loadAll();
   } catch(e) {
     errEl.textContent = e.message.includes('Invalid login') ? 'E-mail ou senha incorretos.' : e.message;
     errEl.style.display = 'block';
-    btn.textContent = 'Entrar no admin →';
-  }
-}
-
-async function connectSupabase() {
-  // Legacy - now auto-connects
-  await initAdminAuth();
-}
-
-async function initTables() {
-  // Try to create tables via RPC — fallback gracefully
-  const tables = [
-    `CREATE TABLE IF NOT EXISTS users (
-      id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-      name text NOT NULL,
-      email text UNIQUE NOT NULL,
-      plan text DEFAULT 'starter',
-      leads_used integer DEFAULT 0,
-      status text DEFAULT 'active',
-      created_at timestamptz DEFAULT now()
-    )`,
-    `CREATE TABLE IF NOT EXISTS leads (
-      id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-      cnpj text, razao_social text, nome_fantasia text,
-      situacao_cadastral text DEFAULT 'ATIVA',
-      data_abertura date, porte text, cnae_principal text, cnae_descricao text,
-      logradouro text, municipio text, estado text, cep text,
-      telefone_1 text, telefone_2 text, email_comercial text,
-      nome_socio_1 text, capital_social numeric, estimativa_faturamento_anual numeric,
-      estimativa_lucro_anual numeric, score_lead integer, segmento_simplificado text,
-      tempo_empresa_anos integer, created_at timestamptz DEFAULT now()
-    )`,
-    `CREATE TABLE IF NOT EXISTS exports (
-      id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-      user_id uuid REFERENCES users(id),
-      user_email text, leads_count integer, filters_used text,
-      created_at timestamptz DEFAULT now()
-    )`,
-    `CREATE TABLE IF NOT EXISTS packs (
-      id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-      name text, segment text, target_plan text, lead_count integer,
-      status text DEFAULT 'active', created_at timestamptz DEFAULT now()
-    )`
-  ];
-  for (const sql of tables) {
-    await SB.rpc('exec_sql', {query: sql}).catch(()=>{});
+    btn.textContent = 'Entrar no painel →';
   }
 }
 
 // ══════════════════════════════════════════════════════
-// DEMO MODE
+// LOAD DATA
+// ══════════════════════════════════════════════════════
+async function loadAll() {
+  if (DEMO) return;
+  await Promise.all([loadUsers(), loadLeads(), loadExports(), loadPacks()]);
+  renderAll();
+}
+
+async function loadUsers() {
+  const {data} = await SB.from('profiles')
+    .select('id, full_name, email, plan, leads_used, leads_quota, is_active, source, tipo_empresa, created_at, last_login_at')
+    .order('created_at', {ascending:false});
+  allUsers = (data || []).map(u => ({
+    ...u,
+    name: u.full_name || u.email || '—',
+    status: u.is_active !== false ? 'active' : 'inactive',
+    leads_used: u.leads_used || 0,
+    tipo: u.tipo_empresa || u.source || ''
+  }));
+}
+
+async function loadLeads() {
+  let all = [], from = 0;
+  while(true) {
+    const {data} = await SB.from('leads').select('*').range(from, from+999);
+    if (!data || !data.length) break;
+    all = all.concat(data);
+    if (data.length < 1000) break;
+    from += 1000;
+  }
+  allLeads = all;
+}
+
+async function loadExports() {
+  const {data} = await SB.from('exports').select('*').order('created_at',{ascending:false}).limit(100);
+  allExports = data || [];
+}
+
+async function loadPacks() {
+  const {data} = await SB.from('packs').select('*').order('created_at',{ascending:false});
+  allPacks = data || [];
+}
+
+// ══════════════════════════════════════════════════════
+// DEMO DATA
 // ══════════════════════════════════════════════════════
 function initDemo() {
   allUsers = [
-    {id:'u1',name:'Marcos Ferreira',email:'marcos@contabilpro.com.br',plan:'pro',leads_used:847,status:'active',created_at:'2025-04-12'},
-    {id:'u2',name:'Julia Santos',email:'julia@possolutions.com.br',plan:'agency',leads_used:2310,status:'active',created_at:'2025-03-28'},
-    {id:'u3',name:'Rafael Costa',email:'rafael@growthagency.com',plan:'agency',leads_used:198,status:'active',created_at:'2025-03-15'},
-    {id:'u4',name:'Ana Lima',email:'ana@vendaspro.com.br',plan:'starter',leads_used:280,status:'active',created_at:'2025-05-01'},
-    {id:'u5',name:'Pedro Carvalho',email:'pedro@imobpro.com.br',plan:'starter',leads_used:0,status:'inactive',created_at:'2025-05-03'},
-    {id:'u6',name:'Carla Mendes',email:'carla@techstart.com.br',plan:'pro',leads_used:450,status:'active',created_at:'2025-04-20'},
-    {id:'u7',name:'Bruno Alves',email:'bruno@consult.com.br',plan:'starter',leads_used:120,status:'active',created_at:'2025-04-18'},
-    {id:'u8',name:'Patrícia Lopes',email:'patricia@agency.com.br',plan:'pro',leads_used:900,status:'active',created_at:'2025-04-05'},
+    {id:'u1',name:'Marcos Ferreira',email:'marcos@constrobr.com.br',plan:'pro',leads_used:847,status:'active',tipo:'construtora',created_at:'2025-04-12'},
+    {id:'u2',name:'Julia Santos',email:'julia@materialcivil.com.br',plan:'agency',leads_used:2310,status:'active',tipo:'fornecedor',created_at:'2025-03-28'},
+    {id:'u3',name:'Rafael Costa',email:'rafael@obramax.com',plan:'agency',leads_used:198,status:'active',tipo:'construtora',created_at:'2025-03-15'},
+    {id:'u4',name:'Ana Lima',email:'ana@instalacoes.com.br',plan:'starter',leads_used:280,status:'active',tipo:'fornecedor',created_at:'2025-05-01'},
+    {id:'u5',name:'Pedro Carvalho',email:'pedro@incorporadora.com.br',plan:'starter',leads_used:0,status:'inactive',tipo:'construtora',created_at:'2025-05-03'},
+    {id:'u6',name:'Carla Mendes',email:'carla@hidraulica.com.br',plan:'pro',leads_used:450,status:'active',tipo:'fornecedor',created_at:'2025-04-20'},
+    {id:'u7',name:'Bruno Alves',email:'bruno@engenharia.com.br',plan:'starter',leads_used:120,status:'active',tipo:'construtora',created_at:'2025-04-18'},
+    {id:'u8',name:'Patrícia Lopes',email:'patricia@eletrica.com.br',plan:'pro',leads_used:900,status:'active',tipo:'fornecedor',created_at:'2025-04-05'},
   ];
   allLeads = generateSampleLeads();
   allExports = [
-    {user_email:'marcos@contabilpro.com.br',leads_count:50,filters_used:'Restaurantes · SP',created_at:'2025-05-03T14:22:00Z'},
-    {user_email:'julia@possolutions.com.br',leads_count:200,filters_used:'Clínicas · RJ',created_at:'2025-05-03T11:15:00Z'},
-    {user_email:'ana@vendaspro.com.br',leads_count:30,filters_used:'MEI · Curitiba',created_at:'2025-05-02T09:30:00Z'},
+    {user_email:'marcos@constrobr.com.br',leads_count:50,filters_used:'Fornecedores · SP',created_at:'2025-05-03T14:22:00Z'},
+    {user_email:'julia@materialcivil.com.br',leads_count:200,filters_used:'Construtoras · RJ',created_at:'2025-05-03T11:15:00Z'},
+    {user_email:'ana@instalacoes.com.br',leads_count:30,filters_used:'Instalações · Curitiba',created_at:'2025-05-02T09:30:00Z'},
   ];
   allPacks = [
-    {id:'p1',name:'Restaurantes SP — Maio 2025',segment:'Alimentação',target_plan:'pro',lead_count:50,status:'active'},
-    {id:'p2',name:'Clínicas RJ — Maio 2025',segment:'Saúde',target_plan:'agency',lead_count:100,status:'active'},
+    {id:'p1',name:'Construtoras SP — Maio 2026',segment:'Construção Civil',target_plan:'pro',lead_count:50,status:'active'},
+    {id:'p2',name:'Fornecedores de Materiais RJ — Maio 2026',segment:'Fornecimento de Materiais',target_plan:'agency',lead_count:100,status:'active'},
   ];
   renderAll();
 }
 
 function generateSampleLeads() {
-  const segs = ['Alimentação','Saúde','Fitness','Contabilidade','Imobiliário','Educação','Saúde/Varejo','Marketing Digital','Pet','Logística','Varejo','Moda','Segurança','Construção','Consultoria','Tecnologia','Automotivo'];
-  const cities = [['SÃO PAULO','SP'],['RIO DE JANEIRO','RJ'],['BELO HORIZONTE','MG'],['CURITIBA','PR'],['PORTO ALEGRE','RS'],['SALVADOR','BA'],['FORTALEZA','CE'],['RECIFE','PE'],['GOIÂNIA','GO'],['BRASÍLIA','DF'],['CAMPINAS','SP'],['GUARULHOS','SP'],['MANAUS','AM'],['BELÉM','PA'],['SÃO LUÍS','MA']];
+  const segs = ['Construção Civil','Instalações Elétricas','Hidráulica','Fornecimento de Materiais','Acabamento','Estrutura','Locação de Equipamentos','Projetos e Engenharia','Pintura','Impermeabilização'];
+  const tipos = ['construtora','construtora','fornecedor','fornecedor','fornecedor','construtora','fornecedor','construtora'];
+  const cities = [['SÃO PAULO','SP'],['RIO DE JANEIRO','RJ'],['BELO HORIZONTE','MG'],['CURITIBA','PR'],['PORTO ALEGRE','RS'],['SALVADOR','BA'],['FORTALEZA','CE'],['RECIFE','PE'],['GOIÂNIA','GO'],['BRASÍLIA','DF'],['CAMPINAS','SP'],['GUARULHOS','SP']];
   const names = ['SILVA','SANTOS','OLIVEIRA','COSTA','FERREIRA','ALVES','PEREIRA','LIMA','GOMES','RIBEIRO'];
-  const first = ['PAULO','FERNANDA','CARLOS','MARCIA','ANDREA','PATRICIA','FERNANDO','LUCAS','BIANCA','ANTONIO','RODRIGO','JULIANA'];
+  const first = ['PAULO','FERNANDA','CARLOS','MARCIA','ANDREA','PATRICIA','FERNANDO','LUCAS','BIANCA','ANTONIO'];
   const leads = [];
   for (let i = 0; i < 100; i++) {
     const seg = segs[i % segs.length];
+    const tipo = tipos[i % tipos.length];
     const [mun, est] = cities[i % cities.length];
     const fat = 100000 + Math.random() * 1900000;
     leads.push({
@@ -893,6 +1074,7 @@ function generateSampleLeads() {
       estimativa_lucro_anual: fat * 0.15,
       score_lead: 50 + Math.floor(Math.random() * 49),
       segmento_simplificado: seg,
+      tipo_empresa: tipo,
       tempo_empresa_anos: 1 + Math.floor(Math.random() * 18),
     });
   }
@@ -900,51 +1082,11 @@ function generateSampleLeads() {
 }
 
 // ══════════════════════════════════════════════════════
-// LOAD DATA FROM SUPABASE
-// ══════════════════════════════════════════════════════
-async function loadAll() {
-  if (DEMO) return;
-  await Promise.all([loadUsers(), loadLeads(), loadExports(), loadPacks()]);
-  renderAll();
-}
-
-async function loadUsers() {
-  const {data} = await SB.from('profiles').select('id, full_name, email, plan, leads_used, leads_quota, is_active, is_admin, source, created_at, last_login_at').order('created_at',{ascending:false});
-  // Normalize field names for compatibility
-  allUsers = (data || []).map(u => ({
-    ...u,
-    name: u.full_name || u.email,
-    status: u.is_active ? 'active' : 'inactive',
-    leads_used: u.leads_used || 0
-  }));
-}
-async function loadLeads() {
-  // Use pagination to stay within Supabase free tier limits (1000 rows default)
-  let all = [], from = 0, batch = 1000;
-  while(true) {
-    const {data} = await SB.from('leads').select('*').range(from, from+batch-1);
-    if (!data || !data.length) break;
-    all = all.concat(data);
-    if (data.length < batch) break;
-    from += batch;
-  }
-  allLeads = all;
-}
-async function loadExports() {
-  const {data} = await SB.from('exports').select('*').order('created_at',{ascending:false}).limit(100);
-  allExports = data || [];
-}
-async function loadPacks() {
-  const {data} = await SB.from('packs').select('*').order('created_at',{ascending:false});
-  allPacks = data || [];
-}
-
-// ══════════════════════════════════════════════════════
-// SEED LEADS
+// SEED
 // ══════════════════════════════════════════════════════
 async function seedLeads() {
-  if (DEMO) { toast('Demo mode: leads already loaded', 'info'); return; }
-  toast('Seeding 100 leads...', 'info');
+  if (DEMO) { toast('Modo demo: leads já carregados', 'info'); return; }
+  toast('Importando 100 leads...', 'info');
   const leads = generateSampleLeads().map(l => ({
     cnpj: l.cnpj, razao_social: l.razao_social, nome_fantasia: l.nome_fantasia,
     situacao_cadastral: l.situacao_cadastral, municipio: l.municipio, estado: l.estado,
@@ -953,21 +1095,19 @@ async function seedLeads() {
     estimativa_faturamento_anual: l.estimativa_faturamento_anual,
     estimativa_lucro_anual: l.estimativa_lucro_anual,
     score_lead: l.score_lead, segmento_simplificado: l.segmento_simplificado,
-    tempo_empresa_anos: l.tempo_empresa_anos
+    tipo_empresa: l.tipo_empresa, tempo_empresa_anos: l.tempo_empresa_anos
   }));
-  // Insert in batches of 20 to avoid payload limits
   for (let i = 0; i < leads.length; i += 20) {
-    const batch = leads.slice(i, i+20);
-    const {error} = await SB.from('leads').upsert(batch, {onConflict:'cnpj', ignoreDuplicates:true});
-    if (error) console.warn('Batch error:', error);
+    const {error} = await SB.from('leads').upsert(leads.slice(i, i+20), {onConflict:'cnpj', ignoreDuplicates:true});
+    if (error) console.warn('Erro no batch:', error);
   }
   await loadLeads();
   renderAll();
-  toast(`${allLeads.length} leads in database ✓`, 'success');
+  toast(`${allLeads.length} leads na base ✓`, 'success');
 }
 
 // ══════════════════════════════════════════════════════
-// RENDER ALL
+// RENDER
 // ══════════════════════════════════════════════════════
 function renderAll() {
   renderOverview();
@@ -980,113 +1120,111 @@ function renderAll() {
   updateBadges();
 }
 
-// ── OVERVIEW ──
 function renderOverview() {
   const now = new Date();
-  document.getElementById('ov-date').textContent = now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  document.getElementById('ov-date').textContent = now.toLocaleDateString('pt-BR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   document.getElementById('ov-users').textContent = allUsers.length;
-  document.getElementById('ov-leads').textContent = allLeads.length;
+  document.getElementById('ov-leads').textContent = allLeads.length.toLocaleString('pt-BR');
   document.getElementById('ov-exports').textContent = allExports.length;
   const mrr = allUsers.reduce((s,u) => s + (PLAN_PRICES[u.plan]||0), 0);
   document.getElementById('ov-mrr').textContent = 'R$' + mrr.toLocaleString('pt-BR');
-  document.getElementById('ov-users-d').textContent = allUsers.filter(u=>u.status==='active').length + ' active';
+  document.getElementById('ov-users-d').textContent = allUsers.filter(u=>u.status==='active').length + ' ativos';
   document.getElementById('ov-mrr-d').textContent = 'ARR: R$' + (mrr*12).toLocaleString('pt-BR');
 
-  // Plan bars
-  const plans = {starter:0,pro:0,agency:0};
+  const plans = {free:0,starter:0,pro:0,agency:0};
   allUsers.forEach(u => { if(plans[u.plan]!==undefined) plans[u.plan]++; });
   const total = allUsers.length || 1;
-  const colors = {starter:'var(--accent2)',pro:'var(--accent)',agency:'var(--yellow)'};
+  const planColors = {free:'var(--dim)',starter:'var(--blue)',pro:'var(--accent)',agency:'var(--accent2)'};
+  const planLabels = {free:'Free',starter:'Starter',pro:'Pro',agency:'Agency'};
   document.getElementById('plan-bars').innerHTML = Object.entries(plans).map(([p,n]) => `
-    <div style="margin-bottom:12px;">
-      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px;">
-        <span style="color:var(--text);text-transform:capitalize;">${p}</span>
+    <div style="margin-bottom:13px;">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;">
+        <span style="color:var(--text);font-weight:500;">${planLabels[p]}</span>
         <span style="color:var(--muted);">${n} · ${Math.round(n/total*100)}%</span>
       </div>
-      <div class="prog-track"><div class="prog-bar" style="width:${Math.round(n/total*100)}%;background:${colors[p]};"></div></div>
+      <div class="prog-track"><div class="prog-bar" style="width:${Math.round(n/total*100)}%;background:${planColors[p]};"></div></div>
     </div>`).join('');
 
-  // Activity
   const acts = [
-    {dot:'var(--accent)',text:'<strong>System</strong> Database has <strong>'+allLeads.length+' leads</strong> ready for clients',time:'Just now'},
-    {dot:'var(--accent2)',text:'<strong>'+allUsers.length+' users</strong> registered in the system',time:'Current'},
-    {dot:'var(--yellow)',text:'Monthly lead counters active — resets on 1st of each month',time:'Ongoing'},
-    {dot:'var(--accent)',text:'Curated packs: <strong>'+allPacks.length+' packs</strong> configured',time:'Current'},
-    {dot:'var(--purple)',text:'Platform status: <strong style="color:var(--accent)">Operational</strong>',time:'All systems go'},
+    {dot:'var(--accent)',text:'<strong>Sistema</strong> — Base com <strong>'+allLeads.length.toLocaleString('pt-BR')+' leads</strong> de construção civil',time:'Agora'},
+    {dot:'var(--blue)',text:'<strong>'+allUsers.length+' usuários</strong> registrados na plataforma',time:'Atual'},
+    {dot:'var(--green)',text:'Contadores mensais ativos — resetam todo dia 1º',time:'Em andamento'},
+    {dot:'var(--accent2)',text:'Pacotes curados: <strong>'+allPacks.length+' pacotes</strong> configurados',time:'Atual'},
+    {dot:'var(--purple)',text:'Status da plataforma: <strong style="color:var(--green)">Operacional</strong>',time:'Tudo funcionando'},
   ];
   document.getElementById('activity-list').innerHTML = acts.map(a => `
     <div class="activity-item">
-      <div class="act-dot" style="background:${a.dot};"></div>
+      <div class="act-dot" style="background:${a.dot};margin-top:5px;"></div>
       <div><div class="act-text">${a.text}</div><div class="act-time">${a.time}</div></div>
     </div>`).join('');
 
-  // Top searches
   const segsCount = {};
   allLeads.forEach(l => { segsCount[l.segmento_simplificado] = (segsCount[l.segmento_simplificado]||0)+1; });
   const topSegs = Object.entries(segsCount).sort((a,b)=>b[1]-a[1]).slice(0,6);
   document.getElementById('top-searches').innerHTML = topSegs.map(([seg,n],i) => `
-    <div style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:7px;margin-bottom:4px;">
-      <span style="font-family:'Syne',sans-serif;font-weight:600;font-size:11px;color:var(--dim);width:16px;">${i+1}</span>
-      <span style="flex:1;font-size:13px;">${seg}</span>
-      <span style="font-size:11px;color:var(--muted);">${n} leads</span>
+    <div style="display:flex;align-items:center;gap:10px;padding:9px;border-radius:9px;margin-bottom:3px;transition:background .1s;cursor:default;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'">
+      <span style="font-family:'Syne',sans-serif;font-weight:700;font-size:11px;color:${i===0?'var(--accent)':'var(--dim)'};width:18px;">${i+1}</span>
+      <span style="flex:1;font-size:13px;font-weight:${i===0?500:400};">${seg}</span>
+      <span style="font-size:11px;color:var(--muted);font-family:'Syne',sans-serif;">${n}</span>
     </div>`).join('');
 
   drawRevenueChart();
   drawDonutChart(plans, total);
 }
 
-// ── USERS ──
 function renderUsers() {
   let filtered = allUsers.filter(u => {
     const q = usersFilter.search.toLowerCase();
-    const matchSearch = !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+    const matchSearch = !q || (u.name||'').toLowerCase().includes(q) || (u.email||'').toLowerCase().includes(q);
     const matchPlan = !usersFilter.plan || u.plan === usersFilter.plan;
-    return matchSearch && matchPlan;
+    const matchTipo = !usersFilter.tipo || (u.tipo||'').toLowerCase() === usersFilter.tipo;
+    return matchSearch && matchPlan && matchTipo;
   });
   const total = filtered.length;
   const pages = Math.ceil(total / USERS_PER_PAGE) || 1;
   if (usersCurrentPage > pages) usersCurrentPage = 1;
   const slice = filtered.slice((usersCurrentPage-1)*USERS_PER_PAGE, usersCurrentPage*USERS_PER_PAGE);
-  document.getElementById('users-count-label').textContent = `${total} users total`;
-  document.getElementById('users-page-info').textContent = `Page ${usersCurrentPage} of ${pages}`;
+  document.getElementById('users-count-label').textContent = `${total} usuário${total!==1?'s':''} encontrado${total!==1?'s':''}`;
+  document.getElementById('users-page-info').textContent = `Página ${usersCurrentPage} de ${pages}`;
 
-  const planBadge = {starter:'b-green',pro:'b-blue',agency:'b-yellow'};
+  const planBadge = {free:'b-gray',starter:'b-blue',pro:'b-orange',agency:'b-yellow'};
+  const avaColors = ['ava-orange','ava-green','ava-blue','ava-purple','ava-red'];
   document.getElementById('users-tbody').innerHTML = slice.map(u => {
-    const limit = PLAN_LIMITS[u.plan] || 300;
+    const limit = PLAN_LIMITS[u.plan] || 10;
     const pct = limit === 999999 ? 0 : Math.min(100, Math.round((u.leads_used||0)/limit*100));
-    const initials = u.name.split(' ').slice(0,2).map(w=>w[0]).join('');
-    const avaColors = ['ava-green','ava-blue','ava-yellow','ava-purple','ava-red'];
-    const avaColor = avaColors[u.name.charCodeAt(0)%avaColors.length];
-    const statusBadge = u.status==='active' ? 'b-green' : 'b-red';
+    const initials = (u.name||'?').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+    const avaColor = avaColors[(u.name||'A').charCodeAt(0)%avaColors.length];
+    const tipoBadge = u.tipo === 'construtora' ? 'tipo-construtora' : (u.tipo === 'fornecedor' ? 'tipo-fornecedor' : 'b-gray');
+    const tipoLabel = u.tipo === 'construtora' ? '🏗️ Construtora' : (u.tipo === 'fornecedor' ? '🔩 Fornecedor' : '—');
     return `<tr onclick="viewUser('${u.id}')">
-      <td><div style="display:flex;align-items:center;gap:9px;">
+      <td><div style="display:flex;align-items:center;gap:10px;">
         <div class="ava ${avaColor}">${initials}</div>
-        <div><div style="font-weight:500;">${u.name}</div><div style="font-size:11px;color:var(--muted);">${u.email}</div></div>
+        <div><div style="font-weight:500;font-size:13px;">${u.name}</div><div style="font-size:11px;color:var(--muted);">${u.email}</div></div>
       </div></td>
-      <td><span class="badge ${planBadge[u.plan]||'b-green'}">${u.plan}</span></td>
-      <td style="font-family:'Syne',sans-serif;">${u.leads_used||0} / ${limit===999999?'∞':limit}</td>
+      <td><span class="badge ${tipoBadge}">${tipoLabel}</span></td>
+      <td><span class="badge ${planBadge[u.plan]||'b-gray'}">${(u.plan||'free').toUpperCase()}</span></td>
+      <td style="font-family:'Syne',sans-serif;font-weight:600;">${u.leads_used||0} / ${limit===999999?'∞':limit}</td>
       <td><div style="display:flex;align-items:center;gap:8px;">
-        <div class="prog-track" style="width:80px;"><div class="prog-bar" style="width:${pct}%;background:${pct>90?'var(--red)':pct>70?'var(--yellow)':'var(--accent)'};"></div></div>
+        <div class="prog-track" style="width:70px;"><div class="prog-bar" style="width:${pct}%;background:${pct>90?'var(--red)':pct>70?'var(--accent2)':'var(--accent)'};"></div></div>
         <span style="font-size:11px;color:var(--muted);">${limit===999999?'∞':pct+'%'}</span>
       </div></td>
-      <td><span class="badge ${statusBadge}">${u.status}</span></td>
-      <td class="td-muted">${new Date(u.created_at).toLocaleDateString('pt-BR')}</td>
-      <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();deleteUser('${u.id}')">✕</button></td>
+      <td><span class="badge ${u.status==='active'?'b-green':'b-red'}">${u.status==='active'?'Ativo':'Inativo'}</span></td>
+      <td class="td-muted" style="font-size:12px;">${new Date(u.created_at).toLocaleDateString('pt-BR')}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();deleteUser('${u.id}')" title="Desativar">✕</button></td>
     </tr>`;
-  }).join('') || '<tr><td colspan="7"><div class="empty"><p>No users found</p></div></td></tr>';
+  }).join('') || '<tr><td colspan="8"><div class="empty"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><p>Nenhum usuário encontrado</p></div></td></tr>';
 }
 
 function filterUsers() {
   usersFilter.search = document.getElementById('user-search').value;
   usersFilter.plan = document.getElementById('user-plan-filter').value;
+  usersFilter.tipo = document.getElementById('user-tipo-filter').value;
   usersCurrentPage = 1;
   renderUsers();
 }
 function usersPage(dir) { usersCurrentPage = Math.max(1, usersCurrentPage+dir); renderUsers(); }
 
-// ── LEADS ──
 function renderLeads() {
-  // Populate segment filter
   const segs = [...new Set(allLeads.map(l=>l.segmento_simplificado).filter(Boolean))].sort();
   const selEl = document.getElementById('lead-seg-filter');
   if (selEl.options.length <= 1) {
@@ -1099,70 +1237,72 @@ function renderLeads() {
       (l.nome_fantasia||'').toLowerCase().includes(q) || (l.municipio||'').toLowerCase().includes(q) ||
       (l.nome_socio_1||'').toLowerCase().includes(q);
     const matchSeg = !leadsFilter.seg || l.segmento_simplificado === leadsFilter.seg;
-    return matchSearch && matchSeg;
+    const matchTipo = !leadsFilter.tipo || (l.tipo_empresa||'').toLowerCase() === leadsFilter.tipo;
+    return matchSearch && matchSeg && matchTipo;
   });
 
   const total = filtered.length;
   const pages = Math.ceil(total / LEADS_PER_PAGE) || 1;
   if (leadsCurrentPage > pages) leadsCurrentPage = 1;
   const slice = filtered.slice((leadsCurrentPage-1)*LEADS_PER_PAGE, leadsCurrentPage*LEADS_PER_PAGE);
-  document.getElementById('leads-sub').textContent = `${total} leads ${leadsFilter.seg?'in '+leadsFilter.seg:''} in database`;
-  document.getElementById('leads-page-info').textContent = `Page ${leadsCurrentPage} of ${pages} · ${total} results`;
+  document.getElementById('leads-sub').textContent = `${total.toLocaleString('pt-BR')} leads na base de dados`;
+  document.getElementById('leads-page-info').textContent = `Página ${leadsCurrentPage} de ${pages} · ${total.toLocaleString('pt-BR')} resultados`;
 
-  const scoreColor = s => s >= 85 ? 'var(--accent)' : s >= 70 ? 'var(--yellow)' : 'var(--red)';
-  document.getElementById('leads-tbody').innerHTML = slice.map(l => `
-    <tr onclick="viewLead('${l.id}')">
-      <td><div style="font-weight:500;">${l.nome_fantasia||l.razao_social||'—'}</div><div style="font-size:10px;color:var(--muted);">${l.cnpj||''}</div></td>
-      <td><span class="badge b-blue">${l.segmento_simplificado||'—'}</span></td>
+  const scoreColor = s => s >= 85 ? 'var(--green)' : s >= 70 ? 'var(--accent2)' : 'var(--red)';
+  document.getElementById('leads-tbody').innerHTML = slice.map(l => {
+    const tipoBadge = l.tipo_empresa === 'construtora' ? 'tipo-construtora' : (l.tipo_empresa === 'fornecedor' ? 'tipo-fornecedor' : 'b-gray');
+    const tipoLabel = l.tipo_empresa === 'construtora' ? '🏗️ Construtora' : (l.tipo_empresa === 'fornecedor' ? '🔩 Fornecedor' : '—');
+    return `<tr onclick="viewLead('${l.id}')">
+      <td><div style="font-weight:500;font-size:13px;">${l.nome_fantasia||l.razao_social||'—'}</div><div style="font-size:10px;color:var(--dim);margin-top:1px;">${l.cnpj||''}</div></td>
+      <td><span class="badge ${tipoBadge}">${tipoLabel}</span></td>
+      <td><span class="badge b-blue" style="font-size:10px;">${l.segmento_simplificado||'—'}</span></td>
       <td class="td-muted">${l.municipio||'—'} · ${l.estado||'—'}</td>
       <td class="td-muted">${l.telefone_1||'—'}</td>
       <td class="td-muted">${l.nome_socio_1||'—'}</td>
       <td class="td-muted">${l.capital_social ? 'R$'+Number(l.capital_social).toLocaleString('pt-BR',{maximumFractionDigits:0}) : '—'}</td>
       <td class="td-muted">${l.estimativa_faturamento_anual ? 'R$'+Number(l.estimativa_faturamento_anual).toLocaleString('pt-BR',{maximumFractionDigits:0}) : '—'}</td>
       <td><span style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:${scoreColor(l.score_lead||0)};">${l.score_lead||'—'}</span></td>
-      <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();viewLead('${l.id}')">View</button></td>
-    </tr>`).join('') || '<tr><td colspan="9"><div class="empty"><p>No leads found</p></div></td></tr>';
+      <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();viewLead('${l.id}')">Ver</button></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="10"><div class="empty"><p>Nenhum lead encontrado</p></div></td></tr>';
 }
 
 function filterLeads() {
   leadsFilter.search = document.getElementById('lead-search').value;
   leadsFilter.seg = document.getElementById('lead-seg-filter').value;
+  leadsFilter.tipo = document.getElementById('lead-tipo-filter').value;
   leadsCurrentPage = 1;
   renderLeads();
 }
 function leadsPage(dir) { leadsCurrentPage = Math.max(1, leadsCurrentPage+dir); renderLeads(); }
 
-// ── EXPORTS ──
 function renderExports() {
   document.getElementById('exports-tbody').innerHTML = allExports.map(e => `
     <tr>
       <td>${e.user_email||'—'}</td>
-      <td><span style="font-family:'Syne',sans-serif;font-weight:600;">${e.leads_count||0}</span></td>
+      <td><span style="font-family:'Syne',sans-serif;font-weight:700;">${e.leads_count||0}</span></td>
       <td class="td-muted">${e.filters_used||'—'}</td>
       <td class="td-muted">${new Date(e.created_at).toLocaleString('pt-BR')}</td>
-    </tr>`).join('') || '<tr><td colspan="4"><div class="empty"><p>No exports yet</p></div></td></tr>';
+    </tr>`).join('') || '<tr><td colspan="4"><div class="empty"><p>Sem exportações ainda</p></div></td></tr>';
 }
 
-// ── PACKS ──
 function renderPacks() {
-  const segColors = {Alimentação:'b-yellow',Saúde:'b-green',Fitness:'b-blue',Tecnologia:'b-purple',Marketing:'b-red'};
   document.getElementById('packs-grid').innerHTML = allPacks.map(p => `
     <div class="card" style="margin-bottom:0;">
       <div class="card-head">
-        <div><div class="card-title">${p.name}</div><div class="card-sub">${p.segment} · ${p.target_plan}</div></div>
-        <span class="badge ${p.status==='active'?'b-green':'b-red'}">${p.status}</span>
+        <div><div class="card-title">${p.name}</div><div class="card-sub">${p.segment||''} · ${p.target_plan||''}</div></div>
+        <span class="badge ${p.status==='active'?'b-green':'b-red'}">${p.status==='active'?'Ativo':'Inativo'}</span>
       </div>
       <div class="card-body">
-        <div style="font-family:'Syne',sans-serif;font-size:32px;font-weight:800;color:#fff;">${p.lead_count}</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:2px;">leads in this pack</div>
+        <div style="font-family:'Syne',sans-serif;font-size:34px;font-weight:800;color:var(--text);">${p.lead_count}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px;">leads neste pacote</div>
         <div style="display:flex;gap:6px;margin-top:14px;">
-          <button class="btn btn-ghost btn-sm" onclick="deletePack('${p.id}')">Remove</button>
+          <button class="btn btn-red btn-sm" onclick="deletePack('${p.id}')">Remover</button>
         </div>
       </div>
-    </div>`).join('') || '<div style="grid-column:1/-1;"><div class="empty"><p>No curated packs yet. Create one!</p></div></div>';
+    </div>`).join('') || '<div style="grid-column:1/-1;"><div class="empty"><p>Nenhum pacote ainda. Crie um!</p></div></div>';
 }
 
-// ── REVENUE ──
 function renderRevenue() {
   const mrr = allUsers.reduce((s,u) => s + (PLAN_PRICES[u.plan]||0), 0);
   document.getElementById('rev-mrr').textContent = 'R$' + mrr.toLocaleString('pt-BR');
@@ -1170,20 +1310,18 @@ function renderRevenue() {
   const arpu = allUsers.length ? Math.round(mrr/allUsers.length) : 0;
   document.getElementById('rev-arpu').textContent = 'R$' + arpu.toLocaleString('pt-BR');
 
-  // Fake transactions
   document.getElementById('transactions-tbody').innerHTML = allUsers.slice(0,8).map(u => `
     <tr>
       <td>${u.name}</td>
-      <td><span class="badge ${u.plan==='pro'?'b-blue':u.plan==='agency'?'b-yellow':'b-green'}">${u.plan}</span></td>
-      <td style="font-family:'Syne',sans-serif;font-weight:600;color:var(--accent);">R$${PLAN_PRICES[u.plan]||0}</td>
-      <td><span class="badge b-green">paid</span></td>
+      <td><span class="badge ${u.plan==='pro'?'b-orange':u.plan==='agency'?'b-yellow':u.plan==='starter'?'b-blue':'b-gray'}">${(u.plan||'free').toUpperCase()}</span></td>
+      <td style="font-family:'Syne',sans-serif;font-weight:700;color:var(--green);">R$${PLAN_PRICES[u.plan]||0}</td>
+      <td><span class="badge b-green">Pago</span></td>
       <td class="td-muted">${new Date(u.created_at).toLocaleDateString('pt-BR')}</td>
-    </tr>`).join('') || '<tr><td colspan="5"><div class="empty"><p>No transactions</p></div></td></tr>';
+    </tr>`).join('') || '<tr><td colspan="5"><div class="empty"><p>Sem transações</p></div></td></tr>';
 
   drawRevPlanChart();
 }
 
-// ── ANALYTICS ──
 function renderAnalytics() {
   document.getElementById('an-exports').textContent = allExports.length;
   const avg = allUsers.length ? Math.round(allExports.length/allUsers.length*10)/10 : 0;
@@ -1192,7 +1330,7 @@ function renderAnalytics() {
   allLeads.forEach(l => { segsCount[l.segmento_simplificado] = (segsCount[l.segmento_simplificado]||0)+1; });
   const topSeg = Object.entries(segsCount).sort((a,b)=>b[1]-a[1])[0];
   document.getElementById('an-top').textContent = topSeg ? topSeg[0] : '—';
-  document.getElementById('an-conv').textContent = allUsers.length ? Math.round(allUsers.filter(u=>u.plan!=='free').length/allUsers.length*100)+'%' : '—';
+  document.getElementById('an-conv').textContent = allUsers.length ? Math.round(allUsers.filter(u=>u.plan&&u.plan!=='free').length/allUsers.length*100)+'%' : '—';
   drawSegChart(segsCount);
   drawSignupChart();
 }
@@ -1203,7 +1341,7 @@ function updateBadges() {
 }
 
 // ══════════════════════════════════════════════════════
-// CHARTS (Canvas)
+// CHARTS
 // ══════════════════════════════════════════════════════
 function drawRevenueChart() {
   const canvas = document.getElementById('rev-chart');
@@ -1213,7 +1351,7 @@ function drawRevenueChart() {
   const W = canvas.width, H = canvas.height;
   const pad = {t:10,r:10,b:28,l:52};
   const cW = W-pad.l-pad.r, cH = H-pad.t-pad.b;
-  const months = ['Oct','Nov','Dec','Jan','Feb','Mar','Apr','May'];
+  const months = ['Out','Nov','Dez','Jan','Fev','Mar','Abr','Mai'];
   const base = allUsers.reduce((s,u)=>s+(PLAN_PRICES[u.plan]||0),0) || 48000;
   const vals = [21000,24500,27000,30200,35800,40100,44500,base];
   const minV = 18000, maxV = Math.max(...vals)*1.1;
@@ -1221,17 +1359,17 @@ function drawRevenueChart() {
   for (let i=0;i<=4;i++) {
     const y = pad.t + cH - (i/4)*cH;
     ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(W-pad.r,y);
-    ctx.strokeStyle='rgba(255,255,255,0.04)'; ctx.lineWidth=1; ctx.stroke();
-    ctx.fillStyle='#374151'; ctx.font='10px DM Sans'; ctx.textAlign='right';
+    ctx.strokeStyle='rgba(0,0,0,0.06)'; ctx.lineWidth=1; ctx.stroke();
+    ctx.fillStyle='#A8A29E'; ctx.font='10px DM Sans'; ctx.textAlign='right';
     ctx.fillText('R$'+(((minV+(i/4)*(maxV-minV))/1000).toFixed(0))+'k', pad.l-5, y+3);
   }
   months.forEach((m,i) => {
     const x = pad.l+(i/(months.length-1))*cW;
-    ctx.fillStyle='#6b7280'; ctx.font='10px DM Sans'; ctx.textAlign='center';
+    ctx.fillStyle='#A8A29E'; ctx.font='10px DM Sans'; ctx.textAlign='center';
     ctx.fillText(m, x, H-6);
   });
   const grad = ctx.createLinearGradient(0,pad.t,0,H-pad.b);
-  grad.addColorStop(0,'rgba(79,255,176,0.15)'); grad.addColorStop(1,'rgba(79,255,176,0)');
+  grad.addColorStop(0,'rgba(249,115,22,0.15)'); grad.addColorStop(1,'rgba(249,115,22,0)');
   ctx.beginPath();
   vals.forEach((v,i) => {
     const x = pad.l+(i/(vals.length-1))*cW;
@@ -1246,13 +1384,13 @@ function drawRevenueChart() {
     const y = pad.t+cH-((v-minV)/(maxV-minV))*cH;
     i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
   });
-  ctx.strokeStyle='#4fffb0'; ctx.lineWidth=2; ctx.lineJoin='round'; ctx.stroke();
+  ctx.strokeStyle='#F97316'; ctx.lineWidth=2.5; ctx.lineJoin='round'; ctx.stroke();
   vals.forEach((v,i) => {
     const x = pad.l+(i/(vals.length-1))*cW;
     const y = pad.t+cH-((v-minV)/(maxV-minV))*cH;
     ctx.beginPath(); ctx.arc(x,y,i===vals.length-1?5:3,0,Math.PI*2);
-    ctx.fillStyle=i===vals.length-1?'#4fffb0':'#0e1014';
-    ctx.strokeStyle='#4fffb0'; ctx.lineWidth=2; ctx.fill(); ctx.stroke();
+    ctx.fillStyle=i===vals.length-1?'#F97316':'#fff';
+    ctx.strokeStyle='#F97316'; ctx.lineWidth=2; ctx.fill(); ctx.stroke();
   });
 }
 
@@ -1262,9 +1400,10 @@ function drawDonutChart(plans, total) {
   const ctx = canvas.getContext('2d');
   const cx=60,cy=60,r=48,inner=30;
   const data = [
-    {val:(plans.pro||0)/total,color:'#4fffb0'},
-    {val:(plans.starter||0)/total,color:'#00d4ff'},
-    {val:(plans.agency||0)/total,color:'#ffc84f'},
+    {val:(plans.pro||0)/total,color:'#F97316'},
+    {val:(plans.starter||0)/total,color:'#3B82F6'},
+    {val:(plans.agency||0)/total,color:'#FBBF24'},
+    {val:(plans.free||0)/total,color:'#A8A29E'},
   ];
   ctx.clearRect(0,0,120,120);
   let start = -Math.PI/2;
@@ -1275,10 +1414,10 @@ function drawDonutChart(plans, total) {
     ctx.closePath(); ctx.fillStyle=d.color; ctx.globalAlpha=0.85; ctx.fill(); ctx.globalAlpha=1;
     start = end+0.02;
   });
-  ctx.fillStyle='#0e1014'; ctx.beginPath(); ctx.arc(cx,cy,inner-2,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle='#fff'; ctx.font='bold 14px Syne'; ctx.textAlign='center';
+  ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(cx,cy,inner-2,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#1C1917'; ctx.font='bold 14px Syne'; ctx.textAlign='center';
   ctx.fillText(total, cx, cy+4);
-  ctx.fillStyle='#6b7280'; ctx.font='10px DM Sans'; ctx.fillText('users', cx, cy+15);
+  ctx.fillStyle='#78716C'; ctx.font='10px DM Sans'; ctx.fillText('usuários', cx, cy+16);
 }
 
 function drawRevPlanChart() {
@@ -1289,24 +1428,22 @@ function drawRevPlanChart() {
   const W = canvas.width, H = canvas.height;
   const plans = {starter:0,pro:0,agency:0};
   allUsers.forEach(u => { if(plans[u.plan]!==undefined) plans[u.plan]++; });
-  const revByPlan = Object.entries(plans).map(([p,n]) => ({label:p, val:n*(PLAN_PRICES[p]||0)}));
+  const revByPlan = Object.entries(plans).map(([p,n]) => ({label:p.charAt(0).toUpperCase()+p.slice(1), val:n*(PLAN_PRICES[p]||0)}));
   const maxV = Math.max(...revByPlan.map(d=>d.val)) || 1;
-  const colors = ['#00d4ff','#4fffb0','#ffc84f'];
-  const bW = (W-80)/(revByPlan.length*2);
+  const colors = ['#3B82F6','#F97316','#FBBF24'];
+  const bW = Math.min(60, (W-80)/(revByPlan.length*2));
   ctx.clearRect(0,0,W,H);
   revByPlan.forEach((d,i) => {
-    const x = 40 + i*(bW*2+20);
+    const x = 40 + i*(W-80)/revByPlan.length;
     const bH = (d.val/maxV)*(H-50);
     const grad = ctx.createLinearGradient(0,H-40-bH,0,H-40);
-    grad.addColorStop(0,colors[i]); grad.addColorStop(1,colors[i]+'44');
+    grad.addColorStop(0,colors[i]); grad.addColorStop(1,colors[i]+'33');
     ctx.fillStyle=grad;
-    ctx.beginPath();
-    ctx.roundRect(x, H-40-bH, bW*2, bH, 4);
-    ctx.fill();
-    ctx.fillStyle='#6b7280'; ctx.font='11px DM Sans'; ctx.textAlign='center';
-    ctx.fillText(d.label, x+bW, H-10);
-    ctx.fillStyle='#fff'; ctx.font='bold 12px Syne';
-    ctx.fillText('R$'+(d.val/1000).toFixed(0)+'k', x+bW, H-44-bH);
+    ctx.beginPath(); ctx.roundRect(x, H-40-bH, bW*1.8, bH, 5); ctx.fill();
+    ctx.fillStyle='#78716C'; ctx.font='11px DM Sans'; ctx.textAlign='center';
+    ctx.fillText(d.label, x+bW*0.9, H-10);
+    ctx.fillStyle='#1C1917'; ctx.font='bold 12px Syne';
+    if (d.val) ctx.fillText('R$'+(d.val/1000).toFixed(0)+'k', x+bW*0.9, H-44-bH);
   });
 }
 
@@ -1318,19 +1455,18 @@ function drawSegChart(segsCount) {
   const W = canvas.width, H = canvas.height;
   const top = Object.entries(segsCount).sort((a,b)=>b[1]-a[1]).slice(0,8);
   const maxV = top[0]?.[1] || 1;
-  const rowH = (H-20)/top.length;
+  const rowH = (H-20)/Math.max(top.length,1);
   ctx.clearRect(0,0,W,H);
   top.forEach(([seg,n],i) => {
     const y = 10+i*rowH;
-    const bW = (n/maxV)*(W-120);
-    const hue = (i*47)%360;
-    ctx.fillStyle=`hsla(${hue},80%,65%,0.15)`;
-    ctx.beginPath(); ctx.roundRect(100,y+4,bW,rowH-10,3); ctx.fill();
-    ctx.fillStyle=`hsla(${hue},80%,65%,0.7)`;
-    ctx.beginPath(); ctx.roundRect(100,y+4,4,rowH-10,2); ctx.fill();
-    ctx.fillStyle='#9ca3af'; ctx.font='11px DM Sans'; ctx.textAlign='right';
-    ctx.fillText(seg.slice(0,12), 92, y+rowH/2+4);
-    ctx.fillStyle='#6b7280'; ctx.font='10px DM Sans'; ctx.textAlign='left';
+    const bW = (n/maxV)*(W-130);
+    ctx.fillStyle=`rgba(249,115,22,${0.08+i*0.005})`;
+    ctx.beginPath(); ctx.roundRect(100,y+5,bW,rowH-12,3); ctx.fill();
+    ctx.fillStyle=`rgba(249,115,22,${0.6+i*0.01})`;
+    ctx.beginPath(); ctx.roundRect(100,y+5,4,rowH-12,2); ctx.fill();
+    ctx.fillStyle='#78716C'; ctx.font='11px DM Sans'; ctx.textAlign='right';
+    ctx.fillText(seg.slice(0,15), 92, y+rowH/2+4);
+    ctx.fillStyle='#A8A29E'; ctx.font='10px DM Sans'; ctx.textAlign='left';
     ctx.fillText(n, 100+bW+6, y+rowH/2+4);
   });
 }
@@ -1343,34 +1479,35 @@ function drawSignupChart() {
   const W = canvas.width, H = canvas.height;
   const days = Array.from({length:14},(_,i) => {
     const d = new Date(); d.setDate(d.getDate()-13+i);
-    return {label:d.toLocaleDateString('en',{month:'short',day:'numeric'}), val:Math.floor(Math.random()*5)};
+    return {label:d.toLocaleDateString('pt-BR',{day:'numeric',month:'short'}), val:Math.floor(Math.random()*5)};
   });
-  const maxV = Math.max(...days.map(d=>d.val)) || 1;
+  const maxV = Math.max(...days.map(d=>d.val),1);
   ctx.clearRect(0,0,W,H);
   const bW = (W-40)/(days.length*1.5);
   days.forEach((d,i) => {
     const x = 20+i*((W-40)/days.length);
     const bH = (d.val/maxV)*(H-40);
-    ctx.fillStyle=d.val>0?'rgba(79,255,176,0.2)':'rgba(255,255,255,0.03)';
-    ctx.beginPath(); ctx.roundRect(x,H-30-bH,bW,bH,3); ctx.fill();
+    ctx.fillStyle=d.val>0?'rgba(249,115,22,0.2)':'rgba(0,0,0,0.04)';
+    ctx.beginPath(); ctx.roundRect(x,H-30-bH,bW,Math.max(bH,2),3); ctx.fill();
     if (i%2===0) {
-      ctx.fillStyle='#374151'; ctx.font='9px DM Sans'; ctx.textAlign='center';
-      ctx.fillText(d.label.split(' ')[1], x+bW/2, H-8);
+      ctx.fillStyle='#A8A29E'; ctx.font='9px DM Sans'; ctx.textAlign='center';
+      ctx.fillText(d.label.split(' ')[0], x+bW/2, H-8);
     }
   });
 }
 
 // ══════════════════════════════════════════════════════
-// ACTIONS
+// AÇÕES
 // ══════════════════════════════════════════════════════
 async function addUser() {
   const name = document.getElementById('new-name').value.trim();
   const email = document.getElementById('new-email').value.trim();
   const plan = document.getElementById('new-plan').value;
-  if (!name || !email) { toast('Fill in all fields', 'error'); return; }
-  const user = {id:'u'+Date.now(), name, email, plan, leads_used:0, status:'active', created_at:new Date().toISOString()};
+  const tipo = document.getElementById('new-tipo').value;
+  if (!name || !email) { toast('Preencha todos os campos', 'error'); return; }
+  const user = {id:'u'+Date.now(), name, email, plan, tipo, leads_used:0, status:'active', created_at:new Date().toISOString()};
   if (SB && !DEMO) {
-    const {error} = await SB.from('users').insert([{name,email,plan}]);
+    const {error} = await SB.from('profiles').insert([{full_name:name,email,plan,tipo_empresa:tipo}]);
     if (error) { toast(error.message,'error'); return; }
     await loadUsers();
   } else {
@@ -1380,86 +1517,104 @@ async function addUser() {
   document.getElementById('new-name').value='';
   document.getElementById('new-email').value='';
   renderAll();
-  toast(`User ${name} added ✓`, 'success');
+  toast(`Usuário ${name} criado ✓`, 'success');
 }
 
 async function deleteUser(id) {
-  if (!confirm('Remover este usuário?')) return;
-  if (SB && !DEMO) { await SB.from('profiles').update({is_active: false}).eq('id',id); await loadUsers(); }
-  else { allUsers = allUsers.filter(u=>u.id!==id); }
+  if (!confirm('Desativar este usuário?')) return;
+  if (SB && !DEMO) {
+    await SB.from('profiles').update({is_active:false}).eq('id',id);
+    await loadUsers();
+  } else {
+    allUsers = allUsers.map(u => u.id===id ? {...u,status:'inactive'} : u);
+  }
   renderAll();
-  toast('Usuário desativado', 'success');
+  toast('Usuário desativado ✓', 'success');
 }
 
 async function createPack() {
   const name = document.getElementById('pack-name').value.trim();
   const segment = document.getElementById('pack-seg').value;
   const target_plan = document.getElementById('pack-plan').value;
+  const tipo_publico = document.getElementById('pack-tipo').value;
   const lead_count = parseInt(document.getElementById('pack-count').value)||50;
-  if (!name) { toast('Enter a pack name','error'); return; }
-  const pack = {id:'p'+Date.now(), name, segment, target_plan, lead_count, status:'active', created_at:new Date().toISOString()};
+  if (!name) { toast('Informe o nome do pacote', 'error'); return; }
+  const pack = {id:'p'+Date.now(), name, segment, target_plan, tipo_publico, lead_count, status:'active', created_at:new Date().toISOString()};
   if (SB && !DEMO) {
     await SB.from('packs').insert([{name,segment,target_plan,lead_count}]);
     await loadPacks();
-  } else { allPacks.push(pack); }
+  } else {
+    allPacks.push(pack);
+  }
   closeModal('modal-pack');
   renderPacks();
-  toast(`Pack "${name}" created ✓`, 'success');
+  toast(`Pacote "${name}" criado ✓`, 'success');
 }
 
 async function deletePack(id) {
-  if (!confirm('Remove this pack?')) return;
+  if (!confirm('Remover este pacote?')) return;
   if (SB && !DEMO) { await SB.from('packs').delete().eq('id',id); await loadPacks(); }
   else { allPacks = allPacks.filter(p=>p.id!==id); }
   renderPacks();
-  toast('Pack removed','success');
+  toast('Pacote removido ✓', 'success');
 }
 
 async function resetMonthlyCounters() {
   if (!confirm('Resetar todos os contadores mensais de leads para 0?')) return;
-  if (SB && !DEMO) { await SB.from('profiles').update({leads_used:0}).neq('id','00000000-0000-0000-0000-000000000000'); await loadUsers(); }
-  else { allUsers.forEach(u=>u.leads_used=0); }
+  if (SB && !DEMO) {
+    await SB.from('profiles').update({leads_used:0}).neq('id','00000000-0000-0000-0000-000000000000');
+    await loadUsers();
+  } else {
+    allUsers.forEach(u=>u.leads_used=0);
+  }
   renderAll();
-  toast('Contadores resetados ✓','success');
+  toast('Contadores resetados ✓', 'success');
 }
 
 async function confirmClearLeads() {
-  if (!confirm('Delete ALL leads from database? This cannot be undone.')) return;
-  if (SB && !DEMO) { await SB.from('leads').delete().neq('id','00000000-0000-0000-0000-000000000000'); await loadLeads(); }
-  else { allLeads = []; }
+  if (!confirm('Apagar TODOS os leads do banco? Esta ação não pode ser desfeita.')) return;
+  if (SB && !DEMO) {
+    await SB.from('leads').delete().neq('id','00000000-0000-0000-0000-000000000000');
+    await loadLeads();
+  } else {
+    allLeads = [];
+  }
   renderAll();
-  toast('All leads cleared','success');
+  toast('Todos os leads removidos', 'success');
 }
 
 function viewUser(id) {
   const u = allUsers.find(x=>x.id===id);
   if (!u) return;
-  toast(`Viewing ${u.name}`,'info');
+  toast(`Visualizando ${u.name}`, 'info');
 }
 
 function viewLead(id) {
   const l = allLeads.find(x=>x.id===id);
   if (!l) return;
-  document.getElementById('modal-lead-title').textContent = l.nome_fantasia || l.razao_social || 'Lead Detail';
+  document.getElementById('modal-lead-title').textContent = l.nome_fantasia || l.razao_social || 'Detalhe do Lead';
+  const tipoBadge = l.tipo_empresa === 'construtora' ? 'tipo-construtora' : 'tipo-fornecedor';
+  const tipoLabel = l.tipo_empresa === 'construtora' ? '🏗️ Construtora' : '🔩 Fornecedor';
   const fields = [
-    ['CNPJ', l.cnpj],['Company', l.razao_social],['Trade Name', l.nome_fantasia],
-    ['Status', l.situacao_cadastral],['City', l.municipio + ' · ' + l.estado],
-    ['Phone', l.telefone_1],['Email', l.email_comercial],
-    ['Owner', l.nome_socio_1],['Segment', l.segmento_simplificado],
-    ['Founded', (l.tempo_empresa_anos||'?') + ' years ago'],
-    ['Capital', l.capital_social ? 'R$'+Number(l.capital_social).toLocaleString('pt-BR') : '—'],
-    ['Est. Revenue', l.estimativa_faturamento_anual ? 'R$'+Number(l.estimativa_faturamento_anual).toLocaleString('pt-BR') : '—'],
-    ['Est. Profit', l.estimativa_lucro_anual ? 'R$'+Number(l.estimativa_lucro_anual).toLocaleString('pt-BR') : '—'],
-    ['Lead Score', l.score_lead || '—'],
+    ['CNPJ', l.cnpj],['Razão Social', l.razao_social],['Nome Fantasia', l.nome_fantasia],
+    ['Situação', l.situacao_cadastral],['Cidade / UF', (l.municipio||'—') + ' · ' + (l.estado||'—')],
+    ['Telefone', l.telefone_1],['E-mail', l.email_comercial],
+    ['Sócio / Decisor', l.nome_socio_1],['Segmento', l.segmento_simplificado],
+    ['Anos de empresa', (l.tempo_empresa_anos||'?') + ' anos'],
+    ['Capital Social', l.capital_social ? 'R$'+Number(l.capital_social).toLocaleString('pt-BR') : '—'],
+    ['Fat. Estimado', l.estimativa_faturamento_anual ? 'R$'+Number(l.estimativa_faturamento_anual).toLocaleString('pt-BR') : '—'],
+    ['Lucro Estimado', l.estimativa_lucro_anual ? 'R$'+Number(l.estimativa_lucro_anual).toLocaleString('pt-BR') : '—'],
+    ['Score do Lead', l.score_lead || '—'],
   ];
   document.getElementById('modal-lead-body').innerHTML = `
+    <div style="margin-bottom:12px;"><span class="badge ${tipoBadge}">${tipoLabel}</span></div>
     <div class="lead-detail-grid">
       ${fields.map(([k,v]) => `<div class="detail-field"><label>${k}</label><span>${v||'—'}</span></div>`).join('')}
     </div>`;
   openModal('modal-lead');
 }
 
-function editPlan(plan) { toast(`Plan editor for "${plan}" — configure via Supabase or code`, 'info'); }
+function editPlan(plan) { toast(`Editor de plano "${plan}" — configure via Supabase ou código`, 'info'); }
 
 function saveSettings() {
   const url = document.getElementById('set-url').value.trim();
@@ -1467,29 +1622,34 @@ function saveSettings() {
   if (url && key) {
     localStorage.setItem('wl_url', url);
     localStorage.setItem('wl_key', key);
-    toast('Settings saved — reload to reconnect', 'success');
+    toast('Configurações salvas — recarregue para reconectar', 'success');
   }
 }
 
-async function refreshOverview() { await loadAll(); toast('Data refreshed ✓', 'success'); }
+async function refreshOverview() { await loadAll(); toast('Dados atualizados ✓', 'success'); }
 
 // ══════════════════════════════════════════════════════
-// NAV
+// NAVEGAÇÃO
 // ══════════════════════════════════════════════════════
 function nav(page) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('nav a').forEach(a=>a.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
-  document.getElementById('nav-'+page).classList.add('active');
+  const navEl = document.getElementById('nav-'+page);
+  if (navEl) navEl.classList.add('active');
   setTimeout(() => {
     if (page==='overview') drawRevenueChart();
     if (page==='revenue') drawRevPlanChart();
-    if (page==='analytics') { const s={}; allLeads.forEach(l=>{s[l.segmento_simplificado]=(s[l.segmento_simplificado]||0)+1;}); drawSegChart(s); drawSignupChart(); }
-  }, 50);
+    if (page==='analytics') {
+      const s={};
+      allLeads.forEach(l=>{s[l.segmento_simplificado]=(s[l.segmento_simplificado]||0)+1;});
+      drawSegChart(s); drawSignupChart();
+    }
+  }, 60);
 }
 
 // ══════════════════════════════════════════════════════
-// MODALS & TOAST
+// MODAIS & TOAST
 // ══════════════════════════════════════════════════════
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
@@ -1497,11 +1657,126 @@ document.querySelectorAll('.modal-overlay').forEach(o => o.addEventListener('cli
 
 function toast(msg, type='info') {
   const t = document.createElement('div');
-  t.className = 'toast-item ' + (type==='success'?'success':type==='error'?'error':'');
-  const icons = {success:'✓',error:'✕',info:'·'};
-  t.innerHTML = `<span style="color:${type==='success'?'var(--accent)':type==='error'?'var(--red)':'var(--muted)'};">${icons[type]||'·'}</span> ${msg}`;
+  t.className = 'toast-item ' + type;
+  const icons = {success:'✓',error:'✕',info:'ℹ'};
+  const colors = {success:'var(--green)',error:'var(--red)',info:'var(--accent)'};
+  t.innerHTML = `<span style="color:${colors[type]||'var(--accent)'};">${icons[type]||'·'}</span> ${msg}`;
   document.getElementById('toast').appendChild(t);
-  setTimeout(() => t.remove(), 3500);
+  setTimeout(() => t.style.opacity='0', 3000);
+  setTimeout(() => t.remove(), 3400);
+}
+
+// ══════════════════════════════════════════════════════
+// WEX IA ASSISTENTE
+// ══════════════════════════════════════════════════════
+let wexHistory = [];
+let wexOpen = false;
+
+function toggleWex() {
+  wexOpen = !wexOpen;
+  document.getElementById('wex-panel').classList.toggle('open', wexOpen);
+  if (wexOpen && wexHistory.length === 0) {
+    const ctx = buildWexContext();
+    wexAddMessage('bot', `Olá! Sou a Wex, sua assistente no painel admin do wexiolead. 🏗️\n\nAtualmente você tem <strong>${allUsers.length}</strong> usuários, <strong>${allLeads.length.toLocaleString('pt-BR')}</strong> leads na base e MRR de <strong>R$${allUsers.reduce((s,u)=>s+(PLAN_PRICES[u.plan]||0),0).toLocaleString('pt-BR')}</strong>.\n\nPosso resumir métricas, analisar usuários próximos do limite, identificar oportunidades de conversão e muito mais. O que deseja saber?`);
+  }
+}
+
+function buildWexContext() {
+  const mrr = allUsers.reduce((s,u)=>s+(PLAN_PRICES[u.plan]||0),0);
+  const planDist = {free:0,starter:0,pro:0,agency:0};
+  allUsers.forEach(u => { if(planDist[u.plan]!==undefined) planDist[u.plan]++; });
+  const nearLimit = allUsers.filter(u => {
+    const lim = PLAN_LIMITS[u.plan]||10;
+    return lim!==999999 && (u.leads_used||0)/lim > 0.8;
+  }).length;
+  const segsCount = {};
+  allLeads.forEach(l => { segsCount[l.segmento_simplificado]=(segsCount[l.segmento_simplificado]||0)+1; });
+  const topSegs = Object.entries(segsCount).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([s,n])=>`${s}(${n})`).join(', ');
+  const constrCount = allLeads.filter(l=>l.tipo_empresa==='construtora').length;
+  const fornCount = allLeads.filter(l=>l.tipo_empresa==='fornecedor').length;
+  return `Você é a Wex, assistente IA feminina e especialista em construção civil do wexiolead. Responda em português brasileiro. Seja direta, profissional e prática, como uma consultora experiente. Use markdown simples quando útil.
+
+DADOS DO PAINEL ADMIN (atualizados):
+- Total usuários: ${allUsers.length} (${allUsers.filter(u=>u.status==='active').length} ativos)
+- Distribuição planos: Free=${planDist.free}, Starter=${planDist.starter}, Pro=${planDist.pro}, Agency=${planDist.agency}
+- MRR: R$${mrr.toLocaleString('pt-BR')} | ARR: R$${(mrr*12).toLocaleString('pt-BR')}
+- Total leads na base: ${allLeads.length} (Construtoras: ${constrCount}, Fornecedores: ${fornCount})
+- Usuários próximos do limite (>80%): ${nearLimit}
+- Exportações totais: ${allExports.length}
+- Top segmentos: ${topSegs || 'N/A'}
+- Pacotes curados ativos: ${allPacks.length}`;
+}
+
+function wexAddMessage(role, text) {
+  const msgs = document.getElementById('wex-messages');
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  if (role === 'bot') {
+    div.innerHTML = `<div class="msg-avatar">W</div><div class="msg-bubble">${text.replace(/\n/g,'<br>')}</div>`;
+  } else {
+    div.innerHTML = `<div class="msg-bubble">${text}</div><div class="msg-avatar" style="background:var(--surface3);color:var(--text);font-family:'Syne',sans-serif;font-size:11px;font-weight:700;">${document.getElementById('admin-ava').textContent}</div>`;
+  }
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  wexHistory.push({role: role === 'bot' ? 'assistant' : 'user', content: text.replace(/<[^>]+>/g,'')});
+}
+
+function wexShowThinking() {
+  const msgs = document.getElementById('wex-messages');
+  const div = document.createElement('div');
+  div.className = 'msg bot';
+  div.id = 'wex-thinking';
+  div.innerHTML = `<div class="msg-avatar">W</div><div class="msg-bubble"><div class="wex-thinking"><span></span><span></span><span></span></div></div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function wexRemoveThinking() {
+  const t = document.getElementById('wex-thinking');
+  if (t) t.remove();
+}
+
+async function sendWexMessage() {
+  const input = document.getElementById('wex-input');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  wexAddMessage('user', text);
+  document.getElementById('wex-chips').style.display = 'none';
+  wexShowThinking();
+
+  try {
+    const systemContext = buildWexContext();
+    const messages = [
+      {role:'user', content: systemContext + '\n\nPrimeira mensagem do admin: ' + text},
+      ...wexHistory.slice(1,-1),
+      {role:'user', content: text}
+    ];
+
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        contents: [{
+          parts: [{text: systemContext + '\n\nPergunta do admin: ' + text}]
+        }],
+        generationConfig: {maxOutputTokens:600, temperature:0.7}
+      })
+    });
+
+    const data = await res.json();
+    wexRemoveThinking();
+    const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'Não consegui processar a resposta. Tente novamente.';
+    wexAddMessage('bot', reply);
+  } catch(e) {
+    wexRemoveThinking();
+    wexAddMessage('bot', 'Erro ao conectar com a API Gemini. Verifique a conexão e tente novamente.');
+  }
+}
+
+function sendWexChip(text) {
+  document.getElementById('wex-input').value = text;
+  sendWexMessage();
 }
 
 // ══════════════════════════════════════════════════════
