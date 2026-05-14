@@ -1753,7 +1753,7 @@ async function sendWexMessage() {
       {role:'user', content: text}
     ];
 
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`, {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
@@ -1766,6 +1766,11 @@ async function sendWexMessage() {
 
     const data = await res.json();
     wexRemoveThinking();
+    if (!res.ok || data.error) {
+      const errMsg = data.error?.message || `Erro HTTP ${res.status}`;
+      wexAddMessage('bot', `⚠️ Erro na API Gemini: ${errMsg}`);
+      return;
+    }
     const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'Não consegui processar a resposta. Tente novamente.';
     wexAddMessage('bot', reply);
   } catch(e) {
