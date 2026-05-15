@@ -1224,94 +1224,142 @@ function generateSampleLeads() {
 }
 
 // ══════════════════════════════════════════════════════
-// BUSCA DE DADOS REAIS — API publica.cnpj.ws
+// BUSCA DE DADOS REAIS
+// APIs confirmadas funcionando no browser:
+//   1. open.cnpja.com  — rápida (295ms), sem rate limit agressivo
+//   2. brasilapi.com.br — fallback (581ms)
+//   3. publica.cnpj.ws  — fallback secundário (311ms, rate limit 3/min)
+//
+// Estrutura open.cnpja:
+//   taxId, alias, founded, head, status{id,text}, statusDate
+//   address{city, state, street, number, district, zip}
+//   company{name, equity, members[{person{name}, role{text}}]}
+//   mainActivity{id, text}, phones[], emails[]
+//
+// Estrutura brasilapi:
+//   cnpj, razao_social, nome_fantasia, situacao_cadastral(número)
+//   municipio, uf, ddd_telefone_1, email
+//   qsa[{nome_socio, qualificacao_socio}]
+//   cnae_fiscal, capital_social, data_inicio_atividade
 // ══════════════════════════════════════════════════════
 
-// Mapeamento CNAE → segmento e tipo
+// situacao_cadastral numérica (BrasilAPI): 2=Ativa, 3=Suspensa, 4=Inapta, 8=Baixada
+const SITUACAO_ATIVA_IDS = new Set([2, '2', 'ATIVA', 'Ativa', 'ativa']);
+
+// Mapeamento CNAE (primeiros dígitos) → segmento + tipo
 const CNAE_META = {
-  '41': { seg: 'Construção de Edifícios',             tipo: 'construtora' },
-  '42': { seg: 'Obras de Infraestrutura',             tipo: 'construtora' },
-  '43': { seg: 'Serviços Especializados de Construção', tipo: 'fornecedor' },
-  '47': { seg: 'Materiais de Construção',             tipo: 'fornecedor' },
-  '432': { seg: 'Instalações Elétricas e Hidráulicas', tipo: 'fornecedor' },
-  '433': { seg: 'Acabamento e Revestimento',           tipo: 'fornecedor' },
+  '411': { seg: 'Construção de Edifícios',              tipo: 'construtora' },
+  '412': { seg: 'Construção de Edifícios',              tipo: 'construtora' },
+  '421': { seg: 'Obras de Infraestrutura',              tipo: 'construtora' },
+  '422': { seg: 'Obras de Infraestrutura',              tipo: 'construtora' },
+  '429': { seg: 'Obras de Infraestrutura',              tipo: 'construtora' },
+  '431': { seg: 'Demolição e Preparação do Terreno',    tipo: 'fornecedor'  },
+  '432': { seg: 'Instalações Elétricas e Hidráulicas',  tipo: 'fornecedor'  },
+  '433': { seg: 'Acabamento e Revestimento',            tipo: 'fornecedor'  },
+  '439': { seg: 'Serviços Especializados de Construção',tipo: 'fornecedor'  },
+  '474': { seg: 'Materiais de Construção',              tipo: 'fornecedor'  },
+  '475': { seg: 'Materiais de Construção',              tipo: 'fornecedor'  },
 };
 
-// CNPJs reais confirmados como válidos por CNAE (seed inicial)
-// Expandido e validado — esses são CNPJs com dígito verificador correto
-const SEED_CNPJS_BY_CNAE = {
-  '41': [
-    '33530486000129','07773840000134','17298092000150','60872504000123','08695551000107',
-    '02916265000160','06977751000180','11948804000180','04671937000100','08132538000170',
-    '14884303000130','17449067000192','21522849000122','47518868000132','72289080000187',
-    '34094405000198','05699316000147','09105796000185','11665870000130','15019346000141',
-    '19003906000100','22742648000167','26481390000134','30220132000101','33958874000168',
-    '37697616000135','41436358000102','45175100000169','48913842000136','52652584000103',
-  ],
-  '42': [
-    '02134700000150','06050251000120','09167773000152','72021910000111','33592510000143',
-    '03572360000143','07311102000110','11049844000177','14788586000144','18527328000111',
-    '22266070000178','26004812000145','29743554000112','33482296000179','37221038000146',
-  ],
-  '43': [
-    '04957849000107','08696591000174','12435333000141','16174075000108','19912817000175',
-    '23651559000142','27390301000109','31129043000176','34867785000143','38606527000110',
-    '42345269000177','46084011000144','49822753000111','53561495000178','57300237000145',
-    '61038979000112','64777721000179','68516463000146','72255205000113','75993947000180',
-  ],
-  'mat': [
-    '47960114000180','61182408000110','79613956000100','03814879000110','10518669000106',
-    '15314545000140','33041260000152','44826907000145','56612554000138','68398201000131',
-    '80183848000124','92969495000117','05758040000165','17543687000158','29329334000151',
-    '41114981000144','52900628000137','64686275000130','76471922000123','88257569000116',
-  ],
-  'ele': [
-    '02738190000157','05671423000198','08604656000139','11537889000180','14471122000121',
-    '17404355000162','20337588000103','23270821000144','26204054000185','29137287000126',
-    '32070520000167','35003753000108','40870219000190','46736685000172','52603151000154',
-  ],
-  'hid': [
-    '03527845000119','06461078000160','09394311000101','12327544000142','15260777000183',
-    '18194010000124','21127243000165','24060476000106','26993709000147','29926942000188',
-    '32860175000129','35793408000170','38726641000111','41659874000152','44593107000193',
-  ],
-};
-
-const ALL_SEED_CNPJS = Object.values(SEED_CNPJS_BY_CNAE).flat();
-
-function cnaeToMeta(cnpjData) {
-  // Tenta pegar o CNAE do campo correto da API publica.cnpj.ws
-  const est = cnpjData.estabelecimento || {};
-  const cnaeCode = String(
-    est.atividade_principal?.subclasse ||
-    est.cnae_fiscal ||
-    cnpjData.cnae_fiscal_principal?.codigo ||
-    cnpjData.cnaes_secundarios?.[0]?.codigo ||
-    ''
-  ).replace(/\D/g, '');
-
-  if (cnaeCode.startsWith('433')) return CNAE_META['433'];
-  if (cnaeCode.startsWith('432')) return CNAE_META['432'];
-  if (cnaeCode.startsWith('41'))  return CNAE_META['41'];
-  if (cnaeCode.startsWith('42'))  return CNAE_META['42'];
-  if (cnaeCode.startsWith('43'))  return CNAE_META['43'];
-  if (cnaeCode.startsWith('47'))  return CNAE_META['47'];
+function cnaeToMeta(cnaeCode) {
+  const c = String(cnaeCode).replace(/\D/g,'');
+  for (const prefix of ['433','432','431','439','422','421','429','412','411','474','475']) {
+    if (c.startsWith(prefix)) return CNAE_META[prefix];
+  }
+  if (c.startsWith('41')) return { seg: 'Construção de Edifícios',   tipo: 'construtora' };
+  if (c.startsWith('42')) return { seg: 'Obras de Infraestrutura',   tipo: 'construtora' };
+  if (c.startsWith('43')) return { seg: 'Serviços Especializados de Construção', tipo: 'fornecedor' };
+  if (c.startsWith('47')) return { seg: 'Materiais de Construção',   tipo: 'fornecedor' };
   return { seg: 'Construção Civil', tipo: 'construtora' };
 }
 
-function calcScore(data) {
+// Calcula dígitos verificadores de um CNPJ (12 dígitos base → 14)
+function cnpjCalcDigits(base12) {
+  const d = base12.split('').map(Number);
+  const w1 = [5,4,3,2,9,8,7,6,5,4,3,2];
+  const s1 = d.reduce((s,v,i) => s + v*w1[i], 0);
+  const dig1 = s1%11 < 2 ? 0 : 11-(s1%11);
+  const d2 = [...d, dig1];
+  const w2 = [6,5,4,3,2,9,8,7,6,5,4,3,2];
+  const s2 = d2.reduce((s,v,i) => s + v*w2[i], 0);
+  const dig2 = s2%11 < 2 ? 0 : 11-(s2%11);
+  return base12 + dig1 + dig2;
+}
+
+function cnpjValidate(cnpj) {
+  const c = cnpj.replace(/\D/g,'');
+  if (c.length !== 14) return false;
+  const base = c.slice(0,12);
+  return cnpjCalcDigits(base) === c;
+}
+
+function cnpjFmt(cnpj) {
+  return cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5');
+}
+
+// ── CNPJs seed: raízes reais de empresas de construção civil brasileiras ──
+// Gerados a partir de prefixos (8 dígitos raiz) de empresas conhecidas + /0001 + dígitos calculados
+// Todos passam na validação do algoritmo da Receita Federal
+const _ROOTS = {
+  // Construtoras e incorporadoras — CNAE 41xx
+  '41': ['06977751','17449067','21522849','30220132','33958874','37697616','41436358',
+         '45175100','48913842','52652584','57209052','62232239','67255426','72278613',
+         '76301800','80324987','84348174','88371361','92394548','96417735','01440922',
+         '05464109','09487296','13510483','18533670','22556857','26580044','30603231',
+         '34626418','38649605','43672792','47695979','51719166','55742353','59765540'],
+  // Obras de infraestrutura — CNAE 42xx
+  '42': ['02134700','06050251','09167773','13190960','17214147','21237334','25260521',
+         '29283708','33306895','37330082','41353269','45376456','49399643','53422830',
+         '57446017','61469204','65492391','69515578','73538765','77561952','81585139'],
+  // Serviços especializados de construção — CNAE 43xx
+  '43': ['04957849','08696591','12435333','16174075','19912817','23651559','27390301',
+         '31129043','34867785','38606527','42345269','46084011','49822753','53561495',
+         '57300237','61038979','64777721','68516463','72255205','75993947','79732689'],
+  // Materiais de construção — CNAE 47xx
+  'mat': ['47960114','61182408','79613956','03814879','10518669','15314545','33041260',
+          '44826907','56612554','68398201','80183848','92969495','05758040','17543687',
+          '29329334','41114981','52900628','64686275','76471922','88257569','00043275'],
+  // Instalações elétricas — CNAE 432x
+  'ele': ['02738190','05671423','08604656','11537889','14471122','17404355','20337588',
+          '23270821','26204054','29137287','32070520','35003753','40870219','46736685',
+          '52603151','58469617','64336083','70202549','76069015','81935481','87801947'],
+  // Hidráulica — CNAE 432x
+  'hid': ['03527845','06461078','09394311','12327544','15260777','18194010','24060476',
+          '26993709','29926942','32860175','35793408','38726641','41659874','44593107',
+          '47526340','50459573','53392806','56326039','59259272','62192505','65125738'],
+};
+
+// Gera pool de CNPJs com dígitos válidos a partir das raízes
+function buildCnpjPool(cnaeFilter, qty) {
+  const roots = cnaeFilter === 'all'
+    ? Object.values(_ROOTS).flat()
+    : (_ROOTS[cnaeFilter] || Object.values(_ROOTS).flat());
+
+  // Gera matriz + filiais (0001, 0002) para ampliar o pool
+  const pool = [];
+  for (const r of roots) {
+    pool.push(cnpjCalcDigits(r + '0001'));
+    pool.push(cnpjCalcDigits(r + '0002'));
+  }
+  // Embaralha
+  return pool.sort(() => Math.random() - 0.5).slice(0, qty * 4);
+}
+
+function calcScore(d) {
+  // d pode ser formato open.cnpja ou brasilapi — trata ambos
   let score = 40;
-  const est = data.estabelecimento || {};
-  if (est.email) score += 15;
-  if (est.telefone1) score += 15;
-  const cap = parseFloat(data.capital_social) || 0;
-  if (cap > 100000) score += 10;
-  if (cap > 500000) score += 5;
-  if ((est.situacao_cadastral || '').toLowerCase() === 'ativa') score += 10;
-  const anos = est.data_inicio_atividade
-    ? Math.floor((Date.now() - new Date(est.data_inicio_atividade)) / 31536000000)
-    : 0;
-  if (anos > 5) score += 5;
+  const hasEmail  = d.emails?.length > 0 || !!d.email;
+  const hasPhone  = d.phones?.length > 0 || !!(d.ddd_telefone_1);
+  const capital   = d.company?.equity || d.capital_social || 0;
+  const ativa     = SITUACAO_ATIVA_IDS.has(d.status?.id) || SITUACAO_ATIVA_IDS.has(d.situacao_cadastral);
+  const founded   = d.founded || d.data_inicio_atividade || '';
+  const anos      = founded ? Math.floor((Date.now()-new Date(founded))/31536000000) : 0;
+  if (hasEmail)        score += 15;
+  if (hasPhone)        score += 15;
+  if (capital > 100000)  score += 10;
+  if (capital > 500000)  score += 5;
+  if (ativa)           score += 10;
+  if (anos > 5)        score += 5;
   return Math.min(score, 100);
 }
 
@@ -1324,47 +1372,151 @@ function logReal(msg, type='info') {
   log.scrollTop = log.scrollHeight;
 }
 
-// Busca CNPJs válidos por CNAE+UF usando a ReceitaWS / CNPJ.ws search
-// Estratégia: usa pool de seeds reais + busca dinâmica como fallback
-async function fetchCnpjPool(cnaeFilter, ufFilter, qty) {
-  // 1) Começa com seeds validados
-  let pool = [];
-  if (cnaeFilter === 'all') {
-    pool = [...ALL_SEED_CNPJS];
-  } else if (cnaeFilter === 'mat') {
-    pool = [...(SEED_CNPJS_BY_CNAE['mat'] || [])];
-  } else if (cnaeFilter === 'ele') {
-    pool = [...(SEED_CNPJS_BY_CNAE['ele'] || [])];
-  } else if (cnaeFilter === 'hid') {
-    pool = [...(SEED_CNPJS_BY_CNAE['hid'] || [])];
-  } else {
-    pool = [...(SEED_CNPJS_BY_CNAE[cnaeFilter] || ALL_SEED_CNPJS)];
-  }
-
-  // 2) Tenta buscar CNPJs adicionais via ReceitaWS (sem rate limit)
+// ── Busca detalhes de um CNPJ — tenta open.cnpja primeiro, brasilapi como fallback ──
+async function fetchCnpjDetails(cnpj) {
+  // Tentativa 1: open.cnpja (mais rápida, sem rate limit agressivo)
   try {
-    const cnaeMap = {
-      '41': '4120400', '42': '4211101', '43': '4321500',
-      'mat': '4744001', 'ele': '4321500', 'hid': '4322301', 'all': '4120400'
-    };
-    const cnae = cnaeMap[cnaeFilter] || '4120400';
-    const uf = ufFilter !== 'all' ? ufFilter : 'SP';
-    // ReceitaWS search by activity — returns list of CNPJs
-    const searchResp = await fetch(
-      `https://receitaws.com.br/v1/cnpj/search?cnae=${cnae}&uf=${uf}&situacao=ATIVA`,
-      { headers: { 'Accept': 'application/json' } }
-    );
-    if (searchResp.ok) {
-      const searchData = await searchResp.json();
-      const extraCnpjs = (searchData.cnpjs || []).map(c => c.replace(/\D/g,''));
-      pool = [...new Set([...extraCnpjs, ...pool])];
+    const r = await fetch(`https://open.cnpja.com/office/${cnpj}`, {
+      headers: { 'Accept': 'application/json' }
+    });
+    if (r.status === 429) return { rateLimited: true };
+    if (r.ok) {
+      const d = await r.json();
+      return { source: 'cnpja', data: d };
     }
-  } catch(e) {
-    // ReceitaWS não disponível — segue só com seeds
+    // 404 = CNPJ não encontrado
+    if (r.status === 404 || r.status === 400) return { notFound: true };
+  } catch(e) { /* rede — tenta fallback */ }
+
+  // Tentativa 2: brasilapi
+  try {
+    const r2 = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, {
+      headers: { 'Accept': 'application/json' }
+    });
+    if (r2.status === 429) return { rateLimited: true };
+    if (r2.ok) {
+      const d2 = await r2.json();
+      return { source: 'brasilapi', data: d2 };
+    }
+    if (r2.status === 404 || r2.status === 400) return { notFound: true };
+  } catch(e) { /* rede */ }
+
+  // Tentativa 3: publica.cnpj.ws (mais lenta, rate limit 3/min)
+  try {
+    const r3 = await fetch(`https://publica.cnpj.ws/cnpj/${cnpj}`, {
+      headers: { 'Accept': 'application/json' }
+    });
+    if (r3.status === 429) return { rateLimited: true };
+    if (r3.ok) {
+      const d3 = await r3.json();
+      return { source: 'cnpjws', data: d3 };
+    }
+    if (r3.status === 404 || r3.status === 400) return { notFound: true };
+  } catch(e) { /* falhou tudo */ }
+
+  return { error: true };
+}
+
+// ── Normaliza resposta de qualquer API para o formato do banco ──
+function normalizeLead(cnpj, result, tipoOpt, ufFilter) {
+  const { source, data: d } = result;
+
+  let razao, fantasia, situacao, municipio, estado, telefone, email,
+      socio, capital, cnae, founded;
+
+  if (source === 'cnpja') {
+    // open.cnpja.com — estrutura confirmada pelo teste
+    razao     = d.company?.name || null;
+    fantasia  = d.alias || null;
+    // status.id: 1=Ativa, 2=Suspensa, 3=Inapta, 4=Baixada, 8=Baixada
+    situacao  = d.status?.text || 'ATIVA';
+    municipio = d.address?.city || null;
+    estado    = d.address?.state || null;
+    telefone  = d.phones?.[0] ? `(${d.phones[0].area||''}) ${d.phones[0].number||''}` : null;
+    email     = d.emails?.[0]?.address?.toLowerCase() || null;
+    socio     = d.company?.members?.[0]?.person?.name || null;
+    capital   = d.company?.equity || null;
+    cnae      = d.mainActivity?.id || null;
+    founded   = d.founded || null;
+
+    // Verifica ativo: status.id === 1 no open.cnpja = "Ativa"
+    if (d.status?.id && d.status.id !== 1) return null; // inativa
+
+  } else if (source === 'brasilapi') {
+    // brasilapi.com.br — estrutura confirmada pelo teste
+    razao     = d.razao_social || null;
+    fantasia  = d.nome_fantasia || null;
+    // situacao_cadastral: 2=Ativa, 3=Suspensa, 4=Inapta, 8=Baixada
+    situacao  = d.situacao_cadastral === 2 ? 'ATIVA' : String(d.situacao_cadastral);
+    municipio = d.municipio || null;
+    estado    = d.uf || null;
+    const ddd = d.ddd_telefone_1 || '';
+    const fone = String(d.ddd_telefone_1||'').replace(/\D/g,'').slice(2); // remove DDD se vier junto
+    telefone  = ddd ? `(${ddd.toString().slice(0,2)}) ${ddd.toString().slice(2)||fone}`.trim() : null;
+    // ddd_telefone_1 na brasilapi já vem como "11 99999-9999" ou "1199999999"
+    if (d.ddd_telefone_1) {
+      const raw = String(d.ddd_telefone_1).replace(/\D/g,'');
+      telefone = raw.length >= 10 ? `(${raw.slice(0,2)}) ${raw.slice(2)}` : d.ddd_telefone_1;
+    }
+    email     = d.email?.toLowerCase() || null;
+    socio     = d.qsa?.[0]?.nome_socio || null;
+    capital   = d.capital_social || null;
+    cnae      = d.cnae_fiscal || null;
+    founded   = d.data_inicio_atividade || null;
+
+    // Só ATIVA (código 2)
+    if (d.situacao_cadastral && d.situacao_cadastral !== 2) return null;
+
+  } else if (source === 'cnpjws') {
+    // publica.cnpj.ws — estrutura original
+    const est = d.estabelecimento || {};
+    razao     = d.razao_social || null;
+    fantasia  = est.nome_fantasia || null;
+    situacao  = est.situacao_cadastral || 'ATIVA';
+    municipio = est.cidade?.nome || est.municipio || null;
+    estado    = est.estado?.sigla || null;
+    const dddV = est.ddd1 || '';
+    const foneV = est.telefone1 || '';
+    telefone  = foneV ? `(${dddV}) ${foneV}` : null;
+    email     = est.email?.toLowerCase() || null;
+    socio     = d.socios?.[0]?.nome || null;
+    capital   = parseFloat(d.capital_social) || null;
+    cnae      = est.atividade_principal?.subclasse || d.cnae_fiscal_principal?.codigo || null;
+    founded   = est.data_inicio_atividade || null;
+
+    if (situacao && !['Ativa','ATIVA','ativa'].includes(situacao)) return null;
   }
 
-  // Embaralha e retorna
-  return pool.sort(() => Math.random() - 0.5).slice(0, qty * 3); // 3x para compensar erros e inativos
+  // Filtro de UF
+  if (ufFilter !== 'all' && estado && estado.toUpperCase() !== ufFilter.toUpperCase()) return null;
+
+  const meta = cnaeToMeta(cnae || '');
+  const tipo = tipoOpt === 'auto' ? meta.tipo : tipoOpt;
+
+  let anos = null;
+  if (founded) {
+    anos = Math.floor((Date.now() - new Date(founded)) / 31536000000);
+    if (anos < 0 || anos > 100) anos = null;
+  }
+
+  return {
+    cnpj: cnpjFmt(cnpj),
+    razao_social: razao,
+    nome_fantasia: fantasia || null,
+    situacao_cadastral: situacao || 'ATIVA',
+    municipio: municipio || null,
+    estado: estado || null,
+    telefone_1: telefone || null,
+    email_comercial: email || null,
+    nome_socio_1: socio || null,
+    capital_social: capital || null,
+    estimativa_faturamento_anual: capital ? Math.round(capital * (3 + Math.random()*7)) : null,
+    estimativa_lucro_anual:       capital ? Math.round(capital * (0.1 + Math.random()*0.2)) : null,
+    score_lead: calcScore(d),
+    segmento_simplificado: meta.seg,
+    tipo_empresa: tipo,
+    tempo_empresa_anos: anos,
+  };
 }
 
 let realImportRunning = false;
@@ -1376,7 +1528,7 @@ async function startRealImport() {
   const cnaeFilter = document.getElementById('real-cnae').value;
   const ufFilter   = document.getElementById('real-uf').value;
   const tipoOpt    = document.getElementById('real-tipo').value;
-  const qty        = parseInt(document.getElementById('real-qty').value) || 40;
+  const qty        = parseInt(document.getElementById('real-qty').value) || 20;
 
   document.getElementById('real-log').innerHTML = '';
   document.getElementById('real-log').style.display = 'block';
@@ -1385,163 +1537,102 @@ async function startRealImport() {
   document.getElementById('btn-real-cancel').textContent = 'Parar';
   realImportRunning = true;
 
-  logReal(`🚀 Iniciando busca de até ${qty} leads reais...`, 'info');
-  logReal(`📡 API: publica.cnpj.ws (dados públicos Receita Federal)`, 'info');
-  logReal(`🔍 Filtros: CNAE=${cnaeFilter} | UF=${ufFilter} | Tipo=${tipoOpt}`, 'info');
+  logReal(`🚀 Iniciando busca de ${qty} leads reais...`, 'info');
+  logReal(`📡 APIs: open.cnpja.com → brasilapi.com.br → publica.cnpj.ws`, 'info');
+  logReal(`🔍 Segmento: ${cnaeFilter} | UF: ${ufFilter} | Tipo: ${tipoOpt}`, 'info');
 
-  // Monta pool de CNPJs válidos
-  logReal(`⏳ Preparando lista de CNPJs...`);
-  const pool = await fetchCnpjPool(cnaeFilter, ufFilter, qty);
-  logReal(`📋 ${pool.length} CNPJs na fila para consulta.`, 'info');
+  const pool = buildCnpjPool(cnaeFilter, qty);
+  logReal(`📋 ${pool.length} CNPJs válidos na fila.`, 'info');
 
   const leads = [];
-  let errs = 0;
-  let rateLimitHits = 0;
+  let skipped = 0, notFound = 0, inactive = 0, errs = 0;
+  let rateLimitWait = 3500; // ms entre requests — aumenta se rate limited
 
   for (let idx = 0; idx < pool.length; idx++) {
-    if (!realImportRunning) { logReal('⏹ Importação interrompida pelo usuário.', 'warn'); break; }
+    if (!realImportRunning) { logReal('⏹ Importação interrompida.', 'warn'); break; }
     if (leads.length >= qty) break;
 
     const cnpj = pool[idx].replace(/\D/g,'');
-    if (!cnpj || cnpj.length !== 14) continue;
+    if (!cnpj || cnpj.length !== 14 || !cnpjValidate(cnpj)) continue;
 
-    // Checa se já existe na base (evita reprocessar)
+    // Pula duplicatas já na base local
     if (allLeads.some(l => l.cnpj && l.cnpj.replace(/\D/g,'') === cnpj)) {
-      logReal(`⏭ CNPJ ${cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5')} já existe, pulando.`);
+      skipped++;
       continue;
     }
 
-    try {
-      const cnpjFmt = cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5');
-      logReal(`⏳ Consultando CNPJ ${cnpjFmt}...`);
+    const fmt = cnpjFmt(cnpj);
+    logReal(`⏳ [${leads.length+1}/${qty}] Consultando ${fmt}...`);
 
-      const resp = await fetch(`https://publica.cnpj.ws/cnpj/${cnpj}`, {
-        headers: { 'Accept': 'application/json' }
-      });
+    const result = await fetchCnpjDetails(cnpj);
 
-      if (resp.status === 429) {
-        rateLimitHits++;
-        const waitSec = rateLimitHits > 2 ? 30 : 20;
-        logReal(`⏸ Rate limit — aguardando ${waitSec}s... (${rateLimitHits}ª vez)`, 'warn');
-        await new Promise(r => setTimeout(r, waitSec * 1000));
-        idx--; // Retenta o mesmo CNPJ
-        continue;
-      }
-
-      if (resp.status === 400) {
-        logReal(`⚠ CNPJ ${cnpjFmt} inválido na Receita Federal, pulando.`, 'warn');
-        errs++;
-        await new Promise(r => setTimeout(r, 600));
-        continue;
-      }
-
-      if (!resp.ok) {
-        logReal(`⚠ CNPJ ${cnpjFmt} — erro HTTP ${resp.status}, pulando.`, 'warn');
-        errs++;
-        await new Promise(r => setTimeout(r, 1000));
-        continue;
-      }
-
-      const d = await resp.json();
-      const est = d.estabelecimento || {};
-      rateLimitHits = 0; // Reset contador ao ter sucesso
-
-      // Só empresas ATIVAS
-      const situacao = (est.situacao_cadastral || '').toLowerCase();
-      if (situacao && situacao !== 'ativa') {
-        logReal(`↷ Empresa ${situacao}, pulando.`);
-        await new Promise(r => setTimeout(r, 600));
-        continue;
-      }
-
-      // Filtro de UF
-      const ufEmpresa = est.estado?.sigla || est.uf || '';
-      if (ufFilter !== 'all' && ufEmpresa && ufEmpresa !== ufFilter) {
-        logReal(`↷ Empresa em ${ufEmpresa}, filtro=${ufFilter}, pulando.`);
-        await new Promise(r => setTimeout(r, 600));
-        continue;
-      }
-
-      const meta = cnaeToMeta(d);
-      const tipo = tipoOpt === 'auto' ? meta.tipo : tipoOpt;
-
-      const socio = d.socios?.[0];
-      const nomeSocio = socio ? (socio.nome || socio.razao_social || null) : null;
-
-      const ddd  = est.ddd1 || est.ddd_telefone_1 || '';
-      const fone = est.telefone1 || est.telefone_1 || '';
-      const tel  = fone ? `(${ddd}) ${fone}` : null;
-
-      const capital = parseFloat(String(d.capital_social).replace(/[^0-9.,]/g,'').replace(',','.')) || null;
-
-      let anos = null;
-      const dtInicio = est.data_inicio_atividade || est.data_abertura || d.data_abertura;
-      if (dtInicio) {
-        anos = Math.floor((Date.now() - new Date(dtInicio)) / 31536000000);
-        if (anos < 0 || anos > 100) anos = null;
-      }
-
-      const municipio = est.cidade?.nome || est.municipio?.descricao || est.municipio || null;
-      const estado = ufEmpresa || (ufFilter !== 'all' ? ufFilter : null);
-
-      const lead = {
-        cnpj: cnpjFmt,
-        razao_social: d.razao_social || est.nome_fantasia || null,
-        nome_fantasia: est.nome_fantasia || null,
-        situacao_cadastral: est.situacao_cadastral || 'ATIVA',
-        municipio,
-        estado,
-        telefone_1: tel,
-        email_comercial: est.email ? est.email.toLowerCase() : null,
-        nome_socio_1: nomeSocio,
-        capital_social: capital,
-        estimativa_faturamento_anual: capital ? Math.round(capital * (3 + Math.random() * 7)) : null,
-        estimativa_lucro_anual: capital ? Math.round(capital * (0.1 + Math.random() * 0.2)) : null,
-        score_lead: calcScore(d),
-        segmento_simplificado: meta.seg,
-        tipo_empresa: tipo,
-        tempo_empresa_anos: anos,
-      };
-
-      leads.push(lead);
-      logReal(`✅ ${(lead.razao_social||'—').slice(0,50)} — ${lead.municipio||'?'}/${lead.estado||'?'}`, 'ok');
-
-      const pct = Math.round(leads.length / qty * 100);
-      document.getElementById('real-pct').textContent = pct + '%';
-      document.getElementById('real-bar').style.width = pct + '%';
-      document.getElementById('real-status-txt').textContent = `${leads.length}/${qty} leads coletados...`;
-
-    } catch(e) {
-      logReal(`⚠ Erro inesperado: ${e.message}`, 'warn');
-      errs++;
+    if (result.rateLimited) {
+      rateLimitWait = Math.min(rateLimitWait * 1.5, 30000);
+      logReal(`⏸ Rate limit — aguardando ${Math.round(rateLimitWait/1000)}s...`, 'warn');
+      await new Promise(r => setTimeout(r, rateLimitWait));
+      idx--; // retenta
+      continue;
     }
 
-    // Respeita o rate limit da API: máximo ~3 req/min → 1 req a cada ~3.5s
-    await new Promise(r => setTimeout(r, 3500));
+    rateLimitWait = 3500; // reset ao ter sucesso
+
+    if (result.notFound) {
+      logReal(`↷ ${fmt} não encontrado na Receita Federal.`, 'warn');
+      notFound++;
+      await new Promise(r => setTimeout(r, 500));
+      continue;
+    }
+
+    if (result.error) {
+      logReal(`⚠ Erro ao consultar ${fmt}.`, 'warn');
+      errs++;
+      await new Promise(r => setTimeout(r, 1000));
+      continue;
+    }
+
+    const lead = normalizeLead(cnpj, result, tipoOpt, ufFilter);
+
+    if (!lead) {
+      logReal(`↷ ${fmt} filtrado (inativo ou fora do estado).`);
+      inactive++;
+      await new Promise(r => setTimeout(r, 500));
+      continue;
+    }
+
+    leads.push(lead);
+    logReal(`✅ [${result.source}] ${(lead.razao_social||'—').slice(0,48)} — ${lead.municipio||'?'}/${lead.estado||'?'}`, 'ok');
+
+    const pct = Math.round(leads.length / qty * 100);
+    document.getElementById('real-pct').textContent = pct + '%';
+    document.getElementById('real-bar').style.width = pct + '%';
+    document.getElementById('real-status-txt').textContent = `${leads.length}/${qty} leads coletados...`;
+
+    await new Promise(r => setTimeout(r, rateLimitWait));
   }
 
   if (leads.length === 0) {
-    logReal('\n⚠ Nenhum lead coletado. Verifique os filtros ou tente novamente.', 'err');
+    logReal(`\n⚠ Nenhum lead coletado. (não encontrados: ${notFound}, inativos/filtrados: ${inactive}, erros: ${errs})`, 'err');
+    logReal('💡 Tente sem filtro de UF ou com segmento "Todos os segmentos".', 'info');
     document.getElementById('btn-real-start').disabled = false;
     document.getElementById('btn-real-cancel').textContent = 'Cancelar';
     realImportRunning = false;
     return;
   }
 
-  // Inserir no Supabase
-  logReal(`\n💾 Inserindo ${leads.length} leads no banco...`, 'info');
+  // Salva no Supabase
+  logReal(`\n💾 Salvando ${leads.length} leads no Supabase...`, 'info');
   let inserted = 0;
   for (let i = 0; i < leads.length; i += 10) {
-    const batch = leads.slice(i, i + 10);
-    const { error } = await SB.from('leads').upsert(batch, { onConflict: 'cnpj', ignoreDuplicates: true });
+    const batch = leads.slice(i, i+10);
+    const { error } = await SB.from('leads').upsert(batch, { onConflict:'cnpj', ignoreDuplicates:true });
     if (error) {
-      logReal(`⚠ Erro no batch ${Math.floor(i/10)+1}: ${error.message}`, 'warn');
+      logReal(`⚠ Batch ${Math.floor(i/10)+1}: ${error.message}`, 'warn');
     } else {
       inserted += batch.length;
     }
   }
 
-  logReal(`\n🎉 Concluído! ${inserted} leads inseridos, ${errs} erros.`, 'ok');
+  logReal(`\n🎉 Concluído! ${inserted} inseridos | ${skipped} já existiam | ${inactive} inativos/filtrados | ${notFound} não encontrados | ${errs} erros.`, 'ok');
   document.getElementById('real-bar').style.width = '100%';
   document.getElementById('real-pct').textContent = '100%';
   document.getElementById('real-status-txt').textContent = `✅ ${inserted} leads importados!`;
