@@ -1112,7 +1112,7 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
         <div style="font-size:22px;flex-shrink:0;">🏗️</div>
         <div>
           <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;">Dados reais via API pública da Receita Federal</div>
-          <div style="font-size:12px;color:var(--muted);line-height:1.6;">Consulta <strong>publica.cnpj.ws</strong> com CNPJs reais de construtoras e fornecedores ativos no Brasil. Dados oficiais: razão social, sócios, capital, endereço, telefone e e-mail. CNPJs já existentes na base são ignorados.</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.6;">Consulta <strong>publica.cnpj.ws</strong> com CNPJs reais de construtoras e fornecedores ativos no Brasil. Dados oficiais: razão social, sócios, capital, endereço, telefone e e-mail. Leads são salvos em tempo real. CNPJs já existentes são ignorados.</div>
         </div>
       </div>
 
@@ -1152,9 +1152,9 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
         <div>
           <label class="form-label">Quantidade de leads</label>
           <select class="form-input form-select" id="real-qty" style="font-size:12px;">
-            <option value="20">20 leads (rápido ~2 min)</option>
-            <option value="40" selected>40 leads (~4 min)</option>
-            <option value="60">60 leads (~6 min)</option>
+            <option value="20">20 leads (~2 min)</option>
+            <option value="40" selected>40 leads (~30s)</option>
+            <option value="60">60 leads (~45s)</option>
           </select>
         </div>
         <div>
@@ -1627,7 +1627,7 @@ async function startRealImport() {
   document.getElementById('btn-real-cancel').textContent = 'Parar';
   realImportRunning = true;
 
-  logReal(`🚀 Iniciando busca de ${qty} leads reais via open.cnpja.com...`, 'info');
+  logReal(`🚀 Iniciando busca de ${qty} leads reais via publica.cnpj.ws...`, 'info');
   logReal(`🔍 Segmento: ${cnaeFilter} | UF: ${ufFilter} | Tipo: ${tipoOpt}`, 'info');
 
   const pool = buildCnpjPool(cnaeFilter, qty);
@@ -1635,7 +1635,9 @@ async function startRealImport() {
 
   const leads = [];
   let skipped=0, notFound=0, inactive=0, errs=0;
-  let waitMs = 1200; // open.cnpja é mais rápida, 1.2s entre requests é seguro
+  // publica.cnpj.ws: 3 req/s sem autenticação. 350ms é seguro e ágil.
+  let waitMs = 350;
+  let rateLimitWait = 5000; // espera base ao bater 429
 
   for (let idx = 0; idx < pool.length; idx++) {
     if (!realImportRunning) { logReal('⏹ Importação interrompida.', 'warn'); break; }
@@ -1654,84 +1656,88 @@ async function startRealImport() {
     logReal(`⏳ [${leads.length+1}/${qty}] Consultando ${fmt}...`);
 
     try {
-      const resp = await fetch(`https://open.cnpja.com/office/${cnpj}`, {
+      const resp = await fetch(`https://publica.cnpj.ws/cnpj/${cnpj}`, {
         headers: { 'Accept': 'application/json' }
       });
 
-      // Rate limit
+      // Rate limit — aguarda e retenta
       if (resp.status === 429) {
-        waitMs = Math.min(waitMs * 2, 30000);
-        logReal(`⏸ Rate limit — aguardando ${Math.round(waitMs/1000)}s...`, 'warn');
-        await new Promise(r => setTimeout(r, waitMs));
+        logReal(`⏸ Rate limit — aguardando ${Math.round(rateLimitWait/1000)}s...`, 'warn');
+        await new Promise(r => setTimeout(r, rateLimitWait));
+        rateLimitWait = Math.min(rateLimitWait * 2, 20000);
         idx--; // retenta mesmo CNPJ
         continue;
       }
+      rateLimitWait = 5000; // reset após passar
 
-      // Não encontrado
       if (resp.status === 404 || resp.status === 400) {
         logReal(`↷ ${fmt} não encontrado.`);
         notFound++;
-        await new Promise(r => setTimeout(r, 300));
+        await new Promise(r => setTimeout(r, waitMs));
         continue;
       }
 
       if (!resp.ok) {
         logReal(`⚠ ${fmt} — HTTP ${resp.status}.`, 'warn');
         errs++;
-        await new Promise(r => setTimeout(r, 500));
+        await new Promise(r => setTimeout(r, waitMs));
         continue;
       }
 
-      waitMs = 1200; // reset após sucesso
       const d = await resp.json();
 
       // ── Filtro: só ATIVAS ──
-      // Confirmado pelo teste: status.text === 'Ativa' para empresas ativas
-      if (d.status?.text !== 'Ativa') {
-        logReal(`↷ ${fmt} — ${d.status?.text || 'status desconhecido'}, pulando.`);
+      const situacao = d.descricao_situacao_cadastral || '';
+      if (situacao.toUpperCase() !== 'ATIVA') {
+        logReal(`↷ ${fmt} — ${situacao || 'inativa'}, pulando.`);
         inactive++;
-        await new Promise(r => setTimeout(r, 300));
+        await new Promise(r => setTimeout(r, waitMs));
         continue;
       }
 
       // ── Filtro de UF ──
-      const ufEmpresa = d.address?.state || '';
+      const ufEmpresa = d.estabelecimento?.estado?.sigla || '';
       if (ufFilter !== 'all' && ufEmpresa && ufEmpresa.toUpperCase() !== ufFilter.toUpperCase()) {
         logReal(`↷ ${fmt} — ${ufEmpresa} ≠ ${ufFilter}, pulando.`);
-        await new Promise(r => setTimeout(r, 300));
+        await new Promise(r => setTimeout(r, waitMs));
         continue;
       }
 
-      // ── Monta lead com campos confirmados da API ──
-      const meta = cnaeToMeta(d.mainActivity?.id || '');
+      // ── Monta lead com campos da publica.cnpj.ws ──
+      const est = d.estabelecimento || {};
+      const cnaeId = est.atividade_principal?.subclasse || est.atividade_principal?.id || '';
+      const meta = cnaeToMeta(cnaeId);
       const tipo = tipoOpt === 'auto' ? meta.tipo : tipoOpt;
 
-      const tel = d.phones?.[0]
-        ? `(${d.phones[0].area||''}) ${d.phones[0].number||''}`.trim()
-        : null;
-      const email = d.emails?.[0]?.address?.toLowerCase() || null;
-      const socio = d.company?.members?.[0]?.person?.name || null;
-      const capital = d.company?.equity || null;
+      const ddd = est.ddd1 || '';
+      const fone = est.telefone1 || '';
+      const tel = ddd && fone ? `(${ddd}) ${fone}` : (fone || null);
+      const email = est.email?.toLowerCase() || null;
+
+      const socios = d.socios || [];
+      const socio = socios[0]?.nome || null;
+
+      const capitalRaw = parseFloat(d.capital_social) || null;
 
       let anos = null;
-      if (d.founded) {
-        anos = Math.floor((Date.now()-new Date(d.founded))/31536000000);
-        if (anos < 0 || anos > 100) anos = null;
+      if (est.data_inicio_atividade) {
+        anos = Math.floor((Date.now()-new Date(est.data_inicio_atividade))/31536000000);
+        if (anos < 0 || anos > 150) anos = null;
       }
 
       const lead = {
         cnpj: fmt,
-        razao_social: d.company?.name || null,
-        nome_fantasia: d.alias || null,
-        situacao_cadastral: d.status?.text || 'Ativa',
-        municipio: d.address?.city || null,
+        razao_social: d.razao_social || null,
+        nome_fantasia: est.nome_fantasia || null,
+        situacao_cadastral: situacao || 'Ativa',
+        municipio: est.cidade?.nome || null,
         estado: ufEmpresa || null,
         telefone_1: tel,
         email_comercial: email,
         nome_socio_1: socio,
-        capital_social: capital,
-        estimativa_faturamento_anual: capital ? Math.round(capital*(3+Math.random()*7)) : null,
-        estimativa_lucro_anual:       capital ? Math.round(capital*(0.1+Math.random()*0.2)) : null,
+        capital_social: capitalRaw,
+        estimativa_faturamento_anual: capitalRaw ? Math.round(capitalRaw*(3+Math.random()*7)) : null,
+        estimativa_lucro_anual:       capitalRaw ? Math.round(capitalRaw*(0.1+Math.random()*0.2)) : null,
         score_lead: calcScore(d),
         segmento_simplificado: meta.seg,
         tipo_empresa: tipo,
@@ -1745,6 +1751,10 @@ async function startRealImport() {
       document.getElementById('real-pct').textContent = pct + '%';
       document.getElementById('real-bar').style.width = pct + '%';
       document.getElementById('real-status-txt').textContent = `${leads.length}/${qty} leads coletados...`;
+
+      // Salva imediatamente no Supabase (não espera o fim)
+      SB.from('leads').upsert([lead], { onConflict:'cnpj', ignoreDuplicates:true })
+        .then(({error}) => { if (error) logReal(`⚠ Salvar ${fmt}: ${error.message}`, 'warn'); });
 
     } catch(e) {
       logReal(`⚠ Erro: ${e.message}`, 'warn');
@@ -1764,30 +1774,20 @@ async function startRealImport() {
     return;
   }
 
-  // Salva no Supabase
-  logReal(`\n💾 Salvando ${leads.length} leads no Supabase...`, 'info');
-  let inserted = 0;
-  for (let i = 0; i < leads.length; i += 10) {
-    const batch = leads.slice(i, i+10);
-    const { error } = await SB.from('leads').upsert(batch, { onConflict:'cnpj', ignoreDuplicates:true });
-    if (error) {
-      logReal(`⚠ Batch ${Math.floor(i/10)+1}: ${error.message}`, 'warn');
-    } else {
-      inserted += batch.length;
-    }
-  }
+  // Aguarda 1s para os upserts assíncronos finalizarem, depois recarrega
+  await new Promise(r => setTimeout(r, 1000));
 
-  logReal(`\n🎉 Concluído! ${inserted} inseridos | ${skipped} já existiam | ${inactive} inativos/filtrados | ${notFound} não encontrados | ${errs} erros.`, 'ok');
+  logReal(`\n🎉 Concluído! ${leads.length} coletados | ${skipped} já existiam | ${inactive} inativos/filtrados | ${notFound} não encontrados | ${errs} erros.`, 'ok');
   document.getElementById('real-bar').style.width = '100%';
   document.getElementById('real-pct').textContent = '100%';
-  document.getElementById('real-status-txt').textContent = `✅ ${inserted} leads importados!`;
+  document.getElementById('real-status-txt').textContent = `✅ ${leads.length} leads importados!`;
   document.getElementById('btn-real-start').disabled = false;
   document.getElementById('btn-real-cancel').textContent = 'Cancelar';
   realImportRunning = false;
 
   await loadLeads();
   renderAll();
-  toast(`✅ ${inserted} leads reais importados! Base com ${allLeads.length} leads.`, 'success');
+  toast(`✅ ${leads.length} leads reais importados! Base com ${allLeads.length} leads.`, 'success');
 }
 
 function resetRealImport() {
