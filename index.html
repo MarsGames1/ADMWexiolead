@@ -1153,8 +1153,8 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
           <label class="form-label">Quantidade de leads</label>
           <select class="form-input form-select" id="real-qty" style="font-size:12px;">
             <option value="20">20 leads (~2 min)</option>
-            <option value="40" selected>40 leads (~30s)</option>
-            <option value="60">60 leads (~45s)</option>
+            <option value="40" selected>40 leads (~4 min)</option>
+            <option value="60">60 leads (~6 min)</option>
           </select>
         </div>
         <div>
@@ -1627,7 +1627,7 @@ async function startRealImport() {
   document.getElementById('btn-real-cancel').textContent = 'Parar';
   realImportRunning = true;
 
-  logReal(`🚀 Iniciando busca de ${qty} leads reais via publica.cnpj.ws...`, 'info');
+  logReal(`🚀 Iniciando busca de ${qty} leads reais via open.cnpja.com...`, 'info');
   logReal(`🔍 Segmento: ${cnaeFilter} | UF: ${ufFilter} | Tipo: ${tipoOpt}`, 'info');
 
   const pool = buildCnpjPool(cnaeFilter, qty);
@@ -1635,8 +1635,7 @@ async function startRealImport() {
 
   const leads = [];
   let skipped=0, notFound=0, inactive=0, errs=0;
-  // publica.cnpj.ws: 3 req/s sem autenticação. 350ms é seguro e ágil.
-  let waitMs = 350;
+  let waitMs = 1200; // open.cnpja: 1.2s entre requests
   let rateLimitWait = 5000; // espera base ao bater 429
 
   for (let idx = 0; idx < pool.length; idx++) {
@@ -1656,19 +1655,18 @@ async function startRealImport() {
     logReal(`⏳ [${leads.length+1}/${qty}] Consultando ${fmt}...`);
 
     try {
-      const resp = await fetch(`https://publica.cnpj.ws/cnpj/${cnpj}`, {
+      const resp = await fetch(`https://open.cnpja.com/office/${cnpj}`, {
         headers: { 'Accept': 'application/json' }
       });
 
       // Rate limit — aguarda e retenta
       if (resp.status === 429) {
-        logReal(`⏸ Rate limit — aguardando ${Math.round(rateLimitWait/1000)}s...`, 'warn');
-        await new Promise(r => setTimeout(r, rateLimitWait));
-        rateLimitWait = Math.min(rateLimitWait * 2, 20000);
+        waitMs = Math.min(waitMs * 2, 30000);
+        logReal(`⏸ Rate limit — aguardando ${Math.round(waitMs/1000)}s...`, 'warn');
+        await new Promise(r => setTimeout(r, waitMs));
         idx--; // retenta mesmo CNPJ
         continue;
       }
-      rateLimitWait = 5000; // reset após passar
 
       if (resp.status === 404 || resp.status === 400) {
         logReal(`↷ ${fmt} não encontrado.`);
@@ -1684,60 +1682,55 @@ async function startRealImport() {
         continue;
       }
 
+      waitMs = 1200; // reset após sucesso
       const d = await resp.json();
 
       // ── Filtro: só ATIVAS ──
-      const situacao = d.descricao_situacao_cadastral || '';
-      if (situacao.toUpperCase() !== 'ATIVA') {
-        logReal(`↷ ${fmt} — ${situacao || 'inativa'}, pulando.`);
+      if (d.status?.text !== 'Ativa') {
+        logReal(`↷ ${fmt} — ${d.status?.text || 'status desconhecido'}, pulando.`);
         inactive++;
-        await new Promise(r => setTimeout(r, waitMs));
+        await new Promise(r => setTimeout(r, 300));
         continue;
       }
 
       // ── Filtro de UF ──
-      const ufEmpresa = d.estabelecimento?.estado?.sigla || '';
+      const ufEmpresa = d.address?.state || '';
       if (ufFilter !== 'all' && ufEmpresa && ufEmpresa.toUpperCase() !== ufFilter.toUpperCase()) {
         logReal(`↷ ${fmt} — ${ufEmpresa} ≠ ${ufFilter}, pulando.`);
-        await new Promise(r => setTimeout(r, waitMs));
+        await new Promise(r => setTimeout(r, 300));
         continue;
       }
 
-      // ── Monta lead com campos da publica.cnpj.ws ──
-      const est = d.estabelecimento || {};
-      const cnaeId = est.atividade_principal?.subclasse || est.atividade_principal?.id || '';
-      const meta = cnaeToMeta(cnaeId);
+      // ── Monta lead com campos confirmados da API ──
+      const meta = cnaeToMeta(d.mainActivity?.id || '');
       const tipo = tipoOpt === 'auto' ? meta.tipo : tipoOpt;
 
-      const ddd = est.ddd1 || '';
-      const fone = est.telefone1 || '';
-      const tel = ddd && fone ? `(${ddd}) ${fone}` : (fone || null);
-      const email = est.email?.toLowerCase() || null;
-
-      const socios = d.socios || [];
-      const socio = socios[0]?.nome || null;
-
-      const capitalRaw = parseFloat(d.capital_social) || null;
+      const tel = d.phones?.[0]
+        ? `(${d.phones[0].area||''}) ${d.phones[0].number||''}`.trim()
+        : null;
+      const email = d.emails?.[0]?.address?.toLowerCase() || null;
+      const socio = d.company?.members?.[0]?.person?.name || null;
+      const capital = d.company?.equity || null;
 
       let anos = null;
-      if (est.data_inicio_atividade) {
-        anos = Math.floor((Date.now()-new Date(est.data_inicio_atividade))/31536000000);
-        if (anos < 0 || anos > 150) anos = null;
+      if (d.founded) {
+        anos = Math.floor((Date.now()-new Date(d.founded))/31536000000);
+        if (anos < 0 || anos > 100) anos = null;
       }
 
       const lead = {
         cnpj: fmt,
-        razao_social: d.razao_social || null,
-        nome_fantasia: est.nome_fantasia || null,
-        situacao_cadastral: situacao || 'Ativa',
-        municipio: est.cidade?.nome || null,
+        razao_social: d.company?.name || null,
+        nome_fantasia: d.alias || null,
+        situacao_cadastral: d.status?.text || 'Ativa',
+        municipio: d.address?.city || null,
         estado: ufEmpresa || null,
         telefone_1: tel,
         email_comercial: email,
         nome_socio_1: socio,
-        capital_social: capitalRaw,
-        estimativa_faturamento_anual: capitalRaw ? Math.round(capitalRaw*(3+Math.random()*7)) : null,
-        estimativa_lucro_anual:       capitalRaw ? Math.round(capitalRaw*(0.1+Math.random()*0.2)) : null,
+        capital_social: capital,
+        estimativa_faturamento_anual: capital ? Math.round(capital*(3+Math.random()*7)) : null,
+        estimativa_lucro_anual:       capital ? Math.round(capital*(0.1+Math.random()*0.2)) : null,
         score_lead: calcScore(d),
         segmento_simplificado: meta.seg,
         tipo_empresa: tipo,
