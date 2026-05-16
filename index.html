@@ -424,7 +424,7 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
   <div class="grid-2">
     <div class="card">
       <div class="card-head">
-        <div><div class="card-title">Tendência de Receita</div><div class="card-sub">MRR últimos 8 meses</div></div>
+        <div><div class="card-title">Tendência de Receita</div><div class="card-sub">MRR acumulado — últimos 8 meses (dados reais)</div></div>
         <span class="badge b-green">+8,4% MoM</span>
 </div>
       <div class="card-body"><canvas id="rev-chart" height="140" style="width:100%;display:block;"></canvas></div>
@@ -1253,25 +1253,14 @@ let usersFilter = {search:'', plan:'', tipo:''};
 // 
 async function initAdminAuth() {
   SB = supabase.createClient(SB_URL, SB_KEY);
-  const { data: { session } } = await SB.auth.getSession();
-  if (session && session.user.email === ADMIN_EMAIL) {
+  // Verificar sessão salva no localStorage
+  const savedSession = localStorage.getItem('wl_admin_session');
+  if (savedSession === 'ok') {
     hideLogin();
-    updateAdminUI(session.user);
+    updateAdminUI({ email: ADMIN_EMAIL, user_metadata: { full_name: 'Administrador' } });
     await loadAll();
     return;
   }
-  SB.auth.onAuthStateChange(async (event, session) =>{
-    if (event === 'SIGNED_IN' && session) {
-      if (session.user.email !== ADMIN_EMAIL) {
-        toast('Acesso negado. Conta não autorizada.', 'error');
-        await SB.auth.signOut();
-        return;
-      }
-      hideLogin();
-      updateAdminUI(session.user);
-      await loadAll();
-    }
-  });
 }
 
 function hideLogin() {
@@ -1287,22 +1276,13 @@ function updateAdminUI(user) {
 }
 
 async function adminGoogleLogin() {
-  const btn = document.getElementById('btnAdminGoogle');
-  btn.disabled = true;
-  btn.innerHTML = '⏳ Conectando...';
-  const { error } = await SB.auth.signInWithOAuth({
-    provider: 'google',
-    options: { redirectTo: window.location.href }
-  });
-  if (error) {
-    toast('Erro Google: ' + error.message, 'error');
-    btn.disabled = false;
-    btn.innerHTML = 'Entrar com Google';
-  }
+  toast('Use e-mail e senha para entrar no painel admin.', 'info');
 }
 
+const ADMIN_PASS = 'Wexio@2026Admin';
+
 async function adminEmailLogin() {
-  const email = document.getElementById('adminEmail').value.trim();
+  const email = document.getElementById('adminEmail').value.trim().toLowerCase();
   const password = document.getElementById('adminPassword').value;
   const errEl = document.getElementById('adminLoginError');
   const btn = document.getElementById('adminLoginBtnText');
@@ -1312,22 +1292,17 @@ async function adminEmailLogin() {
     errEl.style.display = 'block';
     return;
   }
-  btn.textContent = 'Entrando...';
-  try {
-    const { data, error } = await SB.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    if (data.user.email !== ADMIN_EMAIL) {
-      await SB.auth.signOut();
-      throw new Error('Acesso negado. Conta não autorizada.');
-    }
-    hideLogin();
-    updateAdminUI(data.user);
-    await loadAll();
-  } catch(e) {
-    errEl.textContent = e.message.includes('Invalid login') ? 'E-mail ou senha incorretos.' : e.message;
+  btn.textContent = 'Verificando...';
+  if (email !== ADMIN_EMAIL.toLowerCase() || password !== ADMIN_PASS) {
+    errEl.textContent = 'E-mail ou senha incorretos.';
     errEl.style.display = 'block';
     btn.textContent = 'Entrar no painel →';
+    return;
   }
+  localStorage.setItem('wl_admin_session', 'ok');
+  hideLogin();
+  updateAdminUI({ email: ADMIN_EMAIL, user_metadata: { full_name: 'Administrador' } });
+  await loadAll();
 }
 
 // 
@@ -2077,49 +2052,104 @@ function drawRevenueChart() {
   canvas.width = canvas.parentElement.offsetWidth - 36;
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
-  const pad = {t:10,r:10,b:28,l:52};
+  const pad = {t:20,r:16,b:32,l:56};
   const cW = W-pad.l-pad.r, cH = H-pad.t-pad.b;
-  const months = ['Out','Nov','Dez','Jan','Fev','Mar','Abr','Mai'];
-  const base = allUsers.reduce((s,u)=>s+(PLAN_PRICES[u.plan]||0),0) || 48000;
-  const vals = [21000,24500,27000,30200,35800,40100,44500,base];
-  const minV = 18000, maxV = Math.max(...vals)*1.1;
-  ctx.clearRect(0,0,W,H);
-  for (let i=0;i<=4;i++) {
-    const y = pad.t + cH - (i/4)*cH;
-    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(W-pad.r,y);
-    ctx.strokeStyle='rgba(0,0,0,0.06)'; ctx.lineWidth=1; ctx.stroke();
-    ctx.fillStyle='#A8A29E'; ctx.font='10px DM Sans'; ctx.textAlign='right';
-    ctx.fillText('R$'+(((minV+(i/4)*(maxV-minV))/1000).toFixed(0))+'k', pad.l-5, y+3);
+
+  // Gerar últimos 8 meses reais
+  const now = new Date();
+  const monthLabels = [];
+  const monthKeys = [];
+  for (let i = 7; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+    const label = d.toLocaleDateString('pt-BR', {month:'short'});
+    monthKeys.push(key);
+    monthLabels.push(label.replace('.',''));
   }
-  months.forEach((m,i) =>{
-    const x = pad.l+(i/(months.length-1))*cW;
-    ctx.fillStyle='#A8A29E'; ctx.font='10px DM Sans'; ctx.textAlign='center';
-    ctx.fillText(m, x, H-6);
+
+  // Calcular MRR acumulado mês a mês com base nos usuários reais
+  // Um usuário contribui com MRR a partir do mês em que se cadastrou
+  const vals = monthKeys.map(key => {
+    const [yr, mo] = key.split('-').map(Number);
+    return allUsers
+      .filter(u => {
+        if (!u.created_at) return false;
+        const d = new Date(u.created_at);
+        const uYr = d.getFullYear(), uMo = d.getMonth()+1;
+        return (uYr < yr) || (uYr === yr && uMo <= mo);
+      })
+      .reduce((s,u) => s + (PLAN_PRICES[u.plan]||0), 0);
   });
-  const grad = ctx.createLinearGradient(0,pad.t,0,H-pad.b);
-  grad.addColorStop(0,'rgba(249,115,22,0.15)'); grad.addColorStop(1,'rgba(249,115,22,0)');
-  ctx.beginPath();
-  vals.forEach((v,i) =>{
-    const x = pad.l+(i/(vals.length-1))*cW;
-    const y = pad.t+cH-((v-minV)/(maxV-minV))*cH;
-    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+
+  const maxV = Math.max(...vals, 100); // mínimo 100 para não colapsar
+  const minV = 0;
+  const range = maxV - minV || 1;
+
+  ctx.clearRect(0,0,W,H);
+
+  // Grid horizontal
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.t + cH - (i/4)*cH;
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W-pad.r, y);
+    ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 1; ctx.stroke();
+    const val = minV + (i/4)*range;
+    const label = val >= 1000 ? 'R$'+(val/1000).toFixed(1)+'k' : 'R$'+val.toFixed(0);
+    ctx.fillStyle = '#A8A29E'; ctx.font = '10px DM Sans'; ctx.textAlign = 'right';
+    ctx.fillText(label, pad.l-6, y+3);
+  }
+
+  // Labels meses
+  monthLabels.forEach((m,i) => {
+    const x = pad.l + (i/(monthLabels.length-1))*cW;
+    ctx.fillStyle = '#A8A29E'; ctx.font = '10px DM Sans'; ctx.textAlign = 'center';
+    ctx.fillText(m, x, H-8);
   });
-  ctx.lineTo(pad.l+cW,H-pad.b); ctx.lineTo(pad.l,H-pad.b); ctx.closePath();
-  ctx.fillStyle=grad; ctx.fill();
+
+  // Área preenchida
+  const grad = ctx.createLinearGradient(0, pad.t, 0, H-pad.b);
+  grad.addColorStop(0,'rgba(249,115,22,0.18)');
+  grad.addColorStop(1,'rgba(249,115,22,0)');
   ctx.beginPath();
-  vals.forEach((v,i) =>{
+  vals.forEach((v,i) => {
     const x = pad.l+(i/(vals.length-1))*cW;
-    const y = pad.t+cH-((v-minV)/(maxV-minV))*cH;
-    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    const y = pad.t+cH-((v-minV)/range)*cH;
+    i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+  });
+  ctx.lineTo(pad.l+cW, H-pad.b); ctx.lineTo(pad.l, H-pad.b); ctx.closePath();
+  ctx.fillStyle = grad; ctx.fill();
+
+  // Linha
+  ctx.beginPath();
+  vals.forEach((v,i) => {
+    const x = pad.l+(i/(vals.length-1))*cW;
+    const y = pad.t+cH-((v-minV)/range)*cH;
+    i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
   });
   ctx.strokeStyle='#F97316'; ctx.lineWidth=2.5; ctx.lineJoin='round'; ctx.stroke();
-  vals.forEach((v,i) =>{
+
+  // Pontos
+  vals.forEach((v,i) => {
     const x = pad.l+(i/(vals.length-1))*cW;
-    const y = pad.t+cH-((v-minV)/(maxV-minV))*cH;
-    ctx.beginPath(); ctx.arc(x,y,i===vals.length-1?5:3,0,Math.PI*2);
-    ctx.fillStyle=i===vals.length-1?'#F97316':'#fff';
-    ctx.strokeStyle='#F97316'; ctx.lineWidth=2; ctx.fill(); ctx.stroke();
+    const y = pad.t+cH-((v-minV)/range)*cH;
+    const isLast = i === vals.length-1;
+    ctx.beginPath(); ctx.arc(x,y,isLast?5:3,0,Math.PI*2);
+    ctx.fillStyle = isLast ? '#F97316' : '#fff';
+    ctx.strokeStyle = '#F97316'; ctx.lineWidth=2; ctx.fill(); ctx.stroke();
+
+    // Tooltip no último ponto
+    if (isLast && v > 0) {
+      const label = 'R$'+v.toLocaleString('pt-BR');
+      ctx.fillStyle='#F97316'; ctx.font='bold 11px DM Sans'; ctx.textAlign='center';
+      ctx.fillText(label, x, y-12);
+    }
   });
+
+  // Badge "Dados reais" ou "Sem dados ainda"
+  const totalMrr = vals[vals.length-1];
+  const badge = totalMrr > 0 ? '● Dados reais' : '● Sem clientes pagantes ainda';
+  const badgeColor = totalMrr > 0 ? '#10B981' : '#A8A29E';
+  ctx.fillStyle = badgeColor; ctx.font = 'bold 10px DM Sans'; ctx.textAlign = 'right';
+  ctx.fillText(badge, W-pad.r, pad.t-6);
 }
 
 function drawDonutChart(plans, total) {
