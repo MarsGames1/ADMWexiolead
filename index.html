@@ -1029,13 +1029,42 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
 
 <!-- Detalhe do Lead -->
 <div class="modal-overlay" id="modal-lead">
-  <div class="modal" style="width:640px;">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
+  <div class="modal" style="width:640px;max-height:88vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
       <div class="modal-title" id="modal-lead-title" style="margin-bottom:0;">Detalhes do Lead</div>
-      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-lead')"></button>
-</div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost btn-sm" id="btn-lead-edit-toggle" onclick="toggleEditLead()">✏ Editar</button>
+        <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-lead')">✕</button>
+      </div>
+    </div>
     <div id="modal-lead-body"></div>
-</div>
+    <div id="modal-lead-edit" style="display:none;border-top:1px solid var(--border);margin-top:16px;padding-top:16px;">
+      <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;margin-bottom:14px;color:var(--accent);">Editar Lead</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-group"><label class="form-label">Razão Social</label><input class="form-input" id="le-razao" type="text"></div>
+        <div class="form-group"><label class="form-label">Nome Fantasia</label><input class="form-input" id="le-fantasia" type="text"></div>
+        <div class="form-group"><label class="form-label">Telefone</label><input class="form-input" id="le-tel" type="text"></div>
+        <div class="form-group"><label class="form-label">E-mail Comercial</label><input class="form-input" id="le-email" type="email"></div>
+        <div class="form-group"><label class="form-label">Sócio / Decisor</label><input class="form-input" id="le-socio" type="text"></div>
+        <div class="form-group"><label class="form-label">Cidade</label><input class="form-input" id="le-cidade" type="text"></div>
+        <div class="form-group"><label class="form-label">Estado (UF)</label><input class="form-input" id="le-uf" type="text" maxlength="2" style="text-transform:uppercase;"></div>
+        <div class="form-group"><label class="form-label">Segmento</label><input class="form-input" id="le-seg" type="text"></div>
+        <div class="form-group"><label class="form-label">Tipo de Empresa</label>
+          <select class="form-input" id="le-tipo">
+            <option value="construtora">Construtora</option>
+            <option value="fornecedor">Fornecedor</option>
+            <option value="outro">Outro</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Score do Lead (0–100)</label><input class="form-input" id="le-score" type="number" min="0" max="100"></div>
+        <div class="form-group" style="grid-column:span 2;"><label class="form-label">Observações internas</label><textarea class="form-input" id="le-obs" rows="3" placeholder="Notas, status de contato, histórico..."></textarea></div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
+        <button class="btn btn-ghost" onclick="toggleEditLead()">Cancelar</button>
+        <button class="btn btn-accent" onclick="saveLeadEdit()">💾 Salvar alterações</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Importar Leads -->
@@ -1183,6 +1212,10 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
 
       <div class="modal-footer">
         <button class="btn btn-ghost" id="btn-real-cancel" onclick="closeModal('modal-seed');resetRealImport()">Cancelar</button>
+        <button id="btn-jabom" class="btn btn-sm" style="display:none;background:var(--green);color:#fff;border:none;" onclick="finalizarImportAgora()">
+          <svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:#fff;fill:none;stroke-width:2.5;"><polyline points="20 6 9 17 4 12"/></svg>
+          Já está bom — Salvar
+        </button>
         <button class="btn btn-accent" id="btn-real-start" onclick="startRealImport()">
           <svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:#fff;fill:none;stroke-width:2;"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 3"/></svg>
           Buscar e Importar Leads Reais
@@ -1744,10 +1777,21 @@ async function startRealImport() {
       document.getElementById('real-pct').textContent = pct + '%';
       document.getElementById('real-bar').style.width = pct + '%';
       document.getElementById('real-status-txt').textContent = `${leads.length}/${qty} leads coletados...`;
+      // Mostra botão "Já está bom" após o 1º lead encontrado
+      const jaBtn = document.getElementById('btn-jabom');
+      if (jaBtn) jaBtn.style.display = 'inline-flex';
 
-      // Salva imediatamente no Supabase (não espera o fim)
-      SB.from('leads').upsert([lead], { onConflict:'cnpj', ignoreDuplicates:true })
-        .then(({error}) => { if (error) logReal(`⚠ Salvar ${fmt}: ${error.message}`, 'warn'); });
+      // Salva imediatamente no Supabase
+      try {
+        const { error: saveErr } = await SB.from('leads').upsert([lead], { onConflict: 'cnpj', ignoreDuplicates: true });
+        if (saveErr) {
+          logReal(`⚠ Erro ao salvar ${fmt}: ${saveErr.message} (code: ${saveErr.code})`, 'warn');
+        } else {
+          logReal(`💾 ${fmt} salvo no banco.`, 'ok');
+        }
+      } catch(saveEx) {
+        logReal(`⚠ Exceção ao salvar ${fmt}: ${saveEx.message}`, 'warn');
+      }
 
     } catch(e) {
       logReal(`⚠ Erro: ${e.message}`, 'warn');
@@ -1783,6 +1827,18 @@ async function startRealImport() {
   toast(`✅ ${leads.length} leads reais importados! Base com ${allLeads.length} leads.`, 'success');
 }
 
+async function finalizarImportAgora() {
+  realImportRunning = false;
+  document.getElementById('btn-jabom').style.display = 'none';
+  document.getElementById('btn-real-start').disabled = false;
+  document.getElementById('btn-real-cancel').textContent = 'Cancelar';
+  logReal('\n⏹ Busca interrompida pelo usuário — finalizando...', 'warn');
+  await new Promise(r => setTimeout(r, 800));
+  await loadLeads();
+  renderAll();
+  toast(`✅ Leads salvos! Base com ${allLeads.length} leads.`, 'success');
+}
+
 function resetRealImport() {
   realImportRunning = false;
   const log = document.getElementById('real-log');
@@ -1791,6 +1847,8 @@ function resetRealImport() {
   if (prog) prog.style.display = 'none';
   const btn = document.getElementById('btn-real-start');
   if (btn) btn.disabled = false;
+  const jaBtn = document.getElementById('btn-jabom');
+  if (jaBtn) jaBtn.style.display = 'none';
   const cancel = document.getElementById('btn-real-cancel');
   if (cancel) cancel.textContent = 'Cancelar';
 }
@@ -2340,7 +2398,10 @@ function viewUser(id) {
   toast(`Visualizando ${u.name}`, 'info');
 }
 
+let currentLeadId = null;
+
 function viewLead(id) {
+  currentLeadId = id;
   const l = allLeads.find(x=>x.id===id);
   if (!l) return;
   document.getElementById('modal-lead-title').textContent = l.nome_fantasia || l.razao_social || 'Detalhe do Lead';
@@ -2356,13 +2417,62 @@ function viewLead(id) {
     ['Fat. Estimado', l.estimativa_faturamento_anual ? 'R$'+Number(l.estimativa_faturamento_anual).toLocaleString('pt-BR') : '—'],
     ['Lucro Estimado', l.estimativa_lucro_anual ? 'R$'+Number(l.estimativa_lucro_anual).toLocaleString('pt-BR') : '—'],
     ['Score do Lead', l.score_lead || '—'],
+    ['Observações', l.observacoes || '—'],
   ];
   document.getElementById('modal-lead-body').innerHTML = `
     <div style="margin-bottom:12px;"><span class="badge ${tipoBadge}">${tipoLabel}</span></div>
     <div class="lead-detail-grid">
       ${fields.map(([k,v]) =>`<div class="detail-field"><label>${k}</label><span>${v||'—'}</span></div>`).join('')}
 </div>`;
+  // Preenche campos de edição
+  document.getElementById('le-razao').value = l.razao_social || '';
+  document.getElementById('le-fantasia').value = l.nome_fantasia || '';
+  document.getElementById('le-tel').value = l.telefone_1 || '';
+  document.getElementById('le-email').value = l.email_comercial || '';
+  document.getElementById('le-socio').value = l.nome_socio_1 || '';
+  document.getElementById('le-cidade').value = l.municipio || '';
+  document.getElementById('le-uf').value = l.estado || '';
+  document.getElementById('le-seg').value = l.segmento_simplificado || '';
+  document.getElementById('le-tipo').value = l.tipo_empresa || 'construtora';
+  document.getElementById('le-score').value = l.score_lead || '';
+  document.getElementById('le-obs').value = l.observacoes || '';
+  document.getElementById('modal-lead-edit').style.display = 'none';
+  document.getElementById('btn-lead-edit-toggle').textContent = '✏ Editar';
   openModal('modal-lead');
+}
+
+function toggleEditLead() {
+  const editEl = document.getElementById('modal-lead-edit');
+  const btn = document.getElementById('btn-lead-edit-toggle');
+  const showing = editEl.style.display !== 'none';
+  editEl.style.display = showing ? 'none' : 'block';
+  btn.textContent = showing ? '✏ Editar' : '✕ Fechar edição';
+}
+
+async function saveLeadEdit() {
+  if (!currentLeadId) return;
+  const updates = {
+    razao_social:          document.getElementById('le-razao').value.trim() || null,
+    nome_fantasia:         document.getElementById('le-fantasia').value.trim() || null,
+    telefone_1:            document.getElementById('le-tel').value.trim() || null,
+    email_comercial:       document.getElementById('le-email').value.trim() || null,
+    nome_socio_1:          document.getElementById('le-socio').value.trim() || null,
+    municipio:             document.getElementById('le-cidade').value.trim() || null,
+    estado:                document.getElementById('le-uf').value.trim().toUpperCase() || null,
+    segmento_simplificado: document.getElementById('le-seg').value.trim() || null,
+    tipo_empresa:          document.getElementById('le-tipo').value,
+    score_lead:            parseInt(document.getElementById('le-score').value) || null,
+    observacoes:           document.getElementById('le-obs').value.trim() || null,
+  };
+  const { error } = await SB.from('leads').update(updates).eq('id', currentLeadId);
+  if (error) {
+    toast('Erro ao salvar: ' + error.message, 'error');
+  } else {
+    toast('Lead atualizado!', 'success');
+    await loadLeads();
+    renderAll();
+    closeModal('modal-lead');
+  }
 }
 
 function editPlan(plan) { toast(`Editor de plano "${plan}" — configure via Supabase ou código`, 'info'); }
