@@ -867,19 +867,25 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
 <div class="modal-overlay" id="modal-add-employee">
   <div class="modal">
     <div class="modal-title">Novo Funcionário</div>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:18px;">O funcionário receberá o e-mail para criar a senha de acesso ao painel.</p>
+    <div style="background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.25);border-radius:10px;padding:12px 14px;margin-bottom:18px;font-size:12.5px;color:var(--muted);line-height:1.6;">
+      <strong style="color:var(--accent);">⚠️ Atenção — fluxo de acesso:</strong><br>
+      1. Preencha e salve os dados abaixo.<br>
+      2. Acesse <strong>Supabase → Authentication → Users → Add User</strong>.<br>
+      3. Crie o usuário com <strong>o mesmo e-mail</strong> e a senha que você quer dar ao funcionário.<br>
+      4. O painel do funcionário ficará disponível em <strong>funcionario.html</strong>.
+    </div>
     <div class="grid-2" style="gap:12px;">
       <div class="form-group">
         <label class="form-label">Nome completo *</label>
         <input class="form-input" id="emp-add-nome" placeholder="Nome Sobrenome">
       </div>
       <div class="form-group">
-        <label class="form-label">E-mail *</label>
+        <label class="form-label">E-mail * (mesmo do Supabase Auth)</label>
         <input class="form-input" id="emp-add-email" type="email" placeholder="func@empresa.com.br">
       </div>
-      <div class="form-group">
-        <label class="form-label">Senha inicial *</label>
-        <input class="form-input" id="emp-add-senha" type="password" placeholder="Mínimo 6 caracteres">
+      <div class="form-group" style="display:none;">
+        <label class="form-label">Senha inicial</label>
+        <input class="form-input" id="emp-add-senha" type="password" value="placeholder123">
       </div>
       <div class="form-group">
         <label class="form-label">Telefone</label>
@@ -1329,8 +1335,21 @@ async function adminEmailLogin() {
 // 
 async function loadAll() {
   if (DEMO) return;
-  await Promise.all([loadUsers(), loadLeads(), loadExports(), loadPacks()]);
+  await Promise.all([loadUsers(), loadLeads(), loadExports(), loadPacks(), loadEmployeesQuiet()]);
   renderAll();
+}
+
+async function loadEmployeesQuiet() {
+  try {
+    const { data: emps } = await SB.from("employees").select("*").order("created_at", {ascending:false});
+    allEmployees = emps || [];
+    const { data: ec } = await SB.from("employee_clients").select("*").order("created_at", {ascending:false});
+    allEmployeeClients = ec || [];
+    const { data: sug } = await SB.from("employee_suggestions").select("*, employees(nome)").order("created_at", {ascending:false});
+    allSugestoes = sug || [];
+  } catch(e) {
+    allEmployees = []; allEmployeeClients = []; allSugestoes = [];
+  }
 }
 
 async function loadUsers() {
@@ -1825,6 +1844,8 @@ function renderAll() {
   renderRevenue();
   renderAnalytics();
   updateBadges();
+  // Atualiza badge de funcionários sempre
+  if (allEmployees) document.getElementById("badge-employees").textContent = allEmployees.filter(e=>e.status==="ativo").length;
 }
 
 function renderOverview() {
@@ -2352,6 +2373,7 @@ function nav(page) {
       allLeads.forEach(l=>{s[l.segmento_simplificado]=(s[l.segmento_simplificado]||0)+1;});
       drawSegChart(s); drawSignupChart();
     }
+    if (page==='employees') renderEmployees();
   }, 60);
 }
 
@@ -2511,6 +2533,22 @@ let allEmployeeClients = [];
 let allSugestoes = [];
 const PLAN_PRICES_EMP = {free:0, starter:97, pro:197, agency:397};
 
+function updateEmpStats() {
+  const ativos = allEmployees.filter(e => e.status === 'ativo').length;
+  document.getElementById('emp-ativos').textContent = ativos;
+  const clientesFechados = allEmployeeClients.filter(c => c.status_crm === 'fechado');
+  document.getElementById('emp-clientes-total').textContent = clientesFechados.length;
+  const mrrTotal = clientesFechados.reduce((s,c) => s + (PLAN_PRICES_EMP[c.plano] || 0), 0);
+  document.getElementById('emp-mrr-total').textContent = 'R$' + mrrTotal.toLocaleString('pt-BR');
+  const comTotal = allEmployees.reduce((s, e) => {
+    const myCli = allEmployeeClients.filter(c => c.employee_id === e.id && c.status_crm === 'fechado');
+    const mrr = myCli.reduce((ss, c) => ss + (PLAN_PRICES_EMP[c.plano] || 0), 0);
+    return s + mrr * (parseFloat(e.comissao_pct || 20) / 100);
+  }, 0);
+  document.getElementById('emp-com-total').textContent = 'R$' + comTotal.toLocaleString('pt-BR', {minimumFractionDigits:2});
+  document.getElementById('emp-sub').textContent = allEmployees.length + ' funcionário' + (allEmployees.length!==1?'s':'') + ' cadastrados';
+}
+
 async function loadEmployees() {
   const { data } = await SB.from('employees').select('*').order('created_at', {ascending:false});
   allEmployees = data || [];
@@ -2526,26 +2564,7 @@ async function loadEmployees() {
 
 async function renderEmployees() {
   await loadEmployees();
-
-  // Stats
-  const ativos = allEmployees.filter(e => e.status === 'ativo').length;
-  document.getElementById('emp-ativos').textContent = ativos;
-
-  const clientesFechados = allEmployeeClients.filter(c => c.status_crm === 'fechado');
-  document.getElementById('emp-clientes-total').textContent = clientesFechados.length;
-
-  const mrrTotal = clientesFechados.reduce((s,c) => s + (PLAN_PRICES_EMP[c.plano] || 0), 0);
-  document.getElementById('emp-mrr-total').textContent = 'R$' + mrrTotal.toLocaleString('pt-BR');
-
-  const comTotal = allEmployees.reduce((s, e) => {
-    const myCli = allEmployeeClients.filter(c => c.employee_id === e.id && c.status_crm === 'fechado');
-    const mrr = myCli.reduce((ss, c) => ss + (PLAN_PRICES_EMP[c.plano] || 0), 0);
-    return s + mrr * (parseFloat(e.comissao_pct || 20) / 100);
-  }, 0);
-  document.getElementById('emp-com-total').textContent = 'R$' + comTotal.toLocaleString('pt-BR', {minimumFractionDigits:2});
-
-  document.getElementById('emp-sub').textContent = `${allEmployees.length} funcionário${allEmployees.length !== 1 ? 's' : ''} cadastrados`;
-
+  updateEmpStats();
   renderEmpTabela();
   renderEmpClientesTab();
   renderSugestoes();
@@ -2699,18 +2718,14 @@ async function addEmployee() {
   if (!nome || !email || !senha) { toast('Nome, e-mail e senha são obrigatórios', 'error'); return; }
   if (senha.length < 6) { toast('Senha deve ter pelo menos 6 caracteres', 'error'); return; }
 
-  // Criar usuário no Supabase Auth
-  const { data: authData, error: authErr } = await SB.auth.admin
-    ? await SB.auth.admin.createUser({ email, password: senha, email_confirm: true })
-    : { data: null, error: { message: 'Admin API não disponível no frontend. Cadastre o e-mail no Supabase Auth manualmente e depois registre aqui.' } };
+  // Salvar direto na tabela employees.
+  // O user_id será vinculado pelo e-mail quando o funcionário fizer login pela primeira vez.
+  let userId = null;
 
-  if (authErr) {
-    // Fallback: cria só na tabela employees sem user_id (admin precisará criar o auth manualmente)
-    toast('⚠️ ' + authErr.message + ' — Funcionário salvo na base. Crie o login no Supabase Auth manualmente.', 'info');
-  }
-
+  // Passo 2: Salvar na tabela employees
   const { error: dbErr } = await SB.from('employees').insert({
-    nome, email,
+    nome,
+    email,
     telefone: tel || null,
     cargo: cargo || 'Consultor Comercial',
     apelido: apelido || null,
@@ -2718,18 +2733,24 @@ async function addEmployee() {
     comissao_pct: parseFloat(com) || 20,
     meta_mensal: parseFloat(meta) || 0,
     status: 'ativo',
-    user_id: authData?.user?.id || null,
+    user_id: userId,
     tempo_contribuicao_meses: 0,
   });
 
-  if (dbErr) { toast('Erro ao salvar: ' + dbErr.message, 'error'); return; }
+  if (dbErr) { toast('Erro ao salvar na base: ' + dbErr.message, 'error'); return; }
 
-  toast('Funcionário cadastrado! ' + (authData?.user ? '✅ Login criado automaticamente.' : '⚠️ Crie o login no Supabase Authentication com este e-mail e senha.'), 'success');
+  if (!signUpErr) toast('Funcionário "' + nome + '" cadastrado com sucesso!', 'success');
+
   closeModal('modal-add-employee');
   ['emp-add-nome','emp-add-email','emp-add-senha','emp-add-tel','emp-add-cargo','emp-add-apelido','emp-add-pix'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('emp-add-com').value = '20';
   document.getElementById('emp-add-meta').value = '0';
-  await renderEmployees();
+  await loadEmployeesQuiet();
+  renderEmpTabela();
+  renderEmpClientesTab();
+  renderEmpRanking();
+  updateEmpStats();
+  document.getElementById('badge-employees').textContent = allEmployees.filter(e=>e.status==='ativo').length;
 }
 
 function editEmployeeModal(id) {
