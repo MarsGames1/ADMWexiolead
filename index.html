@@ -2707,7 +2707,6 @@ function showEmpTab(tab) {
 async function addEmployee() {
   const nome = document.getElementById('emp-add-nome').value.trim();
   const email = document.getElementById('emp-add-email').value.trim();
-  const senha = document.getElementById('emp-add-senha').value;
   const tel = document.getElementById('emp-add-tel').value.trim();
   const cargo = document.getElementById('emp-add-cargo').value.trim();
   const apelido = document.getElementById('emp-add-apelido').value.trim();
@@ -2715,14 +2714,15 @@ async function addEmployee() {
   const com = document.getElementById('emp-add-com').value;
   const meta = document.getElementById('emp-add-meta').value;
 
-  if (!nome || !email || !senha) { toast('Nome, e-mail e senha são obrigatórios', 'error'); return; }
-  if (senha.length < 6) { toast('Senha deve ter pelo menos 6 caracteres', 'error'); return; }
+  if (!nome || !email) { toast('Nome e e-mail são obrigatórios', 'error'); return; }
 
-  // Salvar direto na tabela employees.
-  // O user_id será vinculado pelo e-mail quando o funcionário fizer login pela primeira vez.
-  let userId = null;
+  // Verificar se e-mail já existe antes de tentar inserir
+  const { data: existing } = await SB.from('employees').select('id, nome, status').eq('email', email).maybeSingle();
+  if (existing) {
+    toast('E-mail já cadastrado para "' + existing.nome + '" (status: ' + existing.status + '). Edite o funcionário existente.', 'error');
+    return;
+  }
 
-  // Passo 2: Salvar na tabela employees
   const { error: dbErr } = await SB.from('employees').insert({
     nome,
     email,
@@ -2733,16 +2733,26 @@ async function addEmployee() {
     comissao_pct: parseFloat(com) || 20,
     meta_mensal: parseFloat(meta) || 0,
     status: 'ativo',
-    user_id: userId,
+    user_id: null,
     tempo_contribuicao_meses: 0,
   });
 
-  if (dbErr) { toast('Erro ao salvar na base: ' + dbErr.message, 'error'); return; }
+  if (dbErr) {
+    if (dbErr.message.includes('duplicate') || dbErr.message.includes('unique')) {
+      toast('E-mail já existe na base. Verifique os funcionários cadastrados.', 'error');
+    } else {
+      toast('Erro ao salvar: ' + dbErr.message, 'error');
+    }
+    return;
+  }
 
-  if (!signUpErr) toast('Funcionário "' + nome + '" cadastrado com sucesso!', 'success');
+  toast('✅ Funcionário "' + nome + '" cadastrado! Agora crie o login em Supabase → Authentication → Users → Add User com este mesmo e-mail.', 'success');
 
   closeModal('modal-add-employee');
-  ['emp-add-nome','emp-add-email','emp-add-senha','emp-add-tel','emp-add-cargo','emp-add-apelido','emp-add-pix'].forEach(id => document.getElementById(id).value = '');
+  ['emp-add-nome','emp-add-email','emp-add-tel','emp-add-cargo','emp-add-apelido','emp-add-pix'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
   document.getElementById('emp-add-com').value = '20';
   document.getElementById('emp-add-meta').value = '0';
   await loadEmployeesQuiet();
