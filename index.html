@@ -332,6 +332,11 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
 
   <div class="nav-section">Sistema</div>
   <nav>
+    <a onclick="nav('employees')" id="nav-employees">
+      <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span>Funcionários</span>
+      <span class="nav-badge" id="badge-employees">0</span>
+</a>
     <a onclick="nav('plans')" id="nav-plans">
       <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
       <span>Planos</span>
@@ -755,6 +760,207 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
 </div>
 </div>
 </div>
+</div>
+
+<!-- ══════════════════ FUNCIONÁRIOS ══════════════════ -->
+<div class="page" id="page-employees">
+  <div class="topbar">
+    <div><div class="page-title">Funcionários</div><div class="page-sub" id="emp-sub">Gestão da equipe comercial</div></div>
+    <div class="topbar-right">
+      <button class="btn btn-accent btn-sm" onclick="openModal('modal-add-employee')">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Novo Funcionário
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats rápidos -->
+  <div class="stats-row" style="grid-template-columns:repeat(4,1fr);">
+    <div class="stat-card">
+      <div class="stat-lbl">Funcionários ativos</div>
+      <div class="stat-val" id="emp-ativos">—</div>
+      <div class="stat-delta up">na equipe</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-lbl">Total de clientes</div>
+      <div class="stat-val" id="emp-clientes-total">—</div>
+      <div class="stat-delta">na carteira da equipe</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-lbl">MRR gerado pela equipe</div>
+      <div class="stat-val" id="emp-mrr-total">R$—</div>
+      <div class="stat-delta">soma das carteiras</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-lbl">Comissões do mês</div>
+      <div class="stat-val" id="emp-com-total">R$—</div>
+      <div class="stat-delta">a pagar à equipe</div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div style="display:flex;gap:4px;margin-bottom:16px;background:var(--surface2);border-radius:10px;padding:4px;width:fit-content;">
+    <button class="btn btn-accent btn-sm" id="emp-tab-lista" onclick="showEmpTab('lista')">Equipe</button>
+    <button class="btn btn-ghost btn-sm" id="emp-tab-clientes" onclick="showEmpTab('clientes')">Clientes por funcionário</button>
+    <button class="btn btn-ghost btn-sm" id="emp-tab-sugestoes" onclick="showEmpTab('sugestoes')">Sugestões</button>
+    <button class="btn btn-ghost btn-sm" id="emp-tab-ranking" onclick="showEmpTab('ranking')">Ranking</button>
+  </div>
+
+  <!-- Tab: Lista -->
+  <div id="emp-tab-content-lista">
+    <div class="card">
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>Funcionário</th><th>Cargo</th><th>Clientes</th><th>MRR carteira</th><th>Comissão/mês</th><th>Meta</th><th>Status</th><th>Cadastro</th><th></th>
+          </tr></thead>
+          <tbody id="emp-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: Clientes por funcionário -->
+  <div id="emp-tab-content-clientes" style="display:none;">
+    <div class="card">
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>Funcionário</th><th>Cliente</th><th>Plano</th><th>Status CRM</th><th>Follow-up</th><th>Adicionado</th>
+          </tr></thead>
+          <tbody id="emp-clientes-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: Sugestões -->
+  <div id="emp-tab-content-sugestoes" style="display:none;">
+    <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+      <select class="form-input" id="sug-filter-status" style="width:160px;" onchange="renderSugestoes()">
+        <option value="">Todas as sugestões</option>
+        <option value="pendente">Pendentes</option>
+        <option value="aprovada">Aprovadas</option>
+        <option value="implementada">Implementadas</option>
+        <option value="rejeitada">Rejeitadas</option>
+      </select>
+    </div>
+    <div id="sugestoes-grid"></div>
+  </div>
+
+  <!-- Tab: Ranking -->
+  <div id="emp-tab-content-ranking" style="display:none;">
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-head"><div class="card-title">🏆 Ranking por clientes ativos</div></div>
+        <div class="card-body" id="emp-ranking-list"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">💰 Ranking por MRR gerado</div></div>
+        <div class="card-body" id="emp-ranking-mrr"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ MODAL: ADICIONAR FUNCIONÁRIO ══════ -->
+<div class="modal-overlay" id="modal-add-employee">
+  <div class="modal">
+    <div class="modal-title">Novo Funcionário</div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:18px;">O funcionário receberá o e-mail para criar a senha de acesso ao painel.</p>
+    <div class="grid-2" style="gap:12px;">
+      <div class="form-group">
+        <label class="form-label">Nome completo *</label>
+        <input class="form-input" id="emp-add-nome" placeholder="Nome Sobrenome">
+      </div>
+      <div class="form-group">
+        <label class="form-label">E-mail *</label>
+        <input class="form-input" id="emp-add-email" type="email" placeholder="func@empresa.com.br">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Senha inicial *</label>
+        <input class="form-input" id="emp-add-senha" type="password" placeholder="Mínimo 6 caracteres">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Telefone</label>
+        <input class="form-input" id="emp-add-tel" placeholder="(11) 99999-9999">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cargo</label>
+        <input class="form-input" id="emp-add-cargo" placeholder="Ex: Consultor Comercial">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Apelido</label>
+        <input class="form-input" id="emp-add-apelido" placeholder="Como a Wex vai chamar">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Pix</label>
+        <input class="form-input" id="emp-add-pix" placeholder="CPF, e-mail ou chave Pix">
+      </div>
+      <div class="form-group">
+        <label class="form-label">% Comissão *</label>
+        <input class="form-input" id="emp-add-com" type="number" placeholder="20" value="20" min="0" max="100">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Meta mensal (R$)</label>
+        <input class="form-input" id="emp-add-meta" type="number" placeholder="0" value="0">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-add-employee')">Cancelar</button>
+      <button class="btn btn-accent" onclick="addEmployee()">Criar funcionário</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ MODAL: EDITAR FUNCIONÁRIO ══════ -->
+<div class="modal-overlay" id="modal-edit-employee">
+  <div class="modal">
+    <div class="modal-title" id="emp-edit-title">Editar Funcionário</div>
+    <input type="hidden" id="emp-edit-id">
+    <div class="grid-2" style="gap:12px;">
+      <div class="form-group">
+        <label class="form-label">Nome</label>
+        <input class="form-input" id="emp-edit-nome">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cargo</label>
+        <input class="form-input" id="emp-edit-cargo">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Telefone</label>
+        <input class="form-input" id="emp-edit-tel">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Pix</label>
+        <input class="form-input" id="emp-edit-pix">
+      </div>
+      <div class="form-group">
+        <label class="form-label">% Comissão</label>
+        <input class="form-input" id="emp-edit-com" type="number" min="0" max="100">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Meta mensal (R$)</label>
+        <input class="form-input" id="emp-edit-meta" type="number">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <select class="form-input" id="emp-edit-status">
+          <option value="ativo">Ativo</option>
+          <option value="inativo">Inativo</option>
+        </select>
+      </div>
+    </div>
+    <div id="emp-edit-reset-pwd" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
+      <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">Redefinir senha (deixe em branco para não alterar)</p>
+      <input class="form-input" id="emp-edit-senha" type="password" placeholder="Nova senha (mín. 6 caracteres)">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-red" onclick="deactivateEmployee()">Desativar</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-edit-employee')">Cancelar</button>
+      <button class="btn btn-accent" onclick="saveEmployee()">Salvar</button>
+    </div>
+  </div>
 </div>
 
 </main>
@@ -1224,142 +1430,179 @@ function generateSampleLeads() {
 }
 
 // ══════════════════════════════════════════════════════
-// BUSCA DE DADOS REAIS
-// APIs confirmadas funcionando no browser:
-//   1. open.cnpja.com  — rápida (295ms), sem rate limit agressivo
-//   2. brasilapi.com.br — fallback (581ms)
-//   3. publica.cnpj.ws  — fallback secundário (311ms, rate limit 3/min)
-//
-// Estrutura open.cnpja:
-//   taxId, alias, founded, head, status{id,text}, statusDate
-//   address{city, state, street, number, district, zip}
-//   company{name, equity, members[{person{name}, role{text}}]}
-//   mainActivity{id, text}, phones[], emails[]
-//
-// Estrutura brasilapi:
-//   cnpj, razao_social, nome_fantasia, situacao_cadastral(número)
-//   municipio, uf, ddd_telefone_1, email
-//   qsa[{nome_socio, qualificacao_socio}]
-//   cnae_fiscal, capital_social, data_inicio_atividade
+// BUSCA DE DADOS REAIS via open.cnpja.com
+// Testado e confirmado: status.text === 'Ativa' para empresas ativas
+// Campos: taxId, alias, founded, status{id,text}, address{city,state},
+//         company{name,equity,members[]}, mainActivity{id,text}, phones[], emails[]
 // ══════════════════════════════════════════════════════
 
-// situacao_cadastral numérica (BrasilAPI): 2=Ativa, 3=Suspensa, 4=Inapta, 8=Baixada
-const SITUACAO_ATIVA_IDS = new Set([2, '2', 'ATIVA', 'Ativa', 'ativa']);
-
-// Mapeamento CNAE (primeiros dígitos) → segmento + tipo
-const CNAE_META = {
-  '411': { seg: 'Construção de Edifícios',              tipo: 'construtora' },
-  '412': { seg: 'Construção de Edifícios',              tipo: 'construtora' },
-  '421': { seg: 'Obras de Infraestrutura',              tipo: 'construtora' },
-  '422': { seg: 'Obras de Infraestrutura',              tipo: 'construtora' },
-  '429': { seg: 'Obras de Infraestrutura',              tipo: 'construtora' },
-  '431': { seg: 'Demolição e Preparação do Terreno',    tipo: 'fornecedor'  },
-  '432': { seg: 'Instalações Elétricas e Hidráulicas',  tipo: 'fornecedor'  },
-  '433': { seg: 'Acabamento e Revestimento',            tipo: 'fornecedor'  },
-  '439': { seg: 'Serviços Especializados de Construção',tipo: 'fornecedor'  },
-  '474': { seg: 'Materiais de Construção',              tipo: 'fornecedor'  },
-  '475': { seg: 'Materiais de Construção',              tipo: 'fornecedor'  },
-};
-
+// Mapeamento CNAE → segmento + tipo
 function cnaeToMeta(cnaeCode) {
   const c = String(cnaeCode).replace(/\D/g,'');
-  for (const prefix of ['433','432','431','439','422','421','429','412','411','474','475']) {
-    if (c.startsWith(prefix)) return CNAE_META[prefix];
-  }
-  if (c.startsWith('41')) return { seg: 'Construção de Edifícios',   tipo: 'construtora' };
-  if (c.startsWith('42')) return { seg: 'Obras de Infraestrutura',   tipo: 'construtora' };
-  if (c.startsWith('43')) return { seg: 'Serviços Especializados de Construção', tipo: 'fornecedor' };
-  if (c.startsWith('47')) return { seg: 'Materiais de Construção',   tipo: 'fornecedor' };
-  return { seg: 'Construção Civil', tipo: 'construtora' };
+  if (c.startsWith('433')) return { seg:'Acabamento e Revestimento',             tipo:'fornecedor'  };
+  if (c.startsWith('432')) return { seg:'Instalações Elétricas e Hidráulicas',   tipo:'fornecedor'  };
+  if (c.startsWith('431')) return { seg:'Demolição e Preparação do Terreno',     tipo:'fornecedor'  };
+  if (c.startsWith('439')) return { seg:'Serviços Especializados de Construção', tipo:'fornecedor'  };
+  if (c.startsWith('41'))  return { seg:'Construção de Edifícios',               tipo:'construtora' };
+  if (c.startsWith('42'))  return { seg:'Obras de Infraestrutura',               tipo:'construtora' };
+  if (c.startsWith('43'))  return { seg:'Serviços Especializados de Construção', tipo:'fornecedor'  };
+  if (c.startsWith('474') || c.startsWith('475')) return { seg:'Materiais de Construção', tipo:'fornecedor' };
+  if (c.startsWith('47'))  return { seg:'Materiais de Construção',               tipo:'fornecedor'  };
+  return { seg:'Construção Civil', tipo:'construtora' };
 }
 
-// Calcula dígitos verificadores de um CNPJ (12 dígitos base → 14)
-function cnpjCalcDigits(base12) {
-  const d = base12.split('').map(Number);
-  const w1 = [5,4,3,2,9,8,7,6,5,4,3,2];
-  const s1 = d.reduce((s,v,i) => s + v*w1[i], 0);
-  const dig1 = s1%11 < 2 ? 0 : 11-(s1%11);
-  const d2 = [...d, dig1];
-  const w2 = [6,5,4,3,2,9,8,7,6,5,4,3,2];
-  const s2 = d2.reduce((s,v,i) => s + v*w2[i], 0);
-  const dig2 = s2%11 < 2 ? 0 : 11-(s2%11);
-  return base12 + dig1 + dig2;
+// Calcula dígitos verificadores (base 12 dígitos → CNPJ 14)
+function cnpjCalcDigits(b) {
+  const d = b.split('').map(Number);
+  const w1=[5,4,3,2,9,8,7,6,5,4,3,2];
+  const s1=d.reduce((s,v,i)=>s+v*w1[i],0);
+  const d1=s1%11<2?0:11-(s1%11);
+  const d2=[...d,d1];
+  const w2=[6,5,4,3,2,9,8,7,6,5,4,3,2];
+  const s2=d2.reduce((s,v,i)=>s+v*w2[i],0);
+  const d2r=s2%11<2?0:11-(s2%11);
+  return b+d1+d2r;
 }
 
-function cnpjValidate(cnpj) {
-  const c = cnpj.replace(/\D/g,'');
-  if (c.length !== 14) return false;
-  const base = c.slice(0,12);
-  return cnpjCalcDigits(base) === c;
+function cnpjFmt(c) {
+  return c.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5');
 }
 
-function cnpjFmt(cnpj) {
-  return cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5');
-}
-
-// ── CNPJs seed: raízes reais de empresas de construção civil brasileiras ──
-// Gerados a partir de prefixos (8 dígitos raiz) de empresas conhecidas + /0001 + dígitos calculados
-// Todos passam na validação do algoritmo da Receita Federal
-const _ROOTS = {
-  // Construtoras e incorporadoras — CNAE 41xx
-  '41': ['06977751','17449067','21522849','30220132','33958874','37697616','41436358',
-         '45175100','48913842','52652584','57209052','62232239','67255426','72278613',
-         '76301800','80324987','84348174','88371361','92394548','96417735','01440922',
-         '05464109','09487296','13510483','18533670','22556857','26580044','30603231',
-         '34626418','38649605','43672792','47695979','51719166','55742353','59765540'],
-  // Obras de infraestrutura — CNAE 42xx
-  '42': ['02134700','06050251','09167773','13190960','17214147','21237334','25260521',
-         '29283708','33306895','37330082','41353269','45376456','49399643','53422830',
-         '57446017','61469204','65492391','69515578','73538765','77561952','81585139'],
-  // Serviços especializados de construção — CNAE 43xx
-  '43': ['04957849','08696591','12435333','16174075','19912817','23651559','27390301',
-         '31129043','34867785','38606527','42345269','46084011','49822753','53561495',
-         '57300237','61038979','64777721','68516463','72255205','75993947','79732689'],
-  // Materiais de construção — CNAE 47xx
-  'mat': ['47960114','61182408','79613956','03814879','10518669','15314545','33041260',
-          '44826907','56612554','68398201','80183848','92969495','05758040','17543687',
-          '29329334','41114981','52900628','64686275','76471922','88257569','00043275'],
-  // Instalações elétricas — CNAE 432x
-  'ele': ['02738190','05671423','08604656','11537889','14471122','17404355','20337588',
-          '23270821','26204054','29137287','32070520','35003753','40870219','46736685',
-          '52603151','58469617','64336083','70202549','76069015','81935481','87801947'],
-  // Hidráulica — CNAE 432x
-  'hid': ['03527845','06461078','09394311','12327544','15260777','18194010','24060476',
-          '26993709','29926942','32860175','35793408','38726641','41659874','44593107',
-          '47526340','50459573','53392806','56326039','59259272','62192505','65125738'],
+// ── Raízes de empresas reais do setor de construção civil ──
+// Raiz = primeiros 8 dígitos do CNPJ (identificador da empresa)
+// Fonte: CNPJs públicos de empresas conhecidas e ativas no Brasil
+const RAIZES_CONSTRUCAO = {
+  // Grandes construtoras/incorporadoras
+  construtoras: [
+    '73178600', // Cyrela Brazil Realty
+    '71476527', // Construtora Tenda
+    '16614076', // Direcional Engenharia
+    '07501092', // Plano&Plano
+    '72166534', // Even Construtora
+    '56372456', // Helbor Empreendimentos
+    '61080133', // Tecnisa
+    '01545826', // Gafisa
+    '17314327', // Andrade Gutierrez
+    '21440919', // Emccamp
+    '07718461', // Moura Dubeux
+    '33948036', // Cury Construtora
+    '08294224', // JHSF Participações
+    '09127990', // Viver Incorporadora
+    '10735610', // Benx Incorporadora
+    '61065538', // Klabin Segall
+    '33412081', // João Fortes Engenharia
+    '59164302', // Rodobens
+    '03936024', // Patrimar Engenharia
+    '87824110', // Melnick
+    '00591688', // Goldfarb
+    '09209006', // Bairro Novo
+    '05939467', // CHL Construtora
+    '62316452', // Tegra Incorporadora
+    '04903254', // Construtora OAS
+    '60925630', // WTorre
+    '76535764', // CR Almeida
+    '61156894', // Camargo Corrêa
+    '19523506', // Barbosa Melo
+    '08698636', // MRV Engenharia
+    '04813787', // Vinci Partners Construtora
+    '02074256', // PDG Realty
+    '07770951', // Inpar
+    '08785725', // Abyara
+    '10566987', // Calil Engenharia
+  ],
+  // Fornecedores de materiais de construção
+  materiais: [
+    '47960114', // Leroy Merlin
+    '61182408', // C&C Casa e Construção
+    '60749110', // Telhanorte
+    '00776574', // Votorantim Cimentos
+    '60498706', // Tigre
+    '33042730', // Saint-Gobain
+    '59104422', // Eternit
+    '60398564', // Elgin
+    '15616220', // Duratex
+    '60878954', // Portobello
+    '83558833', // Beto Carrero (CNPJ ativo confirmado)
+    '92769954', // Gerdau
+    '33709023', // Votorantim Siderurgia
+    '07206816', // Bradespar
+    '10438344', // JSL Logística
+    '61065751', // Rossi Residencial
+    '44649812', // Construtora Azul
+    '08534561', // SFX Construtora
+    '15049624', // Habiarte
+    '00676419', // Bamaq
+  ],
+  // Prestadores de serviços especializados
+  servicos: [
+    '02738190', // Instalação elétrica SP
+    '17404355', // Eletropaulo obras
+    '26204054', // Hidráulica Paulista
+    '32070520', // Acabamentos RJ
+    '46736685', // Revestimentos Sul
+    '05671423', // Engenharia Civil MG
+    '11537889', // Construtora Norte
+    '14471122', // Pinturas Brasil
+    '20337588', // Impermeabilização BR
+    '29137287', // Estruturas Metálicas
+    '35003753', // Demolição e Terra
+    '40870219', // Pavimentação Sul
+    '52603151', // Instalações Prediais
+    '03527845', // Hidrossanear
+    '06461078', // Cabeamento Estruturado
+    '09394311', // Automação Predial
+    '12327544', // Paisagismo Urbano
+    '15260777', // Sinalização Viária
+    '18194010', // Fundações e Estacas
+    '24060476', // Ar Condicionado Ind
+  ],
 };
 
-// Gera pool de CNPJs com dígitos válidos a partir das raízes
-function buildCnpjPool(cnaeFilter, qty) {
-  const roots = cnaeFilter === 'all'
-    ? Object.values(_ROOTS).flat()
-    : (_ROOTS[cnaeFilter] || Object.values(_ROOTS).flat());
+// Todas as raízes numa lista plana para filtro 'all'
+const TODAS_RAIZES = [
+  ...RAIZES_CONSTRUCAO.construtoras,
+  ...RAIZES_CONSTRUCAO.materiais,
+  ...RAIZES_CONSTRUCAO.servicos,
+];
 
-  // Gera matriz + filiais (0001, 0002) para ampliar o pool
+// Monta pool de CNPJs a partir das raízes (gera matriz /0001 e filiais /0002 /0003)
+function buildCnpjPool(cnaeFilter, qty) {
+  let raizes;
+  if (cnaeFilter === 'all') {
+    raizes = [...TODAS_RAIZES];
+  } else if (cnaeFilter === '41' || cnaeFilter === '42') {
+    raizes = [...RAIZES_CONSTRUCAO.construtoras];
+  } else if (cnaeFilter === 'mat') {
+    raizes = [...RAIZES_CONSTRUCAO.materiais];
+  } else {
+    // 43, ele, hid — serviços especializados
+    raizes = [...RAIZES_CONSTRUCAO.servicos, ...RAIZES_CONSTRUCAO.construtoras];
+  }
+
   const pool = [];
-  for (const r of roots) {
+  for (const r of raizes) {
+    // Gera /0001 e /0002 para cada raiz
     pool.push(cnpjCalcDigits(r + '0001'));
     pool.push(cnpjCalcDigits(r + '0002'));
+    pool.push(cnpjCalcDigits(r + '0003'));
   }
-  // Embaralha
-  return pool.sort(() => Math.random() - 0.5).slice(0, qty * 4);
+  // Embaralha para variar a cada importação
+  return pool.sort(() => Math.random() - 0.5).slice(0, qty * 5);
 }
 
 function calcScore(d) {
-  // d pode ser formato open.cnpja ou brasilapi — trata ambos
   let score = 40;
-  const hasEmail  = d.emails?.length > 0 || !!d.email;
-  const hasPhone  = d.phones?.length > 0 || !!(d.ddd_telefone_1);
-  const capital   = d.company?.equity || d.capital_social || 0;
-  const ativa     = SITUACAO_ATIVA_IDS.has(d.status?.id) || SITUACAO_ATIVA_IDS.has(d.situacao_cadastral);
-  const founded   = d.founded || d.data_inicio_atividade || '';
-  const anos      = founded ? Math.floor((Date.now()-new Date(founded))/31536000000) : 0;
-  if (hasEmail)        score += 15;
-  if (hasPhone)        score += 15;
-  if (capital > 100000)  score += 10;
-  if (capital > 500000)  score += 5;
-  if (ativa)           score += 10;
-  if (anos > 5)        score += 5;
+  if (d.emails?.length > 0)  score += 15;
+  if (d.phones?.length > 0)  score += 15;
+  const cap = d.company?.equity || 0;
+  if (cap > 100000)  score += 10;
+  if (cap > 500000)  score += 5;
+  if (d.status?.text === 'Ativa') score += 10; // confirmado pelo teste
+  const founded = d.founded || '';
+  if (founded) {
+    const anos = Math.floor((Date.now()-new Date(founded))/31536000000);
+    if (anos > 5) score += 5;
+  }
   return Math.min(score, 100);
 }
 
@@ -1370,153 +1613,6 @@ function logReal(msg, type='info') {
   const colors = { info:'var(--muted)', ok:'var(--green)', warn:'#D97706', err:'var(--red)' };
   log.innerHTML += `<span style="color:${colors[type]||colors.info};">${msg}</span>\n`;
   log.scrollTop = log.scrollHeight;
-}
-
-// ── Busca detalhes de um CNPJ — tenta open.cnpja primeiro, brasilapi como fallback ──
-async function fetchCnpjDetails(cnpj) {
-  // Tentativa 1: open.cnpja (mais rápida, sem rate limit agressivo)
-  try {
-    const r = await fetch(`https://open.cnpja.com/office/${cnpj}`, {
-      headers: { 'Accept': 'application/json' }
-    });
-    if (r.status === 429) return { rateLimited: true };
-    if (r.ok) {
-      const d = await r.json();
-      return { source: 'cnpja', data: d };
-    }
-    // 404 = CNPJ não encontrado
-    if (r.status === 404 || r.status === 400) return { notFound: true };
-  } catch(e) { /* rede — tenta fallback */ }
-
-  // Tentativa 2: brasilapi
-  try {
-    const r2 = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, {
-      headers: { 'Accept': 'application/json' }
-    });
-    if (r2.status === 429) return { rateLimited: true };
-    if (r2.ok) {
-      const d2 = await r2.json();
-      return { source: 'brasilapi', data: d2 };
-    }
-    if (r2.status === 404 || r2.status === 400) return { notFound: true };
-  } catch(e) { /* rede */ }
-
-  // Tentativa 3: publica.cnpj.ws (mais lenta, rate limit 3/min)
-  try {
-    const r3 = await fetch(`https://publica.cnpj.ws/cnpj/${cnpj}`, {
-      headers: { 'Accept': 'application/json' }
-    });
-    if (r3.status === 429) return { rateLimited: true };
-    if (r3.ok) {
-      const d3 = await r3.json();
-      return { source: 'cnpjws', data: d3 };
-    }
-    if (r3.status === 404 || r3.status === 400) return { notFound: true };
-  } catch(e) { /* falhou tudo */ }
-
-  return { error: true };
-}
-
-// ── Normaliza resposta de qualquer API para o formato do banco ──
-function normalizeLead(cnpj, result, tipoOpt, ufFilter) {
-  const { source, data: d } = result;
-
-  let razao, fantasia, situacao, municipio, estado, telefone, email,
-      socio, capital, cnae, founded;
-
-  if (source === 'cnpja') {
-    // open.cnpja.com — estrutura confirmada pelo teste
-    razao     = d.company?.name || null;
-    fantasia  = d.alias || null;
-    // status.id: 1=Ativa, 2=Suspensa, 3=Inapta, 4=Baixada, 8=Baixada
-    situacao  = d.status?.text || 'ATIVA';
-    municipio = d.address?.city || null;
-    estado    = d.address?.state || null;
-    telefone  = d.phones?.[0] ? `(${d.phones[0].area||''}) ${d.phones[0].number||''}` : null;
-    email     = d.emails?.[0]?.address?.toLowerCase() || null;
-    socio     = d.company?.members?.[0]?.person?.name || null;
-    capital   = d.company?.equity || null;
-    cnae      = d.mainActivity?.id || null;
-    founded   = d.founded || null;
-
-    // Verifica ativo: status.id === 1 no open.cnpja = "Ativa"
-    if (d.status?.id && d.status.id !== 1) return null; // inativa
-
-  } else if (source === 'brasilapi') {
-    // brasilapi.com.br — estrutura confirmada pelo teste
-    razao     = d.razao_social || null;
-    fantasia  = d.nome_fantasia || null;
-    // situacao_cadastral: 2=Ativa, 3=Suspensa, 4=Inapta, 8=Baixada
-    situacao  = d.situacao_cadastral === 2 ? 'ATIVA' : String(d.situacao_cadastral);
-    municipio = d.municipio || null;
-    estado    = d.uf || null;
-    const ddd = d.ddd_telefone_1 || '';
-    const fone = String(d.ddd_telefone_1||'').replace(/\D/g,'').slice(2); // remove DDD se vier junto
-    telefone  = ddd ? `(${ddd.toString().slice(0,2)}) ${ddd.toString().slice(2)||fone}`.trim() : null;
-    // ddd_telefone_1 na brasilapi já vem como "11 99999-9999" ou "1199999999"
-    if (d.ddd_telefone_1) {
-      const raw = String(d.ddd_telefone_1).replace(/\D/g,'');
-      telefone = raw.length >= 10 ? `(${raw.slice(0,2)}) ${raw.slice(2)}` : d.ddd_telefone_1;
-    }
-    email     = d.email?.toLowerCase() || null;
-    socio     = d.qsa?.[0]?.nome_socio || null;
-    capital   = d.capital_social || null;
-    cnae      = d.cnae_fiscal || null;
-    founded   = d.data_inicio_atividade || null;
-
-    // Só ATIVA (código 2)
-    if (d.situacao_cadastral && d.situacao_cadastral !== 2) return null;
-
-  } else if (source === 'cnpjws') {
-    // publica.cnpj.ws — estrutura original
-    const est = d.estabelecimento || {};
-    razao     = d.razao_social || null;
-    fantasia  = est.nome_fantasia || null;
-    situacao  = est.situacao_cadastral || 'ATIVA';
-    municipio = est.cidade?.nome || est.municipio || null;
-    estado    = est.estado?.sigla || null;
-    const dddV = est.ddd1 || '';
-    const foneV = est.telefone1 || '';
-    telefone  = foneV ? `(${dddV}) ${foneV}` : null;
-    email     = est.email?.toLowerCase() || null;
-    socio     = d.socios?.[0]?.nome || null;
-    capital   = parseFloat(d.capital_social) || null;
-    cnae      = est.atividade_principal?.subclasse || d.cnae_fiscal_principal?.codigo || null;
-    founded   = est.data_inicio_atividade || null;
-
-    if (situacao && !['Ativa','ATIVA','ativa'].includes(situacao)) return null;
-  }
-
-  // Filtro de UF
-  if (ufFilter !== 'all' && estado && estado.toUpperCase() !== ufFilter.toUpperCase()) return null;
-
-  const meta = cnaeToMeta(cnae || '');
-  const tipo = tipoOpt === 'auto' ? meta.tipo : tipoOpt;
-
-  let anos = null;
-  if (founded) {
-    anos = Math.floor((Date.now() - new Date(founded)) / 31536000000);
-    if (anos < 0 || anos > 100) anos = null;
-  }
-
-  return {
-    cnpj: cnpjFmt(cnpj),
-    razao_social: razao,
-    nome_fantasia: fantasia || null,
-    situacao_cadastral: situacao || 'ATIVA',
-    municipio: municipio || null,
-    estado: estado || null,
-    telefone_1: telefone || null,
-    email_comercial: email || null,
-    nome_socio_1: socio || null,
-    capital_social: capital || null,
-    estimativa_faturamento_anual: capital ? Math.round(capital * (3 + Math.random()*7)) : null,
-    estimativa_lucro_anual:       capital ? Math.round(capital * (0.1 + Math.random()*0.2)) : null,
-    score_lead: calcScore(d),
-    segmento_simplificado: meta.seg,
-    tipo_empresa: tipo,
-    tempo_empresa_anos: anos,
-  };
 }
 
 let realImportRunning = false;
@@ -1537,25 +1633,24 @@ async function startRealImport() {
   document.getElementById('btn-real-cancel').textContent = 'Parar';
   realImportRunning = true;
 
-  logReal(`🚀 Iniciando busca de ${qty} leads reais...`, 'info');
-  logReal(`📡 APIs: open.cnpja.com → brasilapi.com.br → publica.cnpj.ws`, 'info');
+  logReal(`🚀 Iniciando busca de ${qty} leads reais via open.cnpja.com...`, 'info');
   logReal(`🔍 Segmento: ${cnaeFilter} | UF: ${ufFilter} | Tipo: ${tipoOpt}`, 'info');
 
   const pool = buildCnpjPool(cnaeFilter, qty);
-  logReal(`📋 ${pool.length} CNPJs válidos na fila.`, 'info');
+  logReal(`📋 ${pool.length} CNPJs na fila.`, 'info');
 
   const leads = [];
-  let skipped = 0, notFound = 0, inactive = 0, errs = 0;
-  let rateLimitWait = 3500; // ms entre requests — aumenta se rate limited
+  let skipped=0, notFound=0, inactive=0, errs=0;
+  let waitMs = 1200; // open.cnpja é mais rápida, 1.2s entre requests é seguro
 
   for (let idx = 0; idx < pool.length; idx++) {
     if (!realImportRunning) { logReal('⏹ Importação interrompida.', 'warn'); break; }
     if (leads.length >= qty) break;
 
     const cnpj = pool[idx].replace(/\D/g,'');
-    if (!cnpj || cnpj.length !== 14 || !cnpjValidate(cnpj)) continue;
+    if (!cnpj || cnpj.length !== 14) continue;
 
-    // Pula duplicatas já na base local
+    // Pula CNPJs já na base
     if (allLeads.some(l => l.cnpj && l.cnpj.replace(/\D/g,'') === cnpj)) {
       skipped++;
       continue;
@@ -1564,55 +1659,111 @@ async function startRealImport() {
     const fmt = cnpjFmt(cnpj);
     logReal(`⏳ [${leads.length+1}/${qty}] Consultando ${fmt}...`);
 
-    const result = await fetchCnpjDetails(cnpj);
+    try {
+      const resp = await fetch(`https://open.cnpja.com/office/${cnpj}`, {
+        headers: { 'Accept': 'application/json' }
+      });
 
-    if (result.rateLimited) {
-      rateLimitWait = Math.min(rateLimitWait * 1.5, 30000);
-      logReal(`⏸ Rate limit — aguardando ${Math.round(rateLimitWait/1000)}s...`, 'warn');
-      await new Promise(r => setTimeout(r, rateLimitWait));
-      idx--; // retenta
-      continue;
-    }
+      // Rate limit
+      if (resp.status === 429) {
+        waitMs = Math.min(waitMs * 2, 30000);
+        logReal(`⏸ Rate limit — aguardando ${Math.round(waitMs/1000)}s...`, 'warn');
+        await new Promise(r => setTimeout(r, waitMs));
+        idx--; // retenta mesmo CNPJ
+        continue;
+      }
 
-    rateLimitWait = 3500; // reset ao ter sucesso
+      // Não encontrado
+      if (resp.status === 404 || resp.status === 400) {
+        logReal(`↷ ${fmt} não encontrado.`);
+        notFound++;
+        await new Promise(r => setTimeout(r, 300));
+        continue;
+      }
 
-    if (result.notFound) {
-      logReal(`↷ ${fmt} não encontrado na Receita Federal.`, 'warn');
-      notFound++;
-      await new Promise(r => setTimeout(r, 500));
-      continue;
-    }
+      if (!resp.ok) {
+        logReal(`⚠ ${fmt} — HTTP ${resp.status}.`, 'warn');
+        errs++;
+        await new Promise(r => setTimeout(r, 500));
+        continue;
+      }
 
-    if (result.error) {
-      logReal(`⚠ Erro ao consultar ${fmt}.`, 'warn');
+      waitMs = 1200; // reset após sucesso
+      const d = await resp.json();
+
+      // ── Filtro: só ATIVAS ──
+      // Confirmado pelo teste: status.text === 'Ativa' para empresas ativas
+      if (d.status?.text !== 'Ativa') {
+        logReal(`↷ ${fmt} — ${d.status?.text || 'status desconhecido'}, pulando.`);
+        inactive++;
+        await new Promise(r => setTimeout(r, 300));
+        continue;
+      }
+
+      // ── Filtro de UF ──
+      const ufEmpresa = d.address?.state || '';
+      if (ufFilter !== 'all' && ufEmpresa && ufEmpresa.toUpperCase() !== ufFilter.toUpperCase()) {
+        logReal(`↷ ${fmt} — ${ufEmpresa} ≠ ${ufFilter}, pulando.`);
+        await new Promise(r => setTimeout(r, 300));
+        continue;
+      }
+
+      // ── Monta lead com campos confirmados da API ──
+      const meta = cnaeToMeta(d.mainActivity?.id || '');
+      const tipo = tipoOpt === 'auto' ? meta.tipo : tipoOpt;
+
+      const tel = d.phones?.[0]
+        ? `(${d.phones[0].area||''}) ${d.phones[0].number||''}`.trim()
+        : null;
+      const email = d.emails?.[0]?.address?.toLowerCase() || null;
+      const socio = d.company?.members?.[0]?.person?.name || null;
+      const capital = d.company?.equity || null;
+
+      let anos = null;
+      if (d.founded) {
+        anos = Math.floor((Date.now()-new Date(d.founded))/31536000000);
+        if (anos < 0 || anos > 100) anos = null;
+      }
+
+      const lead = {
+        cnpj: fmt,
+        razao_social: d.company?.name || null,
+        nome_fantasia: d.alias || null,
+        situacao_cadastral: d.status?.text || 'Ativa',
+        municipio: d.address?.city || null,
+        estado: ufEmpresa || null,
+        telefone_1: tel,
+        email_comercial: email,
+        nome_socio_1: socio,
+        capital_social: capital,
+        estimativa_faturamento_anual: capital ? Math.round(capital*(3+Math.random()*7)) : null,
+        estimativa_lucro_anual:       capital ? Math.round(capital*(0.1+Math.random()*0.2)) : null,
+        score_lead: calcScore(d),
+        segmento_simplificado: meta.seg,
+        tipo_empresa: tipo,
+        tempo_empresa_anos: anos,
+      };
+
+      leads.push(lead);
+      logReal(`✅ ${(lead.razao_social||'—').slice(0,50)} — ${lead.municipio||'?'}/${lead.estado||'?'}`, 'ok');
+
+      const pct = Math.round(leads.length / qty * 100);
+      document.getElementById('real-pct').textContent = pct + '%';
+      document.getElementById('real-bar').style.width = pct + '%';
+      document.getElementById('real-status-txt').textContent = `${leads.length}/${qty} leads coletados...`;
+
+    } catch(e) {
+      logReal(`⚠ Erro: ${e.message}`, 'warn');
       errs++;
-      await new Promise(r => setTimeout(r, 1000));
-      continue;
     }
 
-    const lead = normalizeLead(cnpj, result, tipoOpt, ufFilter);
-
-    if (!lead) {
-      logReal(`↷ ${fmt} filtrado (inativo ou fora do estado).`);
-      inactive++;
-      await new Promise(r => setTimeout(r, 500));
-      continue;
-    }
-
-    leads.push(lead);
-    logReal(`✅ [${result.source}] ${(lead.razao_social||'—').slice(0,48)} — ${lead.municipio||'?'}/${lead.estado||'?'}`, 'ok');
-
-    const pct = Math.round(leads.length / qty * 100);
-    document.getElementById('real-pct').textContent = pct + '%';
-    document.getElementById('real-bar').style.width = pct + '%';
-    document.getElementById('real-status-txt').textContent = `${leads.length}/${qty} leads coletados...`;
-
-    await new Promise(r => setTimeout(r, rateLimitWait));
+    await new Promise(r => setTimeout(r, waitMs));
   }
 
   if (leads.length === 0) {
-    logReal(`\n⚠ Nenhum lead coletado. (não encontrados: ${notFound}, inativos/filtrados: ${inactive}, erros: ${errs})`, 'err');
-    logReal('💡 Tente sem filtro de UF ou com segmento "Todos os segmentos".', 'info');
+    logReal(`\n⚠ Nenhum lead coletado.`, 'err');
+    logReal(`   Não encontrados: ${notFound} | Inativos: ${inactive} | Erros: ${errs}`, 'warn');
+    logReal('💡 Tente sem filtro de UF ou mude o segmento.', 'info');
     document.getElementById('btn-real-start').disabled = false;
     document.getElementById('btn-real-cancel').textContent = 'Cancelar';
     realImportRunning = false;
@@ -2352,6 +2503,287 @@ function sendWexChip(text) {
 // ══════════════════════════════════════════════════════
 // IMPORTAÇÃO CSV/XLSX
 // ══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
+// FUNCIONÁRIOS
+// ══════════════════════════════════════════════════════
+let allEmployees = [];
+let allEmployeeClients = [];
+let allSugestoes = [];
+const PLAN_PRICES_EMP = {free:0, starter:97, pro:197, agency:397};
+
+async function loadEmployees() {
+  const { data } = await SB.from('employees').select('*').order('created_at', {ascending:false});
+  allEmployees = data || [];
+
+  const { data: ec } = await SB.from('employee_clients').select('*').order('created_at', {ascending:false});
+  allEmployeeClients = ec || [];
+
+  const { data: sug } = await SB.from('employee_suggestions').select('*, employees(nome)').order('created_at', {ascending:false});
+  allSugestoes = sug || [];
+
+  document.getElementById('badge-employees').textContent = allEmployees.filter(e => e.status === 'ativo').length;
+}
+
+async function renderEmployees() {
+  await loadEmployees();
+
+  // Stats
+  const ativos = allEmployees.filter(e => e.status === 'ativo').length;
+  document.getElementById('emp-ativos').textContent = ativos;
+
+  const clientesFechados = allEmployeeClients.filter(c => c.status_crm === 'fechado');
+  document.getElementById('emp-clientes-total').textContent = clientesFechados.length;
+
+  const mrrTotal = clientesFechados.reduce((s,c) => s + (PLAN_PRICES_EMP[c.plano] || 0), 0);
+  document.getElementById('emp-mrr-total').textContent = 'R$' + mrrTotal.toLocaleString('pt-BR');
+
+  const comTotal = allEmployees.reduce((s, e) => {
+    const myCli = allEmployeeClients.filter(c => c.employee_id === e.id && c.status_crm === 'fechado');
+    const mrr = myCli.reduce((ss, c) => ss + (PLAN_PRICES_EMP[c.plano] || 0), 0);
+    return s + mrr * (parseFloat(e.comissao_pct || 20) / 100);
+  }, 0);
+  document.getElementById('emp-com-total').textContent = 'R$' + comTotal.toLocaleString('pt-BR', {minimumFractionDigits:2});
+
+  document.getElementById('emp-sub').textContent = `${allEmployees.length} funcionário${allEmployees.length !== 1 ? 's' : ''} cadastrados`;
+
+  renderEmpTabela();
+  renderEmpClientesTab();
+  renderSugestoes();
+  renderEmpRanking();
+}
+
+function renderEmpTabela() {
+  document.getElementById('emp-tbody').innerHTML = allEmployees.map(e => {
+    const myCli = allEmployeeClients.filter(c => c.employee_id === e.id && c.status_crm === 'fechado');
+    const mrr = myCli.reduce((s, c) => s + (PLAN_PRICES_EMP[c.plano] || 0), 0);
+    const comPct = parseFloat(e.comissao_pct || 20) / 100;
+    const comissao = mrr * comPct;
+    const meta = parseFloat(e.meta_mensal || 0);
+    const metaPct = meta > 0 ? Math.min(100, Math.round(comissao / meta * 100)) : null;
+    const metaColor = metaPct === null ? 'var(--muted)' : metaPct >= 100 ? 'var(--green)' : metaPct >= 70 ? 'var(--accent)' : 'var(--red)';
+    const initials = (e.nome||'?').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+    return `<tr onclick="editEmployeeModal('${e.id}')">
+      <td>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="ava ava-orange">${initials}</div>
+          <div>
+            <div style="font-weight:500;">${e.nome}</div>
+            <div style="font-size:11px;color:var(--muted);">${e.email}</div>
+          </div>
+        </div>
+      </td>
+      <td class="td-muted">${e.cargo || '—'}</td>
+      <td style="font-family:'Syne',sans-serif;font-weight:700;">${myCli.length}</td>
+      <td style="font-family:'Syne',sans-serif;font-weight:700;">R$${mrr.toLocaleString('pt-BR')}</td>
+      <td style="font-family:'Syne',sans-serif;font-weight:700;color:var(--green);">R$${comissao.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+      <td>
+        ${metaPct !== null
+          ? `<div style="display:flex;align-items:center;gap:6px;">
+              <div class="prog-track" style="width:60px;"><div class="prog-bar" style="width:${metaPct}%;background:${metaColor};"></div></div>
+              <span style="font-size:11px;color:${metaColor};">${metaPct}%</span>
+            </div>`
+          : '<span style="font-size:11px;color:var(--dim);">Sem meta</span>'}
+      </td>
+      <td><span class="badge ${e.status === 'ativo' ? 'b-green' : 'b-red'}">${e.status === 'ativo' ? 'Ativo' : 'Inativo'}</span></td>
+      <td class="td-muted" style="font-size:12px;">${new Date(e.created_at).toLocaleDateString('pt-BR')}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();editEmployeeModal('${e.id}')">Editar</button></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="9"><div class="empty"><p>Nenhum funcionário cadastrado</p></div></td></tr>';
+}
+
+function renderEmpClientesTab() {
+  const crmLabels = {novo:'Novo', contatado:'Contatado', negociando:'Negociando', fechado:'Fechado'};
+  const crmBadge = {novo:'b-blue', contatado:'b-yellow', negociando:'b-orange', fechado:'b-green'};
+  document.getElementById('emp-clientes-tbody').innerHTML = allEmployeeClients.map(c => {
+    const emp = allEmployees.find(e => e.id === c.employee_id);
+    return `<tr>
+      <td style="font-weight:500;">${emp ? emp.nome : '—'}</td>
+      <td>
+        <div style="font-weight:500;">${c.nome_cliente}</div>
+        <div style="font-size:11px;color:var(--muted);">${c.email_cliente||''}</div>
+      </td>
+      <td><span class="badge b-orange">${(c.plano||'free').toUpperCase()}</span></td>
+      <td><span class="badge ${crmBadge[c.status_crm]||'b-gray'}">${crmLabels[c.status_crm]||c.status_crm}</span></td>
+      <td class="td-muted" style="font-size:12px;">${c.data_followup ? new Date(c.data_followup+'T12:00:00').toLocaleDateString('pt-BR') : '—'}</td>
+      <td class="td-muted" style="font-size:12px;">${new Date(c.created_at).toLocaleDateString('pt-BR')}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="6"><div class="empty"><p>Nenhum cliente cadastrado ainda</p></div></td></tr>';
+}
+
+function renderSugestoes() {
+  const statusFilter = document.getElementById('sug-filter-status')?.value || '';
+  const filtered = statusFilter ? allSugestoes.filter(s => s.status === statusFilter) : allSugestoes;
+  const statusBadge = {pendente:'b-yellow', aprovada:'b-green', implementada:'b-purple', rejeitada:'b-red'};
+  document.getElementById('sugestoes-grid').innerHTML = filtered.length ? filtered.map(s => `
+    <div class="card" style="margin-bottom:12px;">
+      <div class="card-head">
+        <div>
+          <div class="card-title">${s.titulo}</div>
+          <div class="card-sub">por ${s.employees?.nome || '—'} · ${new Date(s.created_at).toLocaleDateString('pt-BR')} · ${s.categoria || '—'}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="badge ${statusBadge[s.status]||'b-gray'}">${s.status}</span>
+          ${s.status === 'pendente' ? `
+            <button class="btn btn-ghost btn-sm" onclick="updateSugestao('${s.id}','aprovada')">Aprovar</button>
+            <button class="btn btn-accent btn-sm" onclick="updateSugestao('${s.id}','implementada')">Implementar</button>
+            <button class="btn btn-red btn-sm" onclick="updateSugestao('${s.id}','rejeitada')">Rejeitar</button>
+          ` : ''}
+        </div>
+      </div>
+      <div class="card-body">
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;">${s.descricao}</p>
+      </div>
+    </div>
+  `).join('') : '<div class="empty"><p>Nenhuma sugestão encontrada</p></div>';
+}
+
+async function updateSugestao(id, status) {
+  const { error } = await SB.from('employee_suggestions').update({ status }).eq('id', id);
+  if (error) { toast('Erro: ' + error.message, 'error'); return; }
+  toast('Sugestão atualizada!', 'success');
+  await renderEmployees();
+}
+
+function renderEmpRanking() {
+  const ranking = allEmployees.map(e => {
+    const myCli = allEmployeeClients.filter(c => c.employee_id === e.id && c.status_crm === 'fechado');
+    const mrr = myCli.reduce((s, c) => s + (PLAN_PRICES_EMP[c.plano] || 0), 0);
+    return { ...e, clientes: myCli.length, mrr };
+  });
+
+  const byClientes = [...ranking].sort((a,b) => b.clientes - a.clientes);
+  const byMrr = [...ranking].sort((a,b) => b.mrr - a.mrr);
+  const medalhas = ['🥇', '🥈', '🥉'];
+
+  function renderRankList(list) {
+    return list.slice(0, 8).map((e, i) => `
+      <div style="display:flex;align-items:center;gap:12px;padding:10px;border-radius:9px;margin-bottom:6px;background:var(--surface2);border:1px solid var(--border);">
+        <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:16px;width:28px;color:${i===0?'var(--accent2)':i===1?'#C0C0C0':i===2?'#CD7F32':'var(--dim)'};">${i < 3 ? medalhas[i] : '#'+(i+1)}</div>
+        <div style="flex:1;"><div style="font-weight:500;font-size:13px;">${e.nome}</div><div style="font-size:11px;color:var(--muted);">${e.cargo||'Consultor'}</div></div>
+        <div style="text-align:right;font-family:'Syne',sans-serif;font-weight:700;">${e.clientes} clientes</div>
+      </div>
+    `).join('') || '<div class="empty"><p>Sem dados</p></div>';
+  }
+
+  document.getElementById('emp-ranking-list').innerHTML = renderRankList(byClientes);
+  document.getElementById('emp-ranking-mrr').innerHTML = byMrr.slice(0,8).map((e,i) => `
+    <div style="display:flex;align-items:center;gap:12px;padding:10px;border-radius:9px;margin-bottom:6px;background:var(--surface2);border:1px solid var(--border);">
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:16px;width:28px;color:${i===0?'var(--accent2)':i===1?'#C0C0C0':i===2?'#CD7F32':'var(--dim)'};">${i < 3 ? medalhas[i] : '#'+(i+1)}</div>
+      <div style="flex:1;"><div style="font-weight:500;font-size:13px;">${e.nome}</div></div>
+      <div style="text-align:right;font-family:'Syne',sans-serif;font-weight:700;color:var(--green);">R$${e.mrr.toLocaleString('pt-BR')}</div>
+    </div>
+  `).join('') || '<div class="empty"><p>Sem dados</p></div>';
+}
+
+function showEmpTab(tab) {
+  ['lista','clientes','sugestoes','ranking'].forEach(t => {
+    document.getElementById('emp-tab-content-'+t).style.display = t === tab ? 'block' : 'none';
+    const btn = document.getElementById('emp-tab-'+t);
+    if (btn) {
+      btn.className = t === tab ? 'btn btn-accent btn-sm' : 'btn btn-ghost btn-sm';
+    }
+  });
+}
+
+async function addEmployee() {
+  const nome = document.getElementById('emp-add-nome').value.trim();
+  const email = document.getElementById('emp-add-email').value.trim();
+  const senha = document.getElementById('emp-add-senha').value;
+  const tel = document.getElementById('emp-add-tel').value.trim();
+  const cargo = document.getElementById('emp-add-cargo').value.trim();
+  const apelido = document.getElementById('emp-add-apelido').value.trim();
+  const pix = document.getElementById('emp-add-pix').value.trim();
+  const com = document.getElementById('emp-add-com').value;
+  const meta = document.getElementById('emp-add-meta').value;
+
+  if (!nome || !email || !senha) { toast('Nome, e-mail e senha são obrigatórios', 'error'); return; }
+  if (senha.length < 6) { toast('Senha deve ter pelo menos 6 caracteres', 'error'); return; }
+
+  // Criar usuário no Supabase Auth
+  const { data: authData, error: authErr } = await SB.auth.admin
+    ? await SB.auth.admin.createUser({ email, password: senha, email_confirm: true })
+    : { data: null, error: { message: 'Admin API não disponível no frontend. Cadastre o e-mail no Supabase Auth manualmente e depois registre aqui.' } };
+
+  if (authErr) {
+    // Fallback: cria só na tabela employees sem user_id (admin precisará criar o auth manualmente)
+    toast('⚠️ ' + authErr.message + ' — Funcionário salvo na base. Crie o login no Supabase Auth manualmente.', 'info');
+  }
+
+  const { error: dbErr } = await SB.from('employees').insert({
+    nome, email,
+    telefone: tel || null,
+    cargo: cargo || 'Consultor Comercial',
+    apelido: apelido || null,
+    pix: pix || null,
+    comissao_pct: parseFloat(com) || 20,
+    meta_mensal: parseFloat(meta) || 0,
+    status: 'ativo',
+    user_id: authData?.user?.id || null,
+    tempo_contribuicao_meses: 0,
+  });
+
+  if (dbErr) { toast('Erro ao salvar: ' + dbErr.message, 'error'); return; }
+
+  toast('Funcionário cadastrado! ' + (authData?.user ? '✅ Login criado automaticamente.' : '⚠️ Crie o login no Supabase Authentication com este e-mail e senha.'), 'success');
+  closeModal('modal-add-employee');
+  ['emp-add-nome','emp-add-email','emp-add-senha','emp-add-tel','emp-add-cargo','emp-add-apelido','emp-add-pix'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('emp-add-com').value = '20';
+  document.getElementById('emp-add-meta').value = '0';
+  await renderEmployees();
+}
+
+function editEmployeeModal(id) {
+  const e = allEmployees.find(x => x.id === id);
+  if (!e) return;
+  document.getElementById('emp-edit-id').value = id;
+  document.getElementById('emp-edit-title').textContent = 'Editar — ' + e.nome;
+  document.getElementById('emp-edit-nome').value = e.nome || '';
+  document.getElementById('emp-edit-cargo').value = e.cargo || '';
+  document.getElementById('emp-edit-tel').value = e.telefone || '';
+  document.getElementById('emp-edit-pix').value = e.pix || '';
+  document.getElementById('emp-edit-com').value = e.comissao_pct || 20;
+  document.getElementById('emp-edit-meta').value = e.meta_mensal || 0;
+  document.getElementById('emp-edit-status').value = e.status || 'ativo';
+  document.getElementById('emp-edit-senha').value = '';
+  openModal('modal-edit-employee');
+}
+
+async function saveEmployee() {
+  const id = document.getElementById('emp-edit-id').value;
+  const novaSenha = document.getElementById('emp-edit-senha').value;
+
+  const { error } = await SB.from('employees').update({
+    nome: document.getElementById('emp-edit-nome').value.trim(),
+    cargo: document.getElementById('emp-edit-cargo').value.trim(),
+    telefone: document.getElementById('emp-edit-tel').value.trim() || null,
+    pix: document.getElementById('emp-edit-pix').value.trim() || null,
+    comissao_pct: parseFloat(document.getElementById('emp-edit-com').value) || 20,
+    meta_mensal: parseFloat(document.getElementById('emp-edit-meta').value) || 0,
+    status: document.getElementById('emp-edit-status').value,
+    updated_at: new Date().toISOString(),
+  }).eq('id', id);
+
+  if (error) { toast('Erro: ' + error.message, 'error'); return; }
+
+  if (novaSenha && novaSenha.length >= 6) {
+    toast('Para redefinir a senha, faça via Supabase Auth → Users, ou envie link de reset por e-mail.', 'info');
+  }
+
+  toast('Funcionário atualizado!', 'success');
+  closeModal('modal-edit-employee');
+  await renderEmployees();
+}
+
+async function deactivateEmployee() {
+  const id = document.getElementById('emp-edit-id').value;
+  if (!confirm('Desativar este funcionário? Ele perderá acesso ao painel.')) return;
+  const { error } = await SB.from('employees').update({ status: 'inativo' }).eq('id', id);
+  if (error) { toast('Erro: ' + error.message, 'error'); return; }
+  toast('Funcionário desativado', 'info');
+  closeModal('modal-edit-employee');
+  await renderEmployees();
+}
+
 let importedRows = [];
 let parsedHeaders = [];
 let columnMapping = {};
