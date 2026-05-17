@@ -226,6 +226,7 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
 /*  SEGMENTO TIPO badge  */
 .tipo-fornecedor{background:rgba(59,130,246,.1);color:var(--blue);}
 .tipo-construtora{background:rgba(249,115,22,.1);color:var(--accent);}
+.tipo-empreiteiro{background:rgba(16,185,129,.1);color:#059669;}
 
 /*  RESPONSIVE  */
 @media(max-width:1200px){
@@ -470,6 +471,7 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
         <option value="">Todos os tipos</option>
         <option value="fornecedor">Fornecedor</option>
         <option value="construtora">Construtora</option>
+        <option value="empreiteiro">Empreiteiro</option>
 </select>
       <button class="btn btn-accent btn-sm" onclick="openModal('modal-add-user')">
         <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -595,6 +597,7 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
         <option value="">Tipo de empresa</option>
         <option value="construtora">Construtora</option>
         <option value="fornecedor">Fornecedor</option>
+        <option value="empreiteiro">Empreiteiro</option>
 </select>
       <button class="btn btn-accent btn-sm" onclick="openModal('modal-seed')">
         <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -1010,6 +1013,7 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
       <select class="form-input form-select" id="new-tipo">
         <option value="fornecedor">Fornecedor</option>
         <option value="construtora">Construtora</option>
+        <option value="empreiteiro">Empreiteiro</option>
 </select>
 </div>
     <div class="form-group"><label class="form-label">Plano</label>
@@ -1053,6 +1057,7 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
           <select class="form-input" id="le-tipo">
             <option value="construtora">Construtora</option>
             <option value="fornecedor">Fornecedor</option>
+            <option value="empreiteiro">Empreiteiro</option>
             <option value="outro">Outro</option>
           </select>
         </div>
@@ -1192,6 +1197,7 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
             <option value="auto">Detectar automaticamente</option>
             <option value="construtora">Construtora</option>
             <option value="fornecedor">Fornecedor</option>
+            <option value="empreiteiro">Empreiteiro</option>
           </select>
         </div>
       </div>
@@ -1242,6 +1248,7 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
         <option value="todos">Todos</option>
         <option value="fornecedor">Fornecedores</option>
         <option value="construtora">Construtoras</option>
+        <option value="empreiteiro">Empreiteiros</option>
 </select>
 </div>
     <div class="form-group"><label class="form-label">Plano Mínimo</label>
@@ -1948,8 +1955,8 @@ function renderUsers() {
     const pct = limit === 999999 ? 0 : Math.min(100, Math.round((u.leads_used||0)/limit*100));
     const initials = (u.name||'?').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
     const avaColor = avaColors[(u.name||'A').charCodeAt(0)%avaColors.length];
-    const tipoBadge = u.tipo === 'construtora' ? 'tipo-construtora' : (u.tipo === 'fornecedor' ? 'tipo-fornecedor' : 'b-gray');
-    const tipoLabel = u.tipo === 'construtora' ? ' Construtora' : (u.tipo === 'fornecedor' ? ' Fornecedor' : '—');
+    const tipoBadge = u.tipo === 'construtora' ? 'tipo-construtora' : (u.tipo === 'fornecedor' ? 'tipo-fornecedor' : (u.tipo === 'empreiteiro' ? 'tipo-empreiteiro' : 'b-gray'));
+    const tipoLabel = u.tipo === 'construtora' ? ' Construtora' : (u.tipo === 'fornecedor' ? ' Fornecedor' : (u.tipo === 'empreiteiro' ? ' Empreiteiro' : '—'));
     return `<tr onclick="viewUser('${u.id}')">
       <td><div style="display:flex;align-items:center;gap:10px;">
         <div class="ava ${avaColor}">${initials}</div>
@@ -2004,8 +2011,8 @@ function renderLeads() {
 
   const scoreColor = s =>s >= 85 ? 'var(--green)' : s >= 70 ? 'var(--accent2)' : 'var(--red)';
   document.getElementById('leads-tbody').innerHTML = slice.map(l =>{
-    const tipoBadge = l.tipo_empresa === 'construtora' ? 'tipo-construtora' : (l.tipo_empresa === 'fornecedor' ? 'tipo-fornecedor' : 'b-gray');
-    const tipoLabel = l.tipo_empresa === 'construtora' ? ' Construtora' : (l.tipo_empresa === 'fornecedor' ? ' Fornecedor' : '—');
+    const tipoBadge = l.tipo_empresa === 'construtora' ? 'tipo-construtora' : (l.tipo_empresa === 'fornecedor' ? 'tipo-fornecedor' : (l.tipo_empresa === 'empreiteiro' ? 'tipo-empreiteiro' : 'b-gray'));
+    const tipoLabel = l.tipo_empresa === 'construtora' ? ' Construtora' : (l.tipo_empresa === 'fornecedor' ? ' Fornecedor' : (l.tipo_empresa === 'empreiteiro' ? ' Empreiteiro' : '—'));
     return `<tr onclick="viewLead('${l.id}')">
       <td><div style="font-weight:500;font-size:13px;">${l.nome_fantasia||l.razao_social||'—'}</div><div style="font-size:10px;color:var(--dim);margin-top:1px;">${l.cnpj||''}</div></td>
       <td><span class="badge ${tipoBadge}">${tipoLabel}</span></td>
@@ -2405,8 +2412,8 @@ function viewLead(id) {
   const l = allLeads.find(x=>x.id===id);
   if (!l) return;
   document.getElementById('modal-lead-title').textContent = l.nome_fantasia || l.razao_social || 'Detalhe do Lead';
-  const tipoBadge = l.tipo_empresa === 'construtora' ? 'tipo-construtora' : 'tipo-fornecedor';
-  const tipoLabel = l.tipo_empresa === 'construtora' ? ' Construtora' : ' Fornecedor';
+  const tipoBadge = l.tipo_empresa === 'construtora' ? 'tipo-construtora' : (l.tipo_empresa === 'empreiteiro' ? 'tipo-empreiteiro' : 'tipo-fornecedor');
+  const tipoLabel = l.tipo_empresa === 'construtora' ? ' Construtora' : (l.tipo_empresa === 'empreiteiro' ? ' Empreiteiro' : ' Fornecedor');
   const fields = [
     ['CNPJ', l.cnpj],['Razão Social', l.razao_social],['Nome Fantasia', l.nome_fantasia],
     ['Situação', l.situacao_cadastral],['Cidade / UF', (l.municipio||'—') + ' · ' + (l.estado||'—')],
@@ -2556,13 +2563,14 @@ function buildWexContext() {
   const topSegs = Object.entries(segsCount).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([s,n])=>`${s}(${n})`).join(', ');
   const constrCount = allLeads.filter(l=>l.tipo_empresa==='construtora').length;
   const fornCount = allLeads.filter(l=>l.tipo_empresa==='fornecedor').length;
+  const emprCount = allLeads.filter(l=>l.tipo_empresa==='empreiteiro').length;
   return `Você é a Wex, assistente IA feminina e especialista em construção civil do wexiolead. Responda em português brasileiro. Seja direta, profissional e prática, como uma consultora experiente. Use markdown simples quando útil.
 
 DADOS DO PAINEL ADMIN (atualizados):
 - Total usuários: ${allUsers.length} (${allUsers.filter(u=>u.status==='active').length} ativos)
 - Distribuição planos: Free=${planDist.free}, Starter=${planDist.starter}, Pro=${planDist.pro}, Agency=${planDist.agency}
 - MRR: R$${mrr.toLocaleString('pt-BR')} | ARR: R$${(mrr*12).toLocaleString('pt-BR')}
-- Total leads na base: ${allLeads.length} (Construtoras: ${constrCount}, Fornecedores: ${fornCount})
+- Total leads na base: ${allLeads.length} (Construtoras: ${constrCount}, Fornecedores: ${fornCount}, Empreiteiros: ${emprCount})
 - Usuários próximos do limite (>80%): ${nearLimit}
 - Exportações totais: ${allExports.length}
 - Top segmentos: ${topSegs || 'N/A'}
