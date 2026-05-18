@@ -358,11 +358,14 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
     <div class="admin-pill">
       <div class="ava ava-orange" id="admin-ava">RM</div>
       <div class="pill-info">
-        <div class="pill-name" id="admin-name">Rone Mars</div>
-        <div class="pill-role">Administrador</div>
-</div>
-</div>
-</div>
+        <div class="pill-name" id="admin-name">Administrador</div>
+        <div class="pill-role">Admin</div>
+      </div>
+      <button onclick="adminLogout()" title="Sair" style="background:none;border:none;cursor:pointer;padding:4px;border-radius:6px;color:var(--muted);transition:color .2s;" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--muted)'">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </button>
+    </div>
+  </div>
 </aside>
 
 <!-- ══════════ MAIN ══════════ -->
@@ -1272,10 +1275,9 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
 // 
 // CONFIGURAÇÕES
 // 
-const ADMIN_EMAIL = 'rone.mars15@gmail.com';
+// GROQ_KEY removido — chamadas feitas via Edge Function /functions/v1/wex-chat
 const SB_URL = 'https://tbnoiwkproawwncuorpw.supabase.co';
 const SB_KEY = 'sb_publishable_6sJeXecAy_M6gBP_b-j0QQ_0Ybgx_ng';
-const GROQ_KEY = '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';
 
 const PLAN_PRICES = {free:0, starter:97, pro:197, agency:397};
 const PLAN_LIMITS = {free:10, starter:300, pro:1000, agency:999999};
@@ -1293,56 +1295,111 @@ let usersFilter = {search:'', plan:'', tipo:''};
 // 
 async function initAdminAuth() {
   SB = supabase.createClient(SB_URL, SB_KEY);
-  // Verificar sessão salva no localStorage
-  const savedSession = localStorage.getItem('wl_admin_session');
-  if (savedSession === 'ok') {
-    hideLogin();
-    updateAdminUI({ email: ADMIN_EMAIL, user_metadata: { full_name: 'Administrador' } });
-    await loadAll();
-    return;
+
+  // Monitorar expiração/logout em tempo real
+  SB.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_OUT' || !session) showLogin();
+  });
+
+  // Verificar sessão JWT real do Supabase
+  const { data: { session } } = await SB.auth.getSession();
+  if (session?.user) {
+    const authorized = await checkIsAdmin(session.user.id);
+    if (authorized) {
+      hideLogin();
+      updateAdminUI(session.user);
+      await loadAll();
+      return;
+    }
+    await SB.auth.signOut();
+    showLoginError('Acesso negado. Conta sem permissão de administrador.');
   }
+}
+
+// Verifica coluna is_admin na tabela profiles (server-side via RLS)
+async function checkIsAdmin(userId) {
+  const { data, error } = await SB
+    .from('profiles')
+    .select('is_admin')
+    .eq('id', userId)
+    .single();
+  if (error || !data) return false;
+  return data.is_admin === true;
 }
 
 function hideLogin() {
   document.getElementById('setup-screen').style.display = 'none';
 }
 
+function showLogin() {
+  document.getElementById('setup-screen').style.display = 'flex';
+}
+
+function showLoginError(msg) {
+  const errEl = document.getElementById('adminLoginError');
+  if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
+}
+
 function updateAdminUI(user) {
   const name = user.user_metadata?.full_name || user.email;
-  const el = document.getElementById('admin-name');
+  const el  = document.getElementById('admin-name');
   const ava = document.getElementById('admin-ava');
-  if (el) el.textContent = name;
+  if (el)  el.textContent  = name;
   if (ava) ava.textContent = name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
 }
 
+// Login com Google — redireciona de volta para admin.html
 async function adminGoogleLogin() {
-  toast('Use e-mail e senha para entrar no painel admin.', 'info');
+  const { error } = await SB.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: location.origin + '/admin.html' }
+  });
+  if (error) showLoginError('Erro ao iniciar login com Google: ' + error.message);
 }
 
-const ADMIN_PASS = 'Wexio@2026Admin';
-
 async function adminEmailLogin() {
-  const email = document.getElementById('adminEmail').value.trim().toLowerCase();
+  const email    = document.getElementById('adminEmail').value.trim().toLowerCase();
   const password = document.getElementById('adminPassword').value;
-  const errEl = document.getElementById('adminLoginError');
-  const btn = document.getElementById('adminLoginBtnText');
+  const errEl    = document.getElementById('adminLoginError');
+  const btn      = document.getElementById('adminLoginBtnText');
   errEl.style.display = 'none';
+
   if (!email || !password) {
     errEl.textContent = 'Preencha e-mail e senha.';
     errEl.style.display = 'block';
     return;
   }
   btn.textContent = 'Verificando...';
-  if (email !== ADMIN_EMAIL.toLowerCase() || password !== ADMIN_PASS) {
-    errEl.textContent = 'E-mail ou senha incorretos.';
+
+  // Autenticação real via Supabase — sem credenciais hardcoded
+  const { data, error } = await SB.auth.signInWithPassword({ email, password });
+  if (error) {
+    errEl.textContent = error.message.includes('Invalid') ? 'E-mail ou senha incorretos.' : error.message;
     errEl.style.display = 'block';
     btn.textContent = 'Entrar no painel →';
     return;
   }
-  localStorage.setItem('wl_admin_session', 'ok');
+
+  // Verificar permissão is_admin via Supabase
+  const authorized = await checkIsAdmin(data.user.id);
+  if (!authorized) {
+    await SB.auth.signOut();
+    errEl.textContent = 'Acesso negado. Conta sem permissão de administrador.';
+    errEl.style.display = 'block';
+    btn.textContent = 'Entrar no painel →';
+    return;
+  }
+
   hideLogin();
-  updateAdminUI({ email: ADMIN_EMAIL, user_metadata: { full_name: 'Administrador' } });
+  updateAdminUI(data.user);
+  btn.textContent = 'Entrar no painel →';
   await loadAll();
+}
+
+// Logout real
+async function adminLogout() {
+  await SB.auth.signOut();
+  window.location.href = 'index.html';
 }
 
 // 
@@ -2623,17 +2680,18 @@ async function sendWexMessage() {
       {role:'user', content: text}
     ];
 
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    // Chamada via Edge Function — chave Groq nunca exposta ao cliente
+    const { data: { session } } = await SB.auth.getSession();
+    const res = await fetch(SB_URL + '/functions/v1/wex-chat', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GROQ_KEY}`
+        'Authorization': 'Bearer ' + (session?.access_token || SB_KEY)
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
         messages: [
           { role: 'system', content: systemContext },
-          ...wexHistory.filter(m =>m.role === 'user' || m.role === 'assistant').slice(-8),
+          ...wexHistory.filter(m => m.role === 'user' || m.role === 'assistant').slice(-8),
           { role: 'user', content: text }
         ],
         max_tokens: 600,
@@ -2645,7 +2703,7 @@ async function sendWexMessage() {
     wexRemoveThinking();
     if (!res.ok || data.error) {
       const errMsg = data.error?.message || `Erro HTTP ${res.status}`;
-      wexAddMessage('bot', ` Erro na API Groq: ${errMsg}`);
+      wexAddMessage('bot', `Erro na assistente Wex: ${errMsg}`);
       return;
     }
     const reply = data?.choices?.[0]?.message?.content || 'Não consegui processar a resposta. Tente novamente.';
