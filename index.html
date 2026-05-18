@@ -1352,7 +1352,7 @@ function updateAdminUI(user) {
 async function adminGoogleLogin() {
   const { error } = await SB.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: location.origin + '/admin.html' }
+    options: { redirectTo: location.origin + '/' }
   });
   if (error) showLoginError('Erro ao iniciar login com Google: ' + error.message);
 }
