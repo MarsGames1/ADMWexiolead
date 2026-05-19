@@ -832,7 +832,7 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
       <div class="tbl-wrap">
         <table>
           <thead><tr>
-            <th>Funcionário</th><th>Cliente</th><th>Plano</th><th>Status CRM</th><th>Follow-up</th><th>Adicionado</th>
+            <th>Funcionário</th><th>Cliente</th><th>Plano</th><th>Status CRM</th><th>Follow-up</th><th>Adicionado</th><th>Ações</th>
           </tr></thead>
           <tbody id="emp-clientes-tbody"></tbody>
         </table>
@@ -2824,8 +2824,17 @@ function renderEmpClientesTab() {
       <td><span class="badge ${crmBadge[c.status_crm]||'b-gray'}">${crmLabels[c.status_crm]||c.status_crm}</span></td>
       <td class="td-muted" style="font-size:12px;">${c.data_followup ? new Date(c.data_followup+'T12:00:00').toLocaleDateString('pt-BR') : '—'}</td>
       <td class="td-muted" style="font-size:12px;">${new Date(c.created_at).toLocaleDateString('pt-BR')}</td>
+      <td><button class="btn btn-red btn-sm" onclick="event.stopPropagation();deleteEmpCliente('${c.id}','${c.nome_cliente.replace(/'/g,"\\'")}')">Excluir</button></td>
     </tr>`;
-  }).join('') || '<tr><td colspan="6"><div class="empty"><p>Nenhum cliente cadastrado ainda</p></div></td></tr>';
+  }).join('') || '<tr><td colspan="7"><div class="empty"><p>Nenhum cliente cadastrado ainda</p></div></td></tr>';
+}
+
+async function deleteEmpCliente(id, nome) {
+  if (!confirm('Excluir cliente "' + nome + '"?\nIsso remove o registro e a comissão associada desaparecerá do painel do funcionário.')) return;
+  const { error } = await SB.from('employee_clients').delete().eq('id', id);
+  if (error) { toast('Erro ao excluir: ' + error.message, true); return; }
+  toast('Cliente "' + nome + '" excluído com sucesso.');
+  await renderEmployees();
 }
 
 function renderSugestoes() {
