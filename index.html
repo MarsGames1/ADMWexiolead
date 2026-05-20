@@ -1035,6 +1035,51 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
 </div>
 </div>
 
+<!-- Editar Usuário -->
+<div class="modal-overlay" id="modal-edit-user">
+  <div class="modal">
+    <div class="modal-title">Editar Usuário — <span id="eu-modal-name" style="color:var(--accent);"></span></div>
+    <div class="grid-2">
+      <div class="form-group"><label class="form-label">Nome</label><input class="form-input" id="eu-name" disabled style="opacity:.6;cursor:not-allowed;"></div>
+      <div class="form-group"><label class="form-label">E-mail</label><input class="form-input" id="eu-email" disabled style="opacity:.6;cursor:not-allowed;"></div>
+    </div>
+    <div class="grid-2">
+      <div class="form-group"><label class="form-label">Plano</label>
+        <select class="form-input form-select" id="eu-plan" onchange="document.getElementById('eu-leads-quota').value = (PLAN_LIMITS[this.value] || 10)">
+          <option value="free">Free — Gratuito</option>
+          <option value="starter">Starter — R$97/mês</option>
+          <option value="pro">Pro — R$197/mês</option>
+          <option value="agency">Agency — R$397/mês</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Status</label>
+        <select class="form-input form-select" id="eu-status">
+          <option value="active">Ativo</option>
+          <option value="inactive">Inativo</option>
+        </select>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="form-group"><label class="form-label">Leads usados</label><input class="form-input" id="eu-leads-used" type="number" min="0"></div>
+      <div class="form-group"><label class="form-label">Cota do plano (leads_quota)</label><input class="form-input" id="eu-leads-quota" type="number" min="0"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Tipo de Empresa</label>
+      <select class="form-input form-select" id="eu-tipo">
+        <option value="fornecedor">Fornecedor</option>
+        <option value="construtora">Construtora</option>
+        <option value="empreiteiro">Empreiteiro</option>
+      </select>
+    </div>
+    <div style="background:#fff8f0;border:1px solid #ffd4c0;border-radius:8px;padding:10px 13px;font-size:12px;color:#8a3800;margin-bottom:16px;">
+      ⚡ Salvar atualizará <code>plan</code>, <code>leads_quota</code>, <code>plan_activated_at</code> e <code>plan_expires_at</code> diretamente no Supabase.
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-edit-user')">Cancelar</button>
+      <button class="btn btn-accent" onclick="saveUserEdit()">Salvar alterações</button>
+    </div>
+  </div>
+</div>
+
 <!-- Detalhe do Lead -->
 <div class="modal-overlay" id="modal-lead">
   <div class="modal" style="width:640px;max-height:88vh;overflow-y:auto;">
@@ -2457,10 +2502,73 @@ async function confirmClearLeads() {
   toast('Todos os leads removidos', 'success');
 }
 
+let currentEditUserId = null;
+
 function viewUser(id) {
   const u = allUsers.find(x=>x.id===id);
   if (!u) return;
-  toast(`Visualizando ${u.name}`, 'info');
+  currentEditUserId = id;
+
+  // Preenche o modal com dados do usuário
+  document.getElementById('eu-name').value       = u.name  || '';
+  document.getElementById('eu-email').value      = u.email || '';
+  document.getElementById('eu-plan').value       = u.plan  || 'free';
+  document.getElementById('eu-tipo').value       = u.tipo  || 'construtora';
+  document.getElementById('eu-status').value     = u.status === 'active' ? 'active' : 'inactive';
+  document.getElementById('eu-leads-used').value = u.leads_used || 0;
+  document.getElementById('eu-leads-quota').value= u.leads_quota != null ? u.leads_quota : (PLAN_LIMITS[u.plan] || 10);
+  document.getElementById('eu-modal-name').textContent = u.name || 'Usuário';
+  openModal('modal-edit-user');
+}
+
+async function saveUserEdit() {
+  if (!currentEditUserId) return;
+  const plan      = document.getElementById('eu-plan').value;
+  const tipo      = document.getElementById('eu-tipo').value;
+  const status    = document.getElementById('eu-status').value;
+  const leads_used  = parseInt(document.getElementById('eu-leads-used').value)  || 0;
+  const leads_quota = parseInt(document.getElementById('eu-leads-quota').value) || PLAN_LIMITS[plan] || 10;
+  const is_active = status === 'active';
+
+  const updates = {
+    plan,
+    tipo_empresa: tipo,
+    is_active,
+    leads_used,
+    leads_quota,
+    plan_activated_at: new Date().toISOString(),
+    plan_expires_at:   new Date(Date.now() + 30*24*60*60*1000).toISOString()
+  };
+
+  // Visual feedback: disable button, show spinner
+  const saveBtn = document.querySelector('#modal-edit-user .btn-accent');
+  const origText = saveBtn ? saveBtn.textContent : '';
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Salvando...'; }
+
+  try {
+    if (SB && !DEMO) {
+      const { error } = await SB.from('profiles').update(updates).eq('id', currentEditUserId);
+      if (error) {
+        console.error('[WexioLead] saveUserEdit Supabase error:', error);
+        toast('Erro ao salvar: ' + error.message, 'error');
+        return;
+      }
+      await loadUsers();
+    } else {
+      allUsers = allUsers.map(u => u.id === currentEditUserId
+        ? { ...u, plan, tipo, status, leads_used, leads_quota }
+        : u
+      );
+    }
+    renderAll();
+    closeModal('modal-edit-user');
+    toast('Usuário atualizado com sucesso!', 'success');
+  } catch (e) {
+    console.error('[WexioLead] saveUserEdit exception:', e);
+    toast('Erro inesperado: ' + (e.message || e), 'error');
+  } finally {
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = origText; }
+  }
 }
 
 let currentLeadId = null;
