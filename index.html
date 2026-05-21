@@ -494,7 +494,7 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
     <div class="tbl-wrap">
       <table>
         <thead><tr>
-          <th>Usuário</th><th>Tipo</th><th>Plano</th><th>Leads Usados</th><th>Uso %</th><th>Status</th><th>Cadastro</th><th></th>
+          <th>Usuário</th><th>Tipo</th><th>Plano</th><th>Usados / Quota</th><th>Restantes</th><th>Uso %</th><th>Status</th><th>Cadastro</th><th></th>
 </tr></thead>
         <tbody id="users-tbody"></tbody>
 </table>
@@ -1478,7 +1478,9 @@ async function loadUsers() {
     ...u,
     name: u.full_name || u.email || '—',
     status: u.is_active !== false ? 'active' : 'inactive',
-    leads_used: u.leads_used || 0,
+    leads_used:  u.leads_used  || 0,
+    // leads_quota: usa o valor real do banco; se null, usa o limite padrão do plano
+    leads_quota: u.leads_quota != null ? u.leads_quota : (PLAN_LIMITS[u.plan] || 10),
     tipo: u.tipo_empresa || u.source || ''
   }));
 }
@@ -2054,7 +2056,7 @@ function renderUsers() {
   const planBadge = {free:'b-gray',starter:'b-blue',pro:'b-orange',agency:'b-yellow'};
   const avaColors = ['ava-orange','ava-green','ava-blue','ava-purple','ava-red'];
   document.getElementById('users-tbody').innerHTML = slice.map(u =>{
-    const limit = PLAN_LIMITS[u.plan] || 10;
+    const limit = u.leads_quota != null ? u.leads_quota : (PLAN_LIMITS[u.plan] || 10);
     const pct = limit === 999999 ? 0 : Math.min(100, Math.round((u.leads_used||0)/limit*100));
     const initials = (u.name||'?').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
     const avaColor = avaColors[(u.name||'A').charCodeAt(0)%avaColors.length];
@@ -2068,6 +2070,7 @@ function renderUsers() {
       <td><span class="badge ${tipoBadge}">${tipoLabel}</span></td>
       <td><span class="badge ${planBadge[u.plan]||'b-gray'}">${(u.plan||'free').toUpperCase()}</span></td>
       <td style="font-family:'Syne',sans-serif;font-weight:600;">${u.leads_used||0} / ${limit===999999?'∞':limit}</td>
+      <td style="font-family:'Syne',sans-serif;font-weight:700;color:${limit===999999?'var(--green)':(limit-(u.leads_used||0))<=0?'var(--red)':(limit-(u.leads_used||0))<=(limit*0.2)?'#D97706':'var(--green)'};">${limit===999999?'∞':Math.max(0,limit-(u.leads_used||0))}</td>
       <td><div style="display:flex;align-items:center;gap:8px;">
         <div class="prog-track" style="width:70px;"><div class="prog-bar" style="width:${pct}%;background:${pct>90?'var(--red)':pct>70?'var(--accent2)':'var(--accent)'};"></div></div>
         <span style="font-size:11px;color:var(--muted);">${limit===999999?'∞':pct+'%'}</span>
