@@ -2485,15 +2485,45 @@ async function deletePack(id) {
 }
 
 async function resetMonthlyCounters() {
-  if (!confirm('Resetar todos os contadores mensais de leads para 0?')) return;
+  if (!confirm('Executar reset mensal de créditos?\n\n• Free → reseta para 10\n• Pago ativo → zera used, mantém plano\n• Pago vencido → rebaixa para free')) return;
   if (SB && !DEMO) {
-    await SB.from('profiles').update({leads_used:0}).neq('id','00000000-0000-0000-0000-000000000000');
-    await loadUsers();
+    try {
+      // Chama a função SQL que aplica as regras corretas por tipo de plano
+      const { error } = await SB.rpc('reset_monthly_credits');
+      if (error) {
+        // Fallback: se a função SQL não existir ainda, aplica regras no client
+        console.warn('reset_monthly_credits RPC não encontrado, usando fallback:', error.message);
+        const now = new Date().toISOString();
+
+        // Planos pagos com assinatura vencida → rebaixa para free
+        await SB.from('profiles')
+          .update({ plan: 'free', leads_quota: 10, leads_used: 0 })
+          .in('plan', ['starter','pro','agency'])
+          .or(`plan_expires_at.is.null,plan_expires_at.lt.${now}`);
+
+        // Planos pagos ativos → só zera used
+        await SB.from('profiles')
+          .update({ leads_used: 0 })
+          .in('plan', ['starter','pro','agency'])
+          .eq('is_active', true)
+          .gte('plan_expires_at', now);
+
+        // Free → reseta quota para 10 e zera used
+        await SB.from('profiles')
+          .update({ leads_used: 0, leads_quota: 10 })
+          .eq('plan', 'free');
+      }
+      await loadUsers();
+      renderAll();
+      toast('Reset mensal concluído com regras de plano ✓', 'success');
+    } catch(e) {
+      toast('Erro no reset: ' + e.message, 'error');
+    }
   } else {
-    allUsers.forEach(u=>u.leads_used=0);
+    allUsers.forEach(u => { u.leads_used = 0; });
+    renderAll();
+    toast('Contadores resetados (demo)', 'success');
   }
-  renderAll();
-  toast('Contadores resetados ', 'success');
 }
 
 async function confirmClearLeads() {
