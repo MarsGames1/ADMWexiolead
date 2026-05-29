@@ -7,6 +7,7 @@
 <title>WexioLead — Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
 :root {
   --bg:#FAF9F7; --surface:#FFFFFF; --surface2:#F5F4F1; --surface3:#EEEDEA;
@@ -989,9 +990,13 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
   <div class="topbar">
     <div>
       <div class="page-title">Convites</div>
-      <div class="page-sub">Envio automático de convites por email — 1 por hora</div>
+      <div class="page-sub">Envio automático via EmailJS — 1 por hora</div>
     </div>
     <div class="topbar-right">
+      <button class="btn btn-ghost btn-sm" onclick="openModal('modal-emailjs-config')">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 0 0 0 0 14.14"/></svg>
+        Configurar EmailJS
+      </button>
       <button class="btn btn-ghost btn-sm" onclick="loadConvites()">
         <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
         Atualizar
@@ -1034,7 +1039,7 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
   <!-- Status bar -->
   <div class="card" id="conv-status-card" style="display:none;">
     <div class="card-body" style="display:flex;align-items:center;gap:14px;">
-      <div class="wex-dot" style="width:10px;height:10px;background:var(--green);border-radius:50%;animation:pulse 2s infinite;flex-shrink:0;"></div>
+      <div style="width:10px;height:10px;background:var(--green);border-radius:50%;animation:pulse 2s infinite;flex-shrink:0;"></div>
       <div style="flex:1;">
         <div style="font-size:13px;font-weight:500;color:var(--text);">Envios em andamento</div>
         <div style="font-size:12px;color:var(--muted);" id="conv-last-sent">Último: —</div>
@@ -1043,13 +1048,33 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
     </div>
   </div>
 
-  <!-- Histórico -->
+  <!-- Editor do email -->
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <div class="card-title">Mensagem do convite</div>
+        <div class="card-sub">Edite o texto abaixo — será enviado exatamente assim</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <textarea id="conv-email-body" class="form-input" style="min-height:220px;font-family:monospace;font-size:12px;line-height:1.7;resize:vertical;"></textarea>
+      <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+        <button class="btn btn-ghost btn-sm" onclick="resetEmailCorpo()">↺ Restaurar padrão</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Histórico com paginação -->
   <div class="card">
     <div class="card-head">
       <div>
         <div class="card-title">Histórico de Envios</div>
         <div class="card-sub" id="conv-hist-sub">Carregando...</div>
       </div>
+      <button class="btn btn-red btn-sm" onclick="limparHistoricoConvites()">
+        <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        Limpar histórico
+      </button>
     </div>
     <div class="tbl-wrap">
       <table>
@@ -1065,6 +1090,39 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
           <tr><td colspan="4" class="td-muted" style="text-align:center;padding:30px;">Carregando...</td></tr>
         </tbody>
       </table>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 20px;border-top:1px solid var(--border);">
+      <span style="font-size:12px;color:var(--muted);" id="conv-page-info">—</span>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost btn-sm" onclick="convitesPage(-1)">← Anterior</button>
+        <button class="btn btn-ghost btn-sm" onclick="convitesPage(1)">Próxima →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal config EmailJS -->
+<div class="modal-overlay" id="modal-emailjs-config">
+  <div class="modal" style="width:480px;">
+    <div class="modal-title">⚙️ Configurar EmailJS</div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:18px;line-height:1.6;">
+      Crie uma conta gratuita em <a href="https://emailjs.com" target="_blank" style="color:var(--accent);">emailjs.com</a>, conecte seu Yahoo e preencha abaixo.
+    </p>
+    <div class="form-group">
+      <label class="form-label">Service ID</label>
+      <input class="form-input" id="ejs-service" placeholder="service_xxxxxxx">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Template ID</label>
+      <input class="form-input" id="ejs-template" placeholder="template_xxxxxxx">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Public Key</label>
+      <input class="form-input" id="ejs-pubkey" placeholder="xxxxxxxxxxxxxxxxxxxx">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-emailjs-config')">Cancelar</button>
+      <button class="btn btn-accent" onclick="salvarConfigEmailJS()">Salvar</button>
     </div>
   </div>
 </div>
@@ -3501,13 +3559,30 @@ let convitesAtivo = false;
 let conviteTimer = null;
 let conviteCountdownTimer = null;
 let conviteSegundos = 3600;
-const CONVITE_INTERVALO = 3600; // 1 hora em segundos
-const YAHOO_EMAIL = 'wexiolead@yahoo.com';
+const CONVITE_INTERVALO = 3600;
+let convitesCurrentPage = 1;
+const CONVITES_PER_PAGE = 20;
+let allConvites = [];
 
-const EMAIL_ASSUNTO = 'Encontre leads qualificados para sua empresa — WexioLead';
+// EmailJS config — salva em localStorage do admin
+function getEmailJSConfig() {
+  return {
+    serviceId:  localStorage.getItem('ejs_service')  || '',
+    templateId: localStorage.getItem('ejs_template') || '',
+    publicKey:  localStorage.getItem('ejs_pubkey')   || ''
+  };
+}
+function salvarConfigEmailJS() {
+  localStorage.setItem('ejs_service',  document.getElementById('ejs-service').value.trim());
+  localStorage.setItem('ejs_template', document.getElementById('ejs-template').value.trim());
+  localStorage.setItem('ejs_pubkey',   document.getElementById('ejs-pubkey').value.trim());
+  closeModal('modal-emailjs-config');
+  toast('Configuração EmailJS salva!', 'success');
+}
+
 const EMAIL_CORPO = `Olá,
 
-Somos a WexioLead, plataforma especializada em leads B2B para o setor de construção civil.
+Somos a WexioLead, plataforma B2B especializada em leads para construção civil.
 
 Conectamos fornecedores, construtoras e empreiteiros com os parceiros certos — de forma rápida, verificada e inteligente.
 
@@ -3524,88 +3599,119 @@ wexiolead@yahoo.com`;
 
 async function loadConvites() {
   if (!SB) return;
+
+  // Mostrar preview da mensagem
+  const bodyEl = document.getElementById('conv-email-body');
+  if (bodyEl && !bodyEl.value) bodyEl.value = EMAIL_CORPO;
+
+  // Pré-preencher campos EmailJS se já salvos
+  const cfg = getEmailJSConfig();
+  if (cfg.serviceId)  document.getElementById('ejs-service').value  = cfg.serviceId;
+  if (cfg.templateId) document.getElementById('ejs-template').value = cfg.templateId;
+  if (cfg.publicKey)  document.getElementById('ejs-pubkey').value   = cfg.publicKey;
+
   try {
-    // Total de leads com email
     const { count: totalComEmail } = await SB
       .from('leads')
       .select('*', { count: 'exact', head: true })
       .not('email_comercial', 'is', null)
       .neq('email_comercial', '');
 
-    // Total já convidados (via tabela convites)
-    const { count: totalEnviados } = await SB
-      .from('convites')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'enviado');
-
-    document.getElementById('conv-total').textContent = (totalComEmail || 0).toLocaleString('pt-BR');
-    document.getElementById('conv-enviados').textContent = (totalEnviados || 0).toLocaleString('pt-BR');
-    document.getElementById('badge-convites').textContent = totalEnviados || 0;
-
-    // Histórico
-    await renderConviteHistorico();
-  } catch(e) {
-    // Tabela convites pode não existir ainda — cria ela
-    await criarTabelaConvites();
-  }
-}
-
-async function criarTabelaConvites() {
-  // Tenta criar via upsert — se falhar, ignora
-  try {
-    await SB.from('convites').select('id').limit(1);
-    await renderConviteHistorico();
-  } catch(e) {
-    document.getElementById('conv-tbody').innerHTML = 
-      '<tr><td colspan="4" class="td-muted" style="text-align:center;padding:30px;">Crie a tabela <strong>convites</strong> no Supabase para começar.</td></tr>';
-  }
-}
-
-async function renderConviteHistorico() {
-  const tbody = document.getElementById('conv-tbody');
-  try {
-    const { data, error } = await SB
+    const { data: convData, error } = await SB
       .from('convites')
       .select('*')
-      .order('enviado_em', { ascending: false })
-      .limit(50);
+      .order('enviado_em', { ascending: false });
 
-    if (error || !data || data.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" class="td-muted" style="text-align:center;padding:30px;">Nenhum convite enviado ainda.</td></tr>';
-      document.getElementById('conv-hist-sub').textContent = 'Nenhum envio registrado';
-      return;
-    }
+    allConvites = convData || [];
+    const totalEnviados = allConvites.filter(c => c.status === 'enviado').length;
 
-    document.getElementById('conv-hist-sub').textContent = `${data.length} envios registrados`;
-    tbody.innerHTML = data.map(c => `
-      <tr>
-        <td style="font-weight:500;">${c.razao_social || '—'}</td>
-        <td class="td-muted">${c.email}</td>
-        <td class="td-muted">${c.enviado_em ? new Date(c.enviado_em).toLocaleString('pt-BR') : '—'}</td>
-        <td><span class="badge ${c.status === 'enviado' ? 'b-green' : 'b-yellow'}">${c.status === 'enviado' ? '✅ Enviado' : '⏳ Pendente'}</span></td>
-      </tr>
-    `).join('');
+    document.getElementById('conv-total').textContent = (totalComEmail || 0).toLocaleString('pt-BR');
+    document.getElementById('conv-enviados').textContent = totalEnviados.toLocaleString('pt-BR');
+    document.getElementById('badge-convites').textContent = totalEnviados;
+
+    renderConviteHistorico();
   } catch(e) {
-    tbody.innerHTML = '<tr><td colspan="4" class="td-muted" style="text-align:center;padding:30px;">Crie a tabela <strong>convites</strong> no Supabase para começar.</td></tr>';
+    document.getElementById('conv-tbody').innerHTML =
+      '<tr><td colspan="4" class="td-muted" style="text-align:center;padding:30px;">Crie a tabela <strong>convites</strong> no Supabase com o SQL fornecido.</td></tr>';
   }
 }
+
+function renderConviteHistorico() {
+  const tbody = document.getElementById('conv-tbody');
+  const total = allConvites.length;
+  const pages = Math.ceil(total / CONVITES_PER_PAGE) || 1;
+  if (convitesCurrentPage > pages) convitesCurrentPage = 1;
+
+  document.getElementById('conv-hist-sub').textContent =
+    total ? `${total} envio${total !== 1 ? 's' : ''} registrado${total !== 1 ? 's' : ''}` : 'Nenhum envio ainda';
+  document.getElementById('conv-page-info').textContent = `Página ${convitesCurrentPage} de ${pages}`;
+
+  const slice = allConvites.slice(
+    (convitesCurrentPage - 1) * CONVITES_PER_PAGE,
+    convitesCurrentPage * CONVITES_PER_PAGE
+  );
+
+  if (!slice.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="td-muted" style="text-align:center;padding:30px;">Nenhum convite enviado ainda.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = slice.map(c => `
+    <tr>
+      <td style="font-weight:500;">${c.razao_social || '—'}</td>
+      <td class="td-muted">${c.email}</td>
+      <td class="td-muted">${c.enviado_em ? new Date(c.enviado_em).toLocaleString('pt-BR') : '—'}</td>
+      <td><span class="badge ${c.status === 'enviado' ? 'b-green' : 'b-red'}">${c.status === 'enviado' ? '✅ Enviado' : '❌ Erro'}</span></td>
+    </tr>
+  `).join('');
+}
+
+function convitesPage(dir) {
+  const pages = Math.ceil(allConvites.length / CONVITES_PER_PAGE) || 1;
+  convitesCurrentPage = Math.max(1, Math.min(pages, convitesCurrentPage + dir));
+  renderConviteHistorico();
+}
+
+// 6 emails por dia = 1 a cada 4 horas (240 min) → 6 * 30 dias = 180/mês (< 200 EmailJS free)
+const EMAILS_POR_DIA = 6;
+const CONVITE_INTERVALO_SEG = Math.floor(24 * 3600 / EMAILS_POR_DIA); // 14400s = 4h
 
 async function enviarProximoConvite() {
   if (!SB) return;
+
+  // Verificar limite diário
+  const hoje = new Date().toISOString().slice(0, 10);
+  const { count: enviadosHoje } = await SB
+    .from('convites')
+    .select('*', { count: 'exact', head: true })
+    .gte('enviado_em', hoje + 'T00:00:00')
+    .eq('status', 'enviado');
+
+  if ((enviadosHoje || 0) >= EMAILS_POR_DIA) {
+    toast(`Limite de ${EMAILS_POR_DIA} emails diários atingido. Retoma amanhã.`, 'info');
+    pararEnvioConvites();
+    return;
+  }
+
+  // Verificar configuração EmailJS
+  const cfg = getEmailJSConfig();
+  if (!cfg.serviceId || !cfg.templateId || !cfg.publicKey) {
+    toast('Configure o EmailJS antes de enviar!', 'error');
+    pararEnvioConvites();
+    openModal('modal-emailjs-config');
+    return;
+  }
+
   try {
-    // Busca emails já enviados
-    const { data: jaEnviados } = await SB
-      .from('convites')
-      .select('email');
+    const { data: jaEnviados } = await SB.from('convites').select('email');
     const emailsEnviados = new Set((jaEnviados || []).map(r => r.email));
 
-    // Busca próximo lead com email não enviado
     const { data: leads } = await SB
       .from('leads')
       .select('email_comercial, razao_social')
       .not('email_comercial', 'is', null)
       .neq('email_comercial', '')
-      .limit(200);
+      .limit(500);
 
     const proximo = (leads || []).find(l => l.email_comercial && !emailsEnviados.has(l.email_comercial));
     if (!proximo) {
@@ -3614,20 +3720,56 @@ async function enviarProximoConvite() {
       return;
     }
 
-    // Registra no Supabase
-    await SB.from('convites').insert({
-      email: proximo.email_comercial,
-      razao_social: proximo.razao_social || '',
-      status: 'enviado',
-      enviado_em: new Date().toISOString()
+    // Pega corpo editável se existir
+    const corpoAtual = document.getElementById('conv-email-body')?.value || EMAIL_CORPO;
+
+    // Envio real via EmailJS
+    emailjs.init(cfg.publicKey);
+    await emailjs.send(cfg.serviceId, cfg.templateId, {
+      to_email:   proximo.email_comercial,
+      to_name:    proximo.razao_social || 'Equipe',
+      message:    corpoAtual,
+      from_name:  'WexioLead',
+      reply_to:   'wexiolead@yahoo.com'
     });
 
-    document.getElementById('conv-last-sent').textContent = `Último: ${proximo.razao_social || proximo.email_comercial} — ${new Date().toLocaleTimeString('pt-BR')}`;
-    toast(`📧 Convite enviado para ${proximo.email_comercial}`, 'success');
+    // Registra no Supabase como enviado
+    await SB.from('convites').insert({
+      email:       proximo.email_comercial,
+      razao_social: proximo.razao_social || '',
+      status:      'enviado',
+      enviado_em:  new Date().toISOString()
+    });
+
+    document.getElementById('conv-last-sent').textContent =
+      `Último: ${proximo.razao_social || proximo.email_comercial} — ${new Date().toLocaleTimeString('pt-BR')}`;
+    toast(`📧 Enviado para ${proximo.email_comercial}`, 'success');
     await loadConvites();
+
   } catch(e) {
-    toast('Erro ao registrar convite. Verifique a tabela convites no Supabase.', 'error');
+    console.error('Erro envio:', e);
+    // Registra erro no histórico
+    try {
+      await SB.from('convites').insert({
+        email: '(erro)',
+        razao_social: 'Falha no envio',
+        status: 'erro',
+        enviado_em: new Date().toISOString()
+      });
+    } catch(_) {}
+    toast('Erro ao enviar. Verifique as credenciais do EmailJS.', 'error');
   }
+}
+
+async function limparHistoricoConvites() {
+  if (!confirm('Apagar todo o histórico de convites enviados? Os leads poderão receber convite novamente.')) return;
+  const { error } = await SB.from('convites').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  if (error) { toast('Erro ao limpar histórico.', 'error'); return; }
+  allConvites = [];
+  renderConviteHistorico();
+  document.getElementById('conv-enviados').textContent = '0';
+  document.getElementById('badge-convites').textContent = '0';
+  toast('Histórico limpo!', 'success');
 }
 
 function toggleEnvioConvites() {
@@ -3640,32 +3782,30 @@ function toggleEnvioConvites() {
 
 function iniciarEnvioConvites() {
   convitesAtivo = true;
+  conviteSegundos = CONVITE_INTERVALO_SEG;
   const btn = document.getElementById('btn-toggle-convites');
   btn.innerHTML = '<svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Pausar';
   btn.classList.remove('btn-accent');
   btn.classList.add('btn-ghost');
   document.getElementById('conv-status-card').style.display = 'block';
-  document.getElementById('conv-status-txt').textContent = 'enviando automaticamente';
-  document.getElementById('conv-proximo').textContent = '1h';
+  document.getElementById('conv-status-txt').textContent = `${EMAILS_POR_DIA} emails/dia · enviando`;
+  document.getElementById('conv-proximo').textContent = '4h';
 
-  // Envia o primeiro imediatamente
   enviarProximoConvite();
-  conviteSegundos = CONVITE_INTERVALO;
 
-  // Agenda o próximo a cada hora
   conviteTimer = setInterval(() => {
     enviarProximoConvite();
-    conviteSegundos = CONVITE_INTERVALO;
-  }, CONVITE_INTERVALO * 1000);
+    conviteSegundos = CONVITE_INTERVALO_SEG;
+  }, CONVITE_INTERVALO_SEG * 1000);
 
-  // Countdown visual
   conviteCountdownTimer = setInterval(() => {
     conviteSegundos--;
-    if (conviteSegundos <= 0) conviteSegundos = CONVITE_INTERVALO;
-    const m = String(Math.floor(conviteSegundos / 60)).padStart(2, '0');
+    if (conviteSegundos <= 0) conviteSegundos = CONVITE_INTERVALO_SEG;
+    const h = String(Math.floor(conviteSegundos / 3600)).padStart(2, '0');
+    const m = String(Math.floor((conviteSegundos % 3600) / 60)).padStart(2, '0');
     const s = String(conviteSegundos % 60).padStart(2, '0');
     const el = document.getElementById('conv-countdown');
-    if (el) el.textContent = `${m}:${s}`;
+    if (el) el.textContent = `${h}:${m}:${s}`;
   }, 1000);
 }
 
@@ -3680,6 +3820,12 @@ function pararEnvioConvites() {
   document.getElementById('conv-status-card').style.display = 'none';
   document.getElementById('conv-proximo').textContent = '—';
   document.getElementById('conv-status-txt').textContent = 'aguardando início';
+}
+
+function resetEmailCorpo() {
+  const el = document.getElementById('conv-email-body');
+  if (el) el.value = EMAIL_CORPO;
+  toast('Mensagem restaurada para o padrão.', 'info');
 }
 
 window.addEventListener('load', () =>{
