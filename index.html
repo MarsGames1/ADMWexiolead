@@ -326,6 +326,11 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
       <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       <span>Log de Exportações</span>
 </a>
+    <a onclick="nav('convites')" id="nav-convites">
+      <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+      <span>Convites</span>
+      <span class="nav-badge" id="badge-convites">0</span>
+</a>
     <a onclick="nav('packs')" id="nav-packs">
       <svg viewBox="0 0 24 24"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
       <span>Pacotes Curados</span>
@@ -975,6 +980,91 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
       <button class="btn btn-red" onclick="deactivateEmployee()">Desativar</button>
       <button class="btn btn-ghost" onclick="closeModal('modal-edit-employee')">Cancelar</button>
       <button class="btn btn-accent" onclick="saveEmployee()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ CONVITES ══════════════════ -->
+<div class="page" id="page-convites">
+  <div class="topbar">
+    <div>
+      <div class="page-title">Convites</div>
+      <div class="page-sub">Envio automático de convites por email — 1 por hora</div>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-ghost btn-sm" onclick="loadConvites()">
+        <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
+        Atualizar
+      </button>
+      <button class="btn btn-accent btn-sm" id="btn-toggle-convites" onclick="toggleEnvioConvites()">
+        <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Iniciar Envios
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row" style="grid-template-columns:repeat(3,1fr);">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--blue-bg);color:var(--blue);">
+        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+      </div>
+      <div class="stat-lbl">Leads com email</div>
+      <div class="stat-val" id="conv-total">—</div>
+      <div class="stat-delta">disponíveis para convite</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--green-bg);color:var(--green);">
+        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="stat-lbl">Já convidados</div>
+      <div class="stat-val" id="conv-enviados">—</div>
+      <div class="stat-delta">emails enviados</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--accent-bg);color:var(--accent);">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </div>
+      <div class="stat-lbl">Próximo envio</div>
+      <div class="stat-val" id="conv-proximo" style="font-size:18px;">—</div>
+      <div class="stat-delta" id="conv-status-txt">aguardando início</div>
+    </div>
+  </div>
+
+  <!-- Status bar -->
+  <div class="card" id="conv-status-card" style="display:none;">
+    <div class="card-body" style="display:flex;align-items:center;gap:14px;">
+      <div class="wex-dot" style="width:10px;height:10px;background:var(--green);border-radius:50%;animation:pulse 2s infinite;flex-shrink:0;"></div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:500;color:var(--text);">Envios em andamento</div>
+        <div style="font-size:12px;color:var(--muted);" id="conv-last-sent">Último: —</div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);">próximo em <strong id="conv-countdown">60:00</strong></div>
+    </div>
+  </div>
+
+  <!-- Histórico -->
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <div class="card-title">Histórico de Envios</div>
+        <div class="card-sub" id="conv-hist-sub">Carregando...</div>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Empresa</th>
+            <th>Email</th>
+            <th>Enviado em</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="conv-tbody">
+          <tr><td colspan="4" class="td-muted" style="text-align:center;padding:30px;">Carregando...</td></tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </div>
@@ -2716,6 +2806,7 @@ function nav(page) {
       drawSegChart(s); drawSignupChart();
     }
     if (page==='employees') renderEmployees();
+    if (page==='convites') loadConvites();
   }, 60);
 }
 
@@ -3403,6 +3494,194 @@ function resetImportModal() {
 // 
 // INIT
 // 
+// 
+// CONVITES
+// 
+let convitesAtivo = false;
+let conviteTimer = null;
+let conviteCountdownTimer = null;
+let conviteSegundos = 3600;
+const CONVITE_INTERVALO = 3600; // 1 hora em segundos
+const YAHOO_EMAIL = 'wexiolead@yahoo.com';
+
+const EMAIL_ASSUNTO = 'Encontre leads qualificados para sua empresa — WexioLead';
+const EMAIL_CORPO = `Olá,
+
+Somos a WexioLead, plataforma especializada em leads B2B para o setor de construção civil.
+
+Conectamos fornecedores, construtoras e empreiteiros com os parceiros certos — de forma rápida, verificada e inteligente.
+
+✅ Leads verificados com score de qualidade 0–100
+✅ Filtros por segmento, cidade e porte
+✅ Assistente IA especializada no setor
+✅ 10 leads gratuitos para começar, sem cartão de crédito
+
+Acesse agora e teste gratuitamente: https://wexiolead.com
+
+Atenciosamente,
+Equipe WexioLead
+wexiolead@yahoo.com`;
+
+async function loadConvites() {
+  if (!SB) return;
+  try {
+    // Total de leads com email
+    const { count: totalComEmail } = await SB
+      .from('leads')
+      .select('*', { count: 'exact', head: true })
+      .not('email_comercial', 'is', null)
+      .neq('email_comercial', '');
+
+    // Total já convidados (via tabela convites)
+    const { count: totalEnviados } = await SB
+      .from('convites')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'enviado');
+
+    document.getElementById('conv-total').textContent = (totalComEmail || 0).toLocaleString('pt-BR');
+    document.getElementById('conv-enviados').textContent = (totalEnviados || 0).toLocaleString('pt-BR');
+    document.getElementById('badge-convites').textContent = totalEnviados || 0;
+
+    // Histórico
+    await renderConviteHistorico();
+  } catch(e) {
+    // Tabela convites pode não existir ainda — cria ela
+    await criarTabelaConvites();
+  }
+}
+
+async function criarTabelaConvites() {
+  // Tenta criar via upsert — se falhar, ignora
+  try {
+    await SB.from('convites').select('id').limit(1);
+    await renderConviteHistorico();
+  } catch(e) {
+    document.getElementById('conv-tbody').innerHTML = 
+      '<tr><td colspan="4" class="td-muted" style="text-align:center;padding:30px;">Crie a tabela <strong>convites</strong> no Supabase para começar.</td></tr>';
+  }
+}
+
+async function renderConviteHistorico() {
+  const tbody = document.getElementById('conv-tbody');
+  try {
+    const { data, error } = await SB
+      .from('convites')
+      .select('*')
+      .order('enviado_em', { ascending: false })
+      .limit(50);
+
+    if (error || !data || data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" class="td-muted" style="text-align:center;padding:30px;">Nenhum convite enviado ainda.</td></tr>';
+      document.getElementById('conv-hist-sub').textContent = 'Nenhum envio registrado';
+      return;
+    }
+
+    document.getElementById('conv-hist-sub').textContent = `${data.length} envios registrados`;
+    tbody.innerHTML = data.map(c => `
+      <tr>
+        <td style="font-weight:500;">${c.razao_social || '—'}</td>
+        <td class="td-muted">${c.email}</td>
+        <td class="td-muted">${c.enviado_em ? new Date(c.enviado_em).toLocaleString('pt-BR') : '—'}</td>
+        <td><span class="badge ${c.status === 'enviado' ? 'b-green' : 'b-yellow'}">${c.status === 'enviado' ? '✅ Enviado' : '⏳ Pendente'}</span></td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="4" class="td-muted" style="text-align:center;padding:30px;">Crie a tabela <strong>convites</strong> no Supabase para começar.</td></tr>';
+  }
+}
+
+async function enviarProximoConvite() {
+  if (!SB) return;
+  try {
+    // Busca emails já enviados
+    const { data: jaEnviados } = await SB
+      .from('convites')
+      .select('email');
+    const emailsEnviados = new Set((jaEnviados || []).map(r => r.email));
+
+    // Busca próximo lead com email não enviado
+    const { data: leads } = await SB
+      .from('leads')
+      .select('email_comercial, razao_social')
+      .not('email_comercial', 'is', null)
+      .neq('email_comercial', '')
+      .limit(200);
+
+    const proximo = (leads || []).find(l => l.email_comercial && !emailsEnviados.has(l.email_comercial));
+    if (!proximo) {
+      toast('Todos os leads com email já foram convidados!', 'info');
+      pararEnvioConvites();
+      return;
+    }
+
+    // Registra no Supabase
+    await SB.from('convites').insert({
+      email: proximo.email_comercial,
+      razao_social: proximo.razao_social || '',
+      status: 'enviado',
+      enviado_em: new Date().toISOString()
+    });
+
+    document.getElementById('conv-last-sent').textContent = `Último: ${proximo.razao_social || proximo.email_comercial} — ${new Date().toLocaleTimeString('pt-BR')}`;
+    toast(`📧 Convite enviado para ${proximo.email_comercial}`, 'success');
+    await loadConvites();
+  } catch(e) {
+    toast('Erro ao registrar convite. Verifique a tabela convites no Supabase.', 'error');
+  }
+}
+
+function toggleEnvioConvites() {
+  if (convitesAtivo) {
+    pararEnvioConvites();
+  } else {
+    iniciarEnvioConvites();
+  }
+}
+
+function iniciarEnvioConvites() {
+  convitesAtivo = true;
+  const btn = document.getElementById('btn-toggle-convites');
+  btn.innerHTML = '<svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Pausar';
+  btn.classList.remove('btn-accent');
+  btn.classList.add('btn-ghost');
+  document.getElementById('conv-status-card').style.display = 'block';
+  document.getElementById('conv-status-txt').textContent = 'enviando automaticamente';
+  document.getElementById('conv-proximo').textContent = '1h';
+
+  // Envia o primeiro imediatamente
+  enviarProximoConvite();
+  conviteSegundos = CONVITE_INTERVALO;
+
+  // Agenda o próximo a cada hora
+  conviteTimer = setInterval(() => {
+    enviarProximoConvite();
+    conviteSegundos = CONVITE_INTERVALO;
+  }, CONVITE_INTERVALO * 1000);
+
+  // Countdown visual
+  conviteCountdownTimer = setInterval(() => {
+    conviteSegundos--;
+    if (conviteSegundos <= 0) conviteSegundos = CONVITE_INTERVALO;
+    const m = String(Math.floor(conviteSegundos / 60)).padStart(2, '0');
+    const s = String(conviteSegundos % 60).padStart(2, '0');
+    const el = document.getElementById('conv-countdown');
+    if (el) el.textContent = `${m}:${s}`;
+  }, 1000);
+}
+
+function pararEnvioConvites() {
+  convitesAtivo = false;
+  clearInterval(conviteTimer);
+  clearInterval(conviteCountdownTimer);
+  const btn = document.getElementById('btn-toggle-convites');
+  btn.innerHTML = '<svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;"><polygon points="5 3 19 12 5 21 5 3"/></svg> Iniciar Envios';
+  btn.classList.add('btn-accent');
+  btn.classList.remove('btn-ghost');
+  document.getElementById('conv-status-card').style.display = 'none';
+  document.getElementById('conv-proximo').textContent = '—';
+  document.getElementById('conv-status-txt').textContent = 'aguardando início';
+}
+
 window.addEventListener('load', () =>{
   initAdminAuth();
 });
