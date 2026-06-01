@@ -386,15 +386,14 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
 <div class="page active" id="page-overview">
   <div class="topbar">
     <div>
-      <div class="page-title">Visão Geral</div>
-      <div class="page-sub" id="ov-date">Carregando...</div>
-      <div id="ov-welcome" style="display:none;margin-top:10px;padding:10px 16px;background:linear-gradient(135deg,rgba(249,115,22,.1),rgba(251,191,36,.07));border:1px solid rgba(249,115,22,.2);border-radius:10px;display:flex;align-items:center;gap:10px;width:fit-content;">
-        <span style="font-size:18px;">👋</span>
-        <div>
-          <span style="font-size:13px;font-weight:600;color:var(--text);">Bem-vindo de volta, <span id="ov-admin-name" style="color:var(--accent);">Administrador</span>!</span>
-          <div style="font-size:11px;color:var(--muted);margin-top:1px;">Você está no painel de controle do WexioLead</div>
+      <div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;">
+        <div class="page-title">Visão Geral</div>
+        <div id="ov-welcome" style="display:none;align-items:center;gap:7px;">
+          <span style="font-size:15px;">👋</span>
+          <span style="font-size:15px;font-weight:600;color:var(--text);">Bem-vindo de volta, <span id="ov-admin-name" style="color:var(--accent);">Administrador</span></span>
         </div>
       </div>
+      <div class="page-sub" id="ov-date" style="margin-top:4px;">Carregando...</div>
 </div>
     <div class="topbar-right">
       <button class="btn btn-ghost btn-sm" onclick="refreshOverview()">
@@ -1853,19 +1852,29 @@ const UF_ESTADOS = {
   'RR':'Roraima','DF':'Distrito Federal',
 };
 
-// Busca CNPJs reais via publica.cnpj.ws (CORS aberto, filtra por CNAE + UF)
+// Rate-limit seguro para publica.cnpj.ws: 3 req/min → espera 22s entre chamadas
+const CNPJWS_DELAY = 22000;
+let _lastCnpjWsCall = 0;
+async function cnpjWsThrottle() {
+  const now = Date.now();
+  const wait = CNPJWS_DELAY - (now - _lastCnpjWsCall);
+  if (wait > 0) await new Promise(r => setTimeout(r, wait));
+  _lastCnpjWsCall = Date.now();
+}
+
+// Busca CNPJs via publica.cnpj.ws com controle de rate-limit
 async function fetchCnpjsByAtividade(cnae, uf, pagina = 1) {
   try {
-    // publica.cnpj.ws aceita busca por atividade principal e UF com CORS aberto
+    await cnpjWsThrottle();
     let url = `https://publica.cnpj.ws/cnpj/search?atividade_principal=${cnae}&situacao=Ativa&pagina=${pagina}`;
     if (uf && uf !== 'all') url += `&municipio_uf=${uf}`;
     const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    if (resp.status === 429) { logReal('⏸ Rate limit na busca de lista — aguardando 30s...', 'warn'); await new Promise(r => setTimeout(r, 30000)); return []; }
     if (!resp.ok) return [];
     const data = await resp.json();
-    // Resposta pode ser array direto ou { data: [...] }
     const lista = Array.isArray(data) ? data : (data.data || data.cnpjs || []);
     return lista.map(e => {
-      const raw = e.cnpj || e.tax_id || e;
+      const raw = e.cnpj || e.estabelecimento?.cnpj || e.tax_id || e;
       return String(raw).replace(/\D/g, '');
     }).filter(c => c.length === 14);
   } catch(e) {
@@ -1873,9 +1882,22 @@ async function fetchCnpjsByAtividade(cnae, uf, pagina = 1) {
   }
 }
 
-// Busca detalhes de um CNPJ via BrasilAPI (sem rate limit agressivo)
+// Busca detalhes de um CNPJ via publica.cnpj.ws (mesmo rate limit, já controlado)
 async function fetchCnpjDetail(cnpj) {
-  // Tenta BrasilAPI primeiro (mais estável)
+  // Fonte principal: publica.cnpj.ws (retorna JSON completo com sócios, endereço, telefone)
+  try {
+    await cnpjWsThrottle();
+    const resp = await fetch(`https://publica.cnpj.ws/cnpj/${cnpj}`, {
+      headers: { 'Accept': 'application/json' }
+    });
+    if (resp.ok) {
+      const d = await resp.json();
+      return { source: 'cnpjws', data: d };
+    }
+    if (resp.status === 429) return { source: 'ratelimit', data: null };
+  } catch(e) {}
+
+  // Fallback: BrasilAPI (rate limit mais generoso, sem autenticação)
   try {
     const resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, {
       headers: { 'Accept': 'application/json' }
@@ -1884,18 +1906,6 @@ async function fetchCnpjDetail(cnpj) {
       const d = await resp.json();
       return { source: 'brasilapi', data: d };
     }
-  } catch(e) {}
-
-  // Fallback: open.cnpja.com
-  try {
-    const resp = await fetch(`https://open.cnpja.com/office/${cnpj}`, {
-      headers: { 'Accept': 'application/json' }
-    });
-    if (resp.ok) {
-      const d = await resp.json();
-      return { source: 'cnpja', data: d };
-    }
-    if (resp.status === 429) return { source: 'ratelimit', data: null };
   } catch(e) {}
 
   return null;
@@ -1908,7 +1918,21 @@ function normalizeLead(result, cnpjFmtd, tipoOpt) {
 
   let razao, fantasia, municipio, estado, telefone, email, socio, capital, cnae, status, fundado;
 
-  if (source === 'brasilapi') {
+  if (source === 'cnpjws') {
+    // Formato publica.cnpj.ws — igual ao JSON da documentação
+    const est = d.estabelecimento || {};
+    razao     = d.razao_social;
+    fantasia  = est.nome_fantasia;
+    municipio = est.cidade?.nome;
+    estado    = est.estado?.sigla;
+    telefone  = est.ddd1 && est.telefone1 ? `(${est.ddd1}) ${est.telefone1}` : null;
+    email     = est.email?.toLowerCase() || null;
+    socio     = d.socios?.[0]?.nome || null;
+    capital   = parseFloat(d.capital_social) || null;
+    cnae      = String(est.atividade_principal?.id || '');
+    status    = est.situacao_cadastral;
+    fundado   = est.data_inicio_atividade;
+  } else if (source === 'brasilapi') {
     razao     = d.razao_social;
     fantasia  = d.nome_fantasia;
     municipio = d.municipio;
@@ -1934,7 +1958,10 @@ function normalizeLead(result, cnpjFmtd, tipoOpt) {
     fundado   = d.founded;
   }
 
-  if (!status?.toUpperCase().includes('ATIVA') && status !== 'ATIVA') return null;
+  if (!status || (!status.toUpperCase().includes('ATIVA') && !status.toUpperCase().includes('ATIVA'))) {
+    // cnpjws retorna "Ativa" ou "Baixada" etc.
+    if (status && !['ativa','active'].includes(status.toLowerCase())) return null;
+  }
 
   const meta = cnaeToMeta(cnae);
   const tipo = tipoOpt === 'auto' ? meta.tipo : tipoOpt;
@@ -1998,8 +2025,9 @@ async function startRealImport() {
   const prog = document.getElementById('real-progress');
   if (prog) prog.style.display = 'block';
 
-  logReal(`🚀 Iniciando busca de ${qty} leads via BrasilAPI + open.cnpja.com...`, 'info');
+  logReal(`🚀 Iniciando busca de ${qty} leads via publica.cnpj.ws...`, 'info');
   logReal(`🔍 Segmento: ${cnaeFilter} | UF: ${ufFilter !== 'all' ? ufFilter : 'Todo Brasil'} | Tipo: ${tipoOpt}`, 'info');
+  logReal(`⏱ Rate limit: 3 req/min — cada consulta leva ~22s. Paciência!`, 'warn');
 
   // Seleciona CNAEs conforme filtro
   const cnaes = CNAES_CONSTRUCAO[cnaeFilter] || CNAES_CONSTRUCAO['all'];
@@ -2008,42 +2036,21 @@ async function startRealImport() {
   const cnpjsVistos = new Set(allLeads.map(l => l.cnpj?.replace(/\D/g,'')).filter(Boolean));
   let skipped = 0, notFound = 0, inactive = 0, errs = 0;
   let cnpjQueue = [];
-  let pagina = 1;
-  let cnaeIdx = 0;
 
-  // Coleta CNPJs via publica.cnpj.ws (CORS aberto, busca por CNAE + UF)
-  logReal('📡 Buscando CNPJs em publica.cnpj.ws...', 'info');
-  for (const cnae of cnaes.slice(0, 8)) {
+  // Coleta CNPJs via publica.cnpj.ws — 1 CNAE por vez para não estourar rate limit
+  logReal('📡 Buscando CNPJs em publica.cnpj.ws (aguarde, respeitando rate limit)...', 'info');
+  for (const cnae of cnaes.slice(0, 5)) {
     if (!realImportRunning) break;
-    // Página 1
-    const found1 = await fetchCnpjsByAtividade(cnae, ufFilter, 1);
-    cnpjQueue.push(...found1);
-    // Página 2 se precisar de mais
-    if (cnpjQueue.length < qty * 3 && found1.length > 0) {
+    if (cnpjQueue.length >= qty * 4) break;
+    const found = await fetchCnpjsByAtividade(cnae, ufFilter, 1);
+    if (found.length > 0) {
+      cnpjQueue.push(...found);
+      logReal(`  ↳ CNAE ${cnae}: ${found.length} CNPJs encontrados`, 'info');
+    }
+    // Só busca página 2 se ainda precisar de mais e tiver encontrado resultados
+    if (cnpjQueue.length < qty * 2 && found.length >= 10) {
       const found2 = await fetchCnpjsByAtividade(cnae, ufFilter, 2);
       cnpjQueue.push(...found2);
-    }
-    if (cnpjQueue.length >= qty * 10) break;
-    await new Promise(r => setTimeout(r, 350));
-  }
-
-  // Fallback: se publica.cnpj.ws não retornou nada, tenta open.cnpja.com/offices (também com CORS)
-  if (cnpjQueue.length === 0) {
-    logReal('⚠ publica.cnpj.ws sem resultados — tentando open.cnpja.com...', 'warn');
-    for (const cnae of cnaes.slice(0, 5)) {
-      if (!realImportRunning) break;
-      try {
-        let url = `https://open.cnpja.com/offices?activity=${cnae}&status=ACTIVE&limit=20`;
-        if (ufFilter !== 'all') url += `&state=${ufFilter}`;
-        const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
-        if (resp.ok) {
-          const data = await resp.json();
-          const lista = Array.isArray(data) ? data : (data.data || []);
-          const found = lista.map(e => String(e.tax_id || e.cnpj || '').replace(/\D/g,'')).filter(c => c.length === 14);
-          cnpjQueue.push(...found);
-        }
-      } catch(e) {}
-      await new Promise(r => setTimeout(r, 400));
     }
   }
 
