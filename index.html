@@ -1856,10 +1856,17 @@ const UF_ESTADOS = {
 // MOTOR DE BUSCA v2 — paralelo, multi-fonte, sem delay fixo
 // ══════════════════════════════════════════════════════
 
+// Chave de acesso API CGU / publica.cnpj.ws
+const CNPJ_WS_API_KEY = '023b79183741cb9b868de5ca5a11456e';
+const CNPJ_WS_HEADERS = {
+  'Accept': 'application/json',
+  'chave-api-dados': CNPJ_WS_API_KEY,
+};
+
 // Controle de rate limit por domínio
 const _rateLimitState = {
-  'publica.cnpj.ws': { lastCall: 0, minDelay: 2000, backoff: 2000 },
-  'brasilapi.com.br': { lastCall: 0, minDelay: 400, backoff: 400 },
+  'publica.cnpj.ws': { lastCall: 0, minDelay: 500, backoff: 1000 },
+  'brasilapi.com.br': { lastCall: 0, minDelay: 300, backoff: 400 },
 };
 
 async function domainThrottle(domain) {
@@ -1873,8 +1880,8 @@ async function domainThrottle(domain) {
 function domainBackoff(domain) {
   const s = _rateLimitState[domain];
   if (!s) return;
-  s.minDelay = Math.min(s.minDelay * 2, 30000);
-  logReal(`⏸ Rate limit em ${domain} — delay aumentado para ${Math.round(s.minDelay/1000)}s`, 'warn');
+  s.minDelay = Math.min(s.minDelay * 1.5, 10000);
+  logReal(`⏸ Rate limit em ${domain} — aguardando ${Math.round(s.minDelay/1000)}s`, 'warn');
 }
 
 function domainReset(domain) {
@@ -1886,12 +1893,10 @@ function domainReset(domain) {
 // Busca lista de CNPJs via BrasilAPI (fonte primária de lista — mais estável)
 async function fetchCnpjsByAtividadeBrasilAPI(cnae, uf, pagina = 1) {
   try {
-    await domainThrottle('brasilapi.com.br');
-    // BrasilAPI não tem endpoint de busca por CNAE — usamos publica.cnpj.ws para lista
-    // mas com delay menor e parsing robusto
+    await domainThrottle('publica.cnpj.ws');
     let url = `https://publica.cnpj.ws/cnpj/search?atividade_principal=${cnae}&situacao=Ativa&pagina=${pagina}`;
     if (uf && uf !== 'all') url += `&municipio_uf=${uf}`;
-    const resp = await fetch(url, { signal: AbortSignal.timeout(15000), headers: { 'Accept': 'application/json' } });
+    const resp = await fetch(url, { signal: AbortSignal.timeout(15000), headers: CNPJ_WS_HEADERS });
     if (resp.status === 429) { domainBackoff('publica.cnpj.ws'); return []; }
     if (!resp.ok) return [];
     domainReset('publica.cnpj.ws');
@@ -1950,7 +1955,7 @@ async function fetchCnpjDetail(cnpj) {
     await domainThrottle('publica.cnpj.ws');
     const resp = await fetch(`https://publica.cnpj.ws/cnpj/${cnpj}`, {
       signal: AbortSignal.timeout(12000),
-      headers: { 'Accept': 'application/json' }
+      headers: CNPJ_WS_HEADERS
     });
     if (resp.ok) {
       domainReset('publica.cnpj.ws');
