@@ -1788,10 +1788,10 @@ function generateSampleLeads() {
 }
 
 // ══════════════════════════════════════════════════════
-// BUSCA DE DADOS REAIS via open.cnpja.com
-// Testado e confirmado: status.text === 'Ativa' para empresas ativas
-// Campos: taxId, alias, founded, status{id,text}, address{city,state},
-//         company{name,equity,members[]}, mainActivity{id,text}, phones[], emails[]
+// ══════════════════════════════════════════════════════
+// BUSCA DE DADOS REAIS — Multi-fonte com fallback
+// Fonte 1: receitaws.com.br (CNAE + UF, sem limite)
+// Fonte 2: open.cnpja.com (enriquecimento de dados)
 // ══════════════════════════════════════════════════════
 
 // Mapeamento CNAE → segmento + tipo
@@ -1809,353 +1809,299 @@ function cnaeToMeta(cnaeCode) {
   return { seg:'Construção Civil', tipo:'construtora' };
 }
 
-// Calcula dígitos verificadores (base 12 dígitos → CNPJ 14)
-function cnpjCalcDigits(b) {
-  const d = b.split('').map(Number);
-  const w1=[5,4,3,2,9,8,7,6,5,4,3,2];
-  const s1=d.reduce((s,v,i)=>s+v*w1[i],0);
-  const d1=s1%11<2?0:11-(s1%11);
-  const d2=[...d,d1];
-  const w2=[6,5,4,3,2,9,8,7,6,5,4,3,2];
-  const s2=d2.reduce((s,v,i)=>s+v*w2[i],0);
-  const d2r=s2%11<2?0:11-(s2%11);
-  return b+d1+d2r;
-}
-
 function cnpjFmt(c) {
-  return c.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5');
+  c = c.replace(/\D/g,'').padStart(14,'0');
+  return `${c.slice(0,2)}.${c.slice(2,5)}.${c.slice(5,8)}/${c.slice(8,12)}-${c.slice(12)}`;
 }
 
-// ── Raízes de empresas reais do setor de construção civil ──
-// Raiz = primeiros 8 dígitos do CNPJ (identificador da empresa)
-// Fonte: CNPJs públicos de empresas conhecidas e ativas no Brasil
-const RAIZES_CONSTRUCAO = {
-  // Grandes construtoras/incorporadoras
-  construtoras: [
-    '73178600', // Cyrela Brazil Realty
-    '71476527', // Construtora Tenda
-    '16614076', // Direcional Engenharia
-    '07501092', // Plano&Plano
-    '72166534', // Even Construtora
-    '56372456', // Helbor Empreendimentos
-    '61080133', // Tecnisa
-    '01545826', // Gafisa
-    '17314327', // Andrade Gutierrez
-    '21440919', // Emccamp
-    '07718461', // Moura Dubeux
-    '33948036', // Cury Construtora
-    '08294224', // JHSF Participações
-    '09127990', // Viver Incorporadora
-    '10735610', // Benx Incorporadora
-    '61065538', // Klabin Segall
-    '33412081', // João Fortes Engenharia
-    '59164302', // Rodobens
-    '03936024', // Patrimar Engenharia
-    '87824110', // Melnick
-    '00591688', // Goldfarb
-    '09209006', // Bairro Novo
-    '05939467', // CHL Construtora
-    '62316452', // Tegra Incorporadora
-    '04903254', // Construtora OAS
-    '60925630', // WTorre
-    '76535764', // CR Almeida
-    '61156894', // Camargo Corrêa
-    '19523506', // Barbosa Melo
-    '08698636', // MRV Engenharia
-    '04813787', // Vinci Partners Construtora
-    '02074256', // PDG Realty
-    '07770951', // Inpar
-    '08785725', // Abyara
-    '10566987', // Calil Engenharia
-  ],
-  // Fornecedores de materiais de construção
-  materiais: [
-    '47960114', // Leroy Merlin
-    '61182408', // C&C Casa e Construção
-    '60749110', // Telhanorte
-    '00776574', // Votorantim Cimentos
-    '60498706', // Tigre
-    '33042730', // Saint-Gobain
-    '59104422', // Eternit
-    '60398564', // Elgin
-    '15616220', // Duratex
-    '60878954', // Portobello
-    '83558833', // Beto Carrero (CNPJ ativo confirmado)
-    '92769954', // Gerdau
-    '33709023', // Votorantim Siderurgia
-    '07206816', // Bradespar
-    '10438344', // JSL Logística
-    '61065751', // Rossi Residencial
-    '44649812', // Construtora Azul
-    '08534561', // SFX Construtora
-    '15049624', // Habiarte
-    '00676419', // Bamaq
-  ],
-  // Prestadores de serviços especializados
-  servicos: [
-    '02738190', // Instalação elétrica SP
-    '17404355', // Eletropaulo obras
-    '26204054', // Hidráulica Paulista
-    '32070520', // Acabamentos RJ
-    '46736685', // Revestimentos Sul
-    '05671423', // Engenharia Civil MG
-    '11537889', // Construtora Norte
-    '14471122', // Pinturas Brasil
-    '20337588', // Impermeabilização BR
-    '29137287', // Estruturas Metálicas
-    '35003753', // Demolição e Terra
-    '40870219', // Pavimentação Sul
-    '52603151', // Instalações Prediais
-    '03527845', // Hidrossanear
-    '06461078', // Cabeamento Estruturado
-    '09394311', // Automação Predial
-    '12327544', // Paisagismo Urbano
-    '15260777', // Sinalização Viária
-    '18194010', // Fundações e Estacas
-    '24060476', // Ar Condicionado Ind
-  ],
+// CNAEs do setor de construção civil para busca
+const CNAES_CONSTRUCAO = {
+  all:  ['4120400','4211101','4211102','4212000','4213800','4291000','4292801','4292802','4299501','4299599',
+         '4311801','4311802','4312600','4313400','4319300','4321500','4322301','4322302','4329101','4329102',
+         '4329103','4329104','4329105','4329199','4330401','4330402','4330403','4330404','4330405','4391600',
+         '4399101','4399102','4399103','4399104','4399105','4399199','4741500','4742300','4744001','4744002',
+         '4744003','4744004','4744005','4744006','4744099'],
+  '41': ['4120400'],
+  '42': ['4211101','4211102','4212000','4213800','4291000','4292801','4292802','4299501','4299599'],
+  '43': ['4311801','4311802','4312600','4313400','4319300','4321500','4322301','4322302',
+         '4329101','4329102','4329103','4329104','4329105','4329199','4330401','4330402',
+         '4330403','4330404','4330405','4391600','4399101','4399102','4399103','4399104',
+         '4399105','4399199'],
+  'mat':['4741500','4742300','4744001','4744002','4744003','4744004','4744005','4744006','4744099'],
 };
 
-// Todas as raízes numa lista plana para filtro 'all'
-const TODAS_RAIZES = [
-  ...RAIZES_CONSTRUCAO.construtoras,
-  ...RAIZES_CONSTRUCAO.materiais,
-  ...RAIZES_CONSTRUCAO.servicos,
-];
+// Estados brasileiros para busca por UF
+const UF_ESTADOS = {
+  'SP':'São Paulo','RJ':'Rio de Janeiro','MG':'Minas Gerais','RS':'Rio Grande do Sul',
+  'PR':'Paraná','SC':'Santa Catarina','BA':'Bahia','GO':'Goiás','PE':'Pernambuco',
+  'CE':'Ceará','PA':'Pará','MT':'Mato Grosso','MS':'Mato Grosso do Sul','ES':'Espírito Santo',
+  'AM':'Amazonas','RN':'Rio Grande do Norte','PB':'Paraíba','AL':'Alagoas','MA':'Maranhão',
+  'PI':'Piauí','SE':'Sergipe','RO':'Rondônia','TO':'Tocantins','AC':'Acre','AP':'Amapá',
+  'RR':'Roraima','DF':'Distrito Federal',
+};
 
-// Monta pool de CNPJs a partir das raízes (gera matriz /0001 e filiais /0002 /0003)
-function buildCnpjPool(cnaeFilter, qty) {
-  let raizes;
-  if (cnaeFilter === 'all') {
-    raizes = [...TODAS_RAIZES];
-  } else if (cnaeFilter === '41' || cnaeFilter === '42') {
-    raizes = [...RAIZES_CONSTRUCAO.construtoras];
-  } else if (cnaeFilter === 'mat') {
-    raizes = [...RAIZES_CONSTRUCAO.materiais];
-  } else {
-    // 43, ele, hid — serviços especializados
-    raizes = [...RAIZES_CONSTRUCAO.servicos, ...RAIZES_CONSTRUCAO.construtoras];
+// Busca CNPJs reais via ReceitaWS (paginação por CNAE + UF)
+async function fetchCnpjsByAtividade(cnae, uf, pagina = 1) {
+  try {
+    let url = `https://receitaws.com.br/v1/cnpj/search?atividade=${cnae}&situacao=ATIVA`;
+    if (uf && uf !== 'all') url += `&uf=${uf}`;
+    url += `&pagina=${pagina}`;
+    const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    return (data.cnpjs || data.empresas || []).map(e => (e.cnpj || e).replace(/\D/g,''));
+  } catch(e) {
+    return [];
   }
-
-  const pool = [];
-  for (const r of raizes) {
-    // Gera /0001 e /0002 para cada raiz
-    pool.push(cnpjCalcDigits(r + '0001'));
-    pool.push(cnpjCalcDigits(r + '0002'));
-    pool.push(cnpjCalcDigits(r + '0003'));
-  }
-  // Embaralha para variar a cada importação
-  return pool.sort(() => Math.random() - 0.5).slice(0, qty * 5);
 }
 
-function calcScore(d) {
-  let score = 40;
-  if (d.emails?.length > 0)  score += 15;
-  if (d.phones?.length > 0)  score += 15;
-  const cap = d.company?.equity || 0;
-  if (cap > 100000)  score += 10;
-  if (cap > 500000)  score += 5;
-  if (d.status?.text === 'Ativa') score += 10; // confirmado pelo teste
-  const founded = d.founded || '';
-  if (founded) {
-    const anos = Math.floor((Date.now()-new Date(founded))/31536000000);
-    if (anos > 5) score += 5;
-  }
-  return Math.min(score, 100);
+// Busca detalhes de um CNPJ via BrasilAPI (sem rate limit agressivo)
+async function fetchCnpjDetail(cnpj) {
+  // Tenta BrasilAPI primeiro (mais estável)
+  try {
+    const resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, {
+      headers: { 'Accept': 'application/json' }
+    });
+    if (resp.ok) {
+      const d = await resp.json();
+      return { source: 'brasilapi', data: d };
+    }
+  } catch(e) {}
+
+  // Fallback: open.cnpja.com
+  try {
+    const resp = await fetch(`https://open.cnpja.com/office/${cnpj}`, {
+      headers: { 'Accept': 'application/json' }
+    });
+    if (resp.ok) {
+      const d = await resp.json();
+      return { source: 'cnpja', data: d };
+    }
+    if (resp.status === 429) return { source: 'ratelimit', data: null };
+  } catch(e) {}
+
+  return null;
 }
 
-function logReal(msg, type='info') {
-  const log = document.getElementById('real-log');
-  if (!log) return;
-  log.style.display = 'block';
-  const colors = { info:'var(--muted)', ok:'var(--green)', warn:'#D97706', err:'var(--red)' };
-  log.innerHTML += `<span style="color:${colors[type]||colors.info};">${msg}</span>\n`;
-  log.scrollTop = log.scrollHeight;
+// Normaliza dados de qualquer fonte para o formato do lead
+function normalizeLead(result, cnpjFmtd, tipoOpt) {
+  if (!result) return null;
+  const { source, data: d } = result;
+
+  let razao, fantasia, municipio, estado, telefone, email, socio, capital, cnae, status, fundado;
+
+  if (source === 'brasilapi') {
+    razao     = d.razao_social;
+    fantasia  = d.nome_fantasia;
+    municipio = d.municipio;
+    estado    = d.uf;
+    telefone  = d.ddd_telefone_1 ? `(${d.ddd_telefone_1.slice(0,2)}) ${d.ddd_telefone_1.slice(2)}` : null;
+    email     = d.email?.toLowerCase() || null;
+    socio     = d.qsa?.[0]?.nome_socio || null;
+    capital   = parseFloat(d.capital_social) || null;
+    cnae      = String(d.cnae_fiscal || '');
+    status    = d.descricao_situacao_cadastral;
+    fundado   = d.data_inicio_atividade;
+  } else if (source === 'cnpja') {
+    razao     = d.company?.name;
+    fantasia  = d.alias;
+    municipio = d.address?.city;
+    estado    = d.address?.state;
+    telefone  = d.phones?.[0] ? `(${d.phones[0].area}) ${d.phones[0].number}` : null;
+    email     = d.emails?.[0]?.address?.toLowerCase() || null;
+    socio     = d.company?.members?.[0]?.person?.name || null;
+    capital   = d.company?.equity || null;
+    cnae      = String(d.mainActivity?.id || '');
+    status    = d.status?.text;
+    fundado   = d.founded;
+  }
+
+  if (!status?.toUpperCase().includes('ATIVA') && status !== 'ATIVA') return null;
+
+  const meta = cnaeToMeta(cnae);
+  const tipo = tipoOpt === 'auto' ? meta.tipo : tipoOpt;
+
+  let anos = null;
+  if (fundado) {
+    anos = Math.floor((Date.now() - new Date(fundado)) / 31536000000);
+    if (anos < 0 || anos > 100) anos = null;
+  }
+
+  return {
+    cnpj: cnpjFmtd,
+    razao_social: razao || null,
+    nome_fantasia: fantasia || null,
+    situacao_cadastral: 'Ativa',
+    municipio: municipio || null,
+    estado: estado || null,
+    telefone_1: telefone,
+    email_comercial: email,
+    nome_socio_1: socio,
+    capital_social: capital,
+    estimativa_faturamento_anual: capital ? Math.round(capital * (3 + Math.random() * 7)) : null,
+    score_lead: capital ? Math.min(100, Math.round(50 + Math.log10(capital + 1) * 8)) : 50,
+    segmento_simplificado: meta.seg,
+    tipo_empresa: tipo,
+    tempo_empresa_anos: anos,
+  };
 }
 
 let realImportRunning = false;
 
 async function startRealImport() {
   if (realImportRunning) return;
-  if (DEMO) { toast('Conecte ao Supabase para importar leads reais', 'error'); return; }
 
-  const cnaeFilter = document.getElementById('real-cnae').value;
-  const ufFilter   = document.getElementById('real-uf').value;
-  const tipoOpt    = document.getElementById('real-tipo').value;
-  const qty        = parseInt(document.getElementById('real-qty').value) || 20;
+  const cnaeFilter = document.getElementById('real-cnae')?.value || 'all';
+  const ufFilter   = document.getElementById('real-uf')?.value   || 'all';
+  const tipoOpt    = document.getElementById('real-tipo')?.value  || 'auto';
+  const qty        = parseInt(document.getElementById('real-qty')?.value) || 20;
 
-  document.getElementById('real-log').innerHTML = '';
-  document.getElementById('real-log').style.display = 'block';
-  document.getElementById('real-progress').style.display = 'block';
   document.getElementById('btn-real-start').disabled = true;
   document.getElementById('btn-real-cancel').textContent = 'Parar';
   realImportRunning = true;
 
-  logReal(`🚀 Iniciando busca de ${qty} leads reais via open.cnpja.com...`, 'info');
-  logReal(`🔍 Segmento: ${cnaeFilter} | UF: ${ufFilter} | Tipo: ${tipoOpt}`, 'info');
+  const log = document.getElementById('real-log');
+  if (log) { log.innerHTML = ''; log.style.display = 'block'; }
+  const prog = document.getElementById('real-progress');
+  if (prog) prog.style.display = 'block';
 
-  const pool = buildCnpjPool(cnaeFilter, qty);
-  logReal(`📋 ${pool.length} CNPJs na fila.`, 'info');
+  logReal(`🚀 Iniciando busca de ${qty} leads via BrasilAPI + open.cnpja.com...`, 'info');
+  logReal(`🔍 Segmento: ${cnaeFilter} | UF: ${ufFilter !== 'all' ? ufFilter : 'Todo Brasil'} | Tipo: ${tipoOpt}`, 'info');
+
+  // Seleciona CNAEs conforme filtro
+  const cnaes = CNAES_CONSTRUCAO[cnaeFilter] || CNAES_CONSTRUCAO['all'];
 
   const leads = [];
-  let skipped=0, notFound=0, inactive=0, errs=0;
-  let waitMs = 1200; // open.cnpja: 1.2s entre requests
-  let rateLimitWait = 5000; // espera base ao bater 429
+  const cnpjsVistos = new Set(allLeads.map(l => l.cnpj?.replace(/\D/g,'')).filter(Boolean));
+  let skipped = 0, notFound = 0, inactive = 0, errs = 0;
+  let cnpjQueue = [];
+  let pagina = 1;
+  let cnaeIdx = 0;
 
-  for (let idx = 0; idx < pool.length; idx++) {
-    if (!realImportRunning) { logReal('⏹ Importação interrompida.', 'warn'); break; }
-    if (leads.length >= qty) break;
-
-    const cnpj = pool[idx].replace(/\D/g,'');
-    if (!cnpj || cnpj.length !== 14) continue;
-
-    // Pula CNPJs já na base
-    if (allLeads.some(l => l.cnpj && l.cnpj.replace(/\D/g,'') === cnpj)) {
-      skipped++;
-      continue;
-    }
-
-    const fmt = cnpjFmt(cnpj);
-    logReal(`⏳ [${leads.length+1}/${qty}] Consultando ${fmt}...`);
-
-    try {
-      const resp = await fetch(`https://open.cnpja.com/office/${cnpj}`, {
-        headers: { 'Accept': 'application/json' }
-      });
-
-      // Rate limit — aguarda e retenta
-      if (resp.status === 429) {
-        waitMs = Math.min(waitMs * 2, 30000);
-        logReal(`⏸ Rate limit — aguardando ${Math.round(waitMs/1000)}s...`, 'warn');
-        await new Promise(r => setTimeout(r, waitMs));
-        idx--; // retenta mesmo CNPJ
-        continue;
-      }
-
-      if (resp.status === 404 || resp.status === 400) {
-        logReal(`↷ ${fmt} não encontrado.`);
-        notFound++;
-        await new Promise(r => setTimeout(r, waitMs));
-        continue;
-      }
-
-      if (!resp.ok) {
-        logReal(`⚠ ${fmt} — HTTP ${resp.status}.`, 'warn');
-        errs++;
-        await new Promise(r => setTimeout(r, waitMs));
-        continue;
-      }
-
-      waitMs = 1200; // reset após sucesso
-      const d = await resp.json();
-
-      // ── Filtro: só ATIVAS ──
-      if (d.status?.text !== 'Ativa') {
-        logReal(`↷ ${fmt} — ${d.status?.text || 'status desconhecido'}, pulando.`);
-        inactive++;
-        await new Promise(r => setTimeout(r, 300));
-        continue;
-      }
-
-      // ── Filtro de UF ──
-      const ufEmpresa = d.address?.state || '';
-      if (ufFilter !== 'all' && ufEmpresa && ufEmpresa.toUpperCase() !== ufFilter.toUpperCase()) {
-        logReal(`↷ ${fmt} — ${ufEmpresa} ≠ ${ufFilter}, pulando.`);
-        await new Promise(r => setTimeout(r, 300));
-        continue;
-      }
-
-      // ── Monta lead com campos confirmados da API ──
-      const meta = cnaeToMeta(d.mainActivity?.id || '');
-      const tipo = tipoOpt === 'auto' ? meta.tipo : tipoOpt;
-
-      const tel = d.phones?.[0]
-        ? `(${d.phones[0].area||''}) ${d.phones[0].number||''}`.trim()
-        : null;
-      const email = d.emails?.[0]?.address?.toLowerCase() || null;
-      const socio = d.company?.members?.[0]?.person?.name || null;
-      const capital = d.company?.equity || null;
-
-      let anos = null;
-      if (d.founded) {
-        anos = Math.floor((Date.now()-new Date(d.founded))/31536000000);
-        if (anos < 0 || anos > 100) anos = null;
-      }
-
-      const lead = {
-        cnpj: fmt,
-        razao_social: d.company?.name || null,
-        nome_fantasia: d.alias || null,
-        situacao_cadastral: d.status?.text || 'Ativa',
-        municipio: d.address?.city || null,
-        estado: ufEmpresa || null,
-        telefone_1: tel,
-        email_comercial: email,
-        nome_socio_1: socio,
-        capital_social: capital,
-        estimativa_faturamento_anual: capital ? Math.round(capital*(3+Math.random()*7)) : null,
-        estimativa_lucro_anual:       capital ? Math.round(capital*(0.1+Math.random()*0.2)) : null,
-        score_lead: calcScore(d),
-        segmento_simplificado: meta.seg,
-        tipo_empresa: tipo,
-        tempo_empresa_anos: anos,
-      };
-
-      leads.push(lead);
-      logReal(`✅ ${(lead.razao_social||'—').slice(0,50)} — ${lead.municipio||'?'}/${lead.estado||'?'}`, 'ok');
-
-      const pct = Math.round(leads.length / qty * 100);
-      document.getElementById('real-pct').textContent = pct + '%';
-      document.getElementById('real-bar').style.width = pct + '%';
-      document.getElementById('real-status-txt').textContent = `${leads.length}/${qty} leads coletados...`;
-      // Mostra botão "Já está bom" após o 1º lead encontrado
-      const jaBtn = document.getElementById('btn-jabom');
-      if (jaBtn) jaBtn.style.display = 'inline-flex';
-
-      // Salva imediatamente no Supabase
-      try {
-        const { error: saveErr } = await SB.from('leads').upsert([lead], { onConflict: 'cnpj', ignoreDuplicates: true });
-        if (saveErr) {
-          logReal(`⚠ Erro ao salvar ${fmt}: ${saveErr.message} (code: ${saveErr.code})`, 'warn');
-        } else {
-          logReal(`💾 ${fmt} salvo no banco.`, 'ok');
-        }
-      } catch(saveEx) {
-        logReal(`⚠ Exceção ao salvar ${fmt}: ${saveEx.message}`, 'warn');
-      }
-
-    } catch(e) {
-      logReal(`⚠ Erro: ${e.message}`, 'warn');
-      errs++;
-    }
-
-    await new Promise(r => setTimeout(r, waitMs));
+  // Coleta CNPJs da ReceitaWS por CNAE/UF
+  logReal('📡 Buscando CNPJs na base pública...', 'info');
+  for (const cnae of cnaes.slice(0, 8)) {
+    if (!realImportRunning) break;
+    const found = await fetchCnpjsByAtividade(cnae, ufFilter, 1);
+    cnpjQueue.push(...found);
+    if (cnpjQueue.length >= qty * 10) break;
+    await new Promise(r => setTimeout(r, 300));
   }
 
-  if (leads.length === 0) {
-    logReal(`\n⚠ Nenhum lead coletado.`, 'err');
-    logReal(`   Não encontrados: ${notFound} | Inativos: ${inactive} | Erros: ${errs}`, 'warn');
-    logReal('💡 Tente sem filtro de UF ou mude o segmento.', 'info');
+  // Fallback: se ReceitaWS não retornou nada, usa CNPJs sequenciais por CNAE via BrasilAPI
+  if (cnpjQueue.length === 0) {
+    logReal('⚠ ReceitaWS sem resultados — usando BrasilAPI direta por CNAE...', 'warn');
+    for (const cnae of cnaes.slice(0, 5)) {
+      if (!realImportRunning) break;
+      try {
+        const resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/search?cnae=${cnae}&uf=${ufFilter !== 'all' ? ufFilter : ''}&pagina=1`);
+        if (resp.ok) {
+          const data = await resp.json();
+          const found = (data.data || data || []).map(e => (e.cnpj || '').replace(/\D/g,'')).filter(c => c.length === 14);
+          cnpjQueue.push(...found);
+        }
+      } catch(e) {}
+      await new Promise(r => setTimeout(r, 400));
+    }
+  }
+
+  // Remove duplicatas e já existentes na base
+  cnpjQueue = [...new Set(cnpjQueue)].filter(c => c.length === 14 && !cnpjsVistos.has(c));
+  logReal(`📋 ${cnpjQueue.length} CNPJs únicos na fila para consultar.`, 'info');
+
+  if (cnpjQueue.length === 0) {
+    logReal('⚠ Nenhum CNPJ novo encontrado. Tente mudar o filtro de UF ou segmento.', 'warn');
     document.getElementById('btn-real-start').disabled = false;
     document.getElementById('btn-real-cancel').textContent = 'Cancelar';
     realImportRunning = false;
     return;
   }
 
-  // Aguarda 1s para os upserts assíncronos finalizarem, depois recarrega
-  await new Promise(r => setTimeout(r, 1000));
+  let waitMs = 800;
 
-  logReal(`\n🎉 Concluído! ${leads.length} coletados | ${skipped} já existiam | ${inactive} inativos/filtrados | ${notFound} não encontrados | ${errs} erros.`, 'ok');
+  for (let i = 0; i < cnpjQueue.length; i++) {
+    if (!realImportRunning) { logReal('⏹ Importação interrompida.', 'warn'); break; }
+    if (leads.length >= qty) break;
+
+    const cnpj = cnpjQueue[i];
+    const fmt  = cnpjFmt(cnpj);
+
+    if (cnpjsVistos.has(cnpj)) { skipped++; continue; }
+
+    logReal(`⏳ [${leads.length+1}/${qty}] Consultando ${fmt}...`);
+
+    const result = await fetchCnpjDetail(cnpj);
+
+    if (!result) {
+      notFound++;
+      await new Promise(r => setTimeout(r, waitMs));
+      continue;
+    }
+
+    if (result.source === 'ratelimit') {
+      waitMs = Math.min(waitMs * 2, 15000);
+      logReal(`⏸ Rate limit — aguardando ${Math.round(waitMs/1000)}s...`, 'warn');
+      await new Promise(r => setTimeout(r, waitMs));
+      i--; continue;
+    }
+
+    waitMs = 800;
+    const lead = normalizeLead(result, fmt, tipoOpt);
+
+    if (!lead) {
+      inactive++;
+      logReal(`↷ ${fmt} — inativa ou sem dados, pulando.`);
+      await new Promise(r => setTimeout(r, 300));
+      continue;
+    }
+
+    // Filtro de UF manual (caso BrasilAPI não filtre)
+    if (ufFilter !== 'all' && lead.estado && lead.estado.toUpperCase() !== ufFilter.toUpperCase()) {
+      await new Promise(r => setTimeout(r, 200));
+      continue;
+    }
+
+    leads.push(lead);
+    cnpjsVistos.add(cnpj);
+    logReal(`✅ ${(lead.razao_social||'—').slice(0,50)} — ${lead.municipio||'?'}/${lead.estado||'?'}`, 'ok');
+
+    const pct = Math.round(leads.length / qty * 100);
+    document.getElementById('real-pct').textContent = pct + '%';
+    document.getElementById('real-bar').style.width = pct + '%';
+    document.getElementById('real-status-txt').textContent = `${leads.length}/${qty} leads coletados...`;
+    const jaBtn = document.getElementById('btn-jabom');
+    if (jaBtn) jaBtn.style.display = 'inline-flex';
+
+    try {
+      const { error: saveErr } = await SB.from('leads').upsert([lead], { onConflict: 'cnpj', ignoreDuplicates: true });
+      if (saveErr) logReal(`⚠ Erro ao salvar ${fmt}: ${saveErr.message}`, 'warn');
+      else logReal(`💾 ${fmt} salvo.`, 'ok');
+    } catch(saveEx) {
+      logReal(`⚠ Exceção ao salvar: ${saveEx.message}`, 'warn');
+    }
+
+    await new Promise(r => setTimeout(r, waitMs));
+  }
+
+  if (leads.length === 0) {
+    logReal(`\n⚠ Nenhum lead coletado. Tente: sem filtro de UF, segmento diferente, ou aguarde 1 min (rate limit).`, 'err');
+    document.getElementById('btn-real-start').disabled = false;
+    document.getElementById('btn-real-cancel').textContent = 'Cancelar';
+    realImportRunning = false;
+    return;
+  }
+
+  await new Promise(r => setTimeout(r, 500));
+  logReal(`\n🎉 Concluído! ${leads.length} coletados | ${skipped} já existiam | ${inactive} inativos | ${notFound} não encontrados | ${errs} erros.`, 'ok');
   document.getElementById('real-bar').style.width = '100%';
   document.getElementById('real-pct').textContent = '100%';
   document.getElementById('real-status-txt').textContent = `✅ ${leads.length} leads importados!`;
   document.getElementById('btn-real-start').disabled = false;
   document.getElementById('btn-real-cancel').textContent = 'Cancelar';
   realImportRunning = false;
-
   await loadLeads();
   renderAll();
-  toast(`✅ ${leads.length} leads reais importados! Base com ${allLeads.length} leads.`, 'success');
+  toast(`✅ ${leads.length} leads reais importados!`, 'success');
 }
 
 async function finalizarImportAgora() {
