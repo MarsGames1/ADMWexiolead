@@ -1856,17 +1856,10 @@ const UF_ESTADOS = {
 // MOTOR DE BUSCA v2 — paralelo, multi-fonte, sem delay fixo
 // ══════════════════════════════════════════════════════
 
-// Chave de acesso API CGU / publica.cnpj.ws
-const CNPJ_WS_API_KEY = '023b79183741cb9b868de5ca5a11456e';
-const CNPJ_WS_HEADERS = {
-  'Accept': 'application/json',
-  'chave-api-dados': CNPJ_WS_API_KEY,
-};
-
 // Controle de rate limit por domínio
 const _rateLimitState = {
-  'publica.cnpj.ws': { lastCall: 0, minDelay: 500, backoff: 1000 },
-  'brasilapi.com.br': { lastCall: 0, minDelay: 300, backoff: 400 },
+  'publica.cnpj.ws': { lastCall: 0, minDelay: 1200, backoff: 1200 },
+  'brasilapi.com.br': { lastCall: 0, minDelay: 350, backoff: 350 },
 };
 
 async function domainThrottle(domain) {
@@ -1896,7 +1889,7 @@ async function fetchCnpjsByAtividadeBrasilAPI(cnae, uf, pagina = 1) {
     await domainThrottle('publica.cnpj.ws');
     let url = `https://publica.cnpj.ws/cnpj/search?atividade_principal=${cnae}&situacao=Ativa&pagina=${pagina}`;
     if (uf && uf !== 'all') url += `&municipio_uf=${uf}`;
-    const resp = await fetch(url, { signal: AbortSignal.timeout(15000), headers: CNPJ_WS_HEADERS });
+    const resp = await fetch(url, { signal: AbortSignal.timeout(15000), headers: { 'Accept': 'application/json' } });
     if (resp.status === 429) { domainBackoff('publica.cnpj.ws'); return []; }
     if (!resp.ok) return [];
     domainReset('publica.cnpj.ws');
@@ -1955,7 +1948,7 @@ async function fetchCnpjDetail(cnpj) {
     await domainThrottle('publica.cnpj.ws');
     const resp = await fetch(`https://publica.cnpj.ws/cnpj/${cnpj}`, {
       signal: AbortSignal.timeout(12000),
-      headers: CNPJ_WS_HEADERS
+      headers: { 'Accept': 'application/json' }
     });
     if (resp.ok) {
       domainReset('publica.cnpj.ws');
@@ -2200,8 +2193,8 @@ async function startRealImport() {
     }
   }
 
-  // Lança 5 workers em paralelo
-  await Promise.all(Array.from({ length: 5 }, workerDetail));
+  // Lança 2 workers em paralelo (API pública sem auth tem rate limit mais restrito)
+  await Promise.all(Array.from({ length: 2 }, workerDetail));
 
   if (!realImportRunning) { logReal('⏹ Importação interrompida.', 'warn'); }
 
