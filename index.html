@@ -1460,9 +1460,9 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
         <div>
           <label class="form-label">Quantidade de leads</label>
           <select class="form-input form-select" id="real-qty" style="font-size:12px;">
-            <option value="20">20 leads (~40 seg)</option>
-            <option value="40" selected>40 leads (~90 seg)</option>
-            <option value="60">60 leads (~2 min)</option>
+            <option value="20">20 leads (~15 seg)</option>
+            <option value="40" selected>40 leads (~30 seg)</option>
+            <option value="60">60 leads (~45 seg)</option>
           </select>
         </div>
         <div>
@@ -1853,86 +1853,91 @@ const UF_ESTADOS = {
 };
 
 // ══════════════════════════════════════════════════════
-// MOTOR DE BUSCA v3 — BrasilAPI puro, concorrência real, sem seeds sintéticos
-// ══════════════════════════════════════════════════════
+// MOTOR DE BUSCA v4 - Minha Receita (minhareceita.org)
+// Busca paginada por CNAE+UF: 1 chamada retorna ate 100 empresas completas
+// Sem lookup individual - dados ja vem completos na lista
 
-// Controle de rate limit por domínio (token bucket simples)
-const _rateLimitState = {
-  'brasilapi.com.br': { lastCalls: [], windowMs: 1000, maxPerWindow: 3, backoffUntil: 0 },
-};
-
-async function domainThrottle(domain) {
-  const s = _rateLimitState[domain];
-  if (!s) return;
-  // Se em backoff, espera acabar
-  const now = Date.now();
-  if (s.backoffUntil > now) {
-    await new Promise(r => setTimeout(r, s.backoffUntil - now + 50));
-  }
-  // Remove chamadas fora da janela
-  s.lastCalls = s.lastCalls.filter(t => Date.now() - t < s.windowMs);
-  // Se chegou no limite, espera a mais antiga sair da janela
-  if (s.lastCalls.length >= s.maxPerWindow) {
-    const oldest = s.lastCalls[0];
-    const wait = s.windowMs - (Date.now() - oldest) + 20;
-    if (wait > 0) await new Promise(r => setTimeout(r, wait));
-    s.lastCalls = s.lastCalls.filter(t => Date.now() - t < s.windowMs);
-  }
-  s.lastCalls.push(Date.now());
-}
-
-function domainBackoff(domain, ms = 4000) {
-  const s = _rateLimitState[domain];
-  if (!s) return;
-  s.backoffUntil = Date.now() + ms;
-  logReal(`⏸ Rate limit em ${domain} — aguardando ${Math.round(ms/1000)}s`, 'warn');
-}
-
-function domainReset(domain) {
-  const s = _rateLimitState[domain];
-  if (s) s.backoffUntil = 0;
-}
-
-// Busca CNPJs reais via BrasilAPI endpoint de listagem por CNAE
-// https://brasilapi.com.br/api/cnpj/v1?cnae=4120400&uf=SP&page=1
-async function fetchCnpjsByAtividadeBrasilAPI(cnae, uf, pagina = 1) {
+async function fetchMRPage(cnaes, uf, cursor, limit) {
+  limit = limit || 100;
   try {
-    await domainThrottle('brasilapi.com.br');
-    const params = new URLSearchParams({ cnae, page: pagina, size: 20 });
-    if (uf && uf !== 'all') params.set('uf', uf);
-    const resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1?${params}`, {
-      signal: AbortSignal.timeout(10000),
+    var params = new URLSearchParams({ limit: limit });
+    cnaes.forEach(function(c) { params.append('cnae', c); });
+    if (uf && uf !== 'all') params.append('uf', uf);
+    if (cursor) params.set('cursor', cursor);
+    var url = 'https://minhareceita.org/?' + params.toString();
+    var resp = await fetch(url, {
+      signal: AbortSignal.timeout(25000),
       headers: { 'Accept': 'application/json' }
     });
-    if (resp.status === 429) { domainBackoff('brasilapi.com.br', 5000); return []; }
-    if (resp.status === 404) return []; // CNAE sem resultados nessa UF — normal
-    if (!resp.ok) return [];
-    domainReset('brasilapi.com.br');
-    const data = await resp.json();
-    // Retorna lista de CNPJs (14 dígitos sem formatação)
-    if (Array.isArray(data)) return data.map(d => String(d.cnpj || d).replace(/\D/g,'')).filter(c => c.length === 14);
-    return [];
+    if (resp.status === 429) {
+      logReal('Rate limit Minha Receita - aguardando 6s...', 'warn');
+      await new Promise(function(r) { setTimeout(r, 6000); });
+      return { empresas: [], cursor: null };
+    }
+    if (!resp.ok) {
+      logReal('Erro Minha Receita: ' + resp.status, 'warn');
+      return { empresas: [], cursor: null };
+    }
+    var data = await resp.json();
+    var empresas = Array.isArray(data) ? data : (data.data || []);
+    var nextCursor = data.cursor || null;
+    return { empresas: empresas, cursor: nextCursor };
   } catch(e) {
-    return [];
+    logReal('Timeout/erro Minha Receita: ' + e.message, 'warn');
+    return { empresas: [], cursor: null };
   }
 }
 
-// Busca detalhes de UM CNPJ — apenas BrasilAPI (publica.cnpj.ws removido — rate limit muito baixo)
-async function fetchCnpjDetail(cnpj) {
-  try {
-    await domainThrottle('brasilapi.com.br');
-    const resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, {
-      signal: AbortSignal.timeout(10000),
-      headers: { 'Accept': 'application/json' }
-    });
-    if (resp.status === 429) { domainBackoff('brasilapi.com.br', 5000); return { source: 'ratelimit', data: null }; }
-    if (resp.status === 400 || resp.status === 404) return null; // CNPJ inválido/inexistente
-    if (!resp.ok) return null;
-    domainReset('brasilapi.com.br');
-    const d = await resp.json();
-    if (d && d.cnpj) return { source: 'brasilapi', data: d };
-  } catch(e) {}
-  return null;
+function normalizeMR(d, tipoOpt) {
+  if (!d) return null;
+  var sc = d.situacao_cadastral;
+  var scDesc = String(d.descricao_situacao_cadastral || '').toLowerCase();
+  if (sc && sc !== 2 && scDesc !== 'ativa') return null;
+
+  var cnpjRaw = String(d.cnpj || '').replace(/\D/g,'');
+  if (cnpjRaw.length !== 14) return null;
+
+  var cnae = String(d.cnae_fiscal || '');
+  var meta = cnaeToMeta(cnae);
+  var tipo = tipoOpt === 'auto' ? meta.tipo : tipoOpt;
+
+  var telefone = null;
+  var ddd1 = String(d.ddd_telefone_1 || '').trim().replace(/\D/g,'');
+  if (ddd1.length >= 10) {
+    if (ddd1.length === 11) {
+      telefone = '(' + ddd1.slice(0,2) + ') ' + ddd1.slice(2,7) + '-' + ddd1.slice(7);
+    } else {
+      telefone = '(' + ddd1.slice(0,2) + ') ' + ddd1.slice(2,6) + '-' + ddd1.slice(6);
+    }
+  }
+
+  var anos = null;
+  if (d.data_inicio_atividade) {
+    anos = Math.floor((Date.now() - new Date(d.data_inicio_atividade)) / 31536000000);
+    if (anos < 0 || anos > 100) anos = null;
+  }
+
+  var socio = (d.qsa && d.qsa[0]) ? d.qsa[0].nome_socio : null;
+  var capital = parseFloat(d.capital_social) || null;
+
+  return {
+    cnpj: cnpjFmt(cnpjRaw),
+    razao_social: d.razao_social || null,
+    nome_fantasia: d.nome_fantasia || null,
+    situacao_cadastral: 'Ativa',
+    municipio: d.municipio || null,
+    estado: d.uf || null,
+    telefone_1: telefone,
+    email_comercial: d.email ? d.email.toLowerCase() : null,
+    nome_socio_1: socio,
+    capital_social: capital,
+    estimativa_faturamento_anual: capital ? Math.round(capital * (3 + Math.random() * 7)) : null,
+    score_lead: capital ? Math.min(100, Math.round(50 + Math.log10(capital + 1) * 8)) : 50,
+    segmento_simplificado: meta.seg,
+    tipo_empresa: tipo,
+    tempo_empresa_anos: anos,
+    cnae: cnae,
+  };
 }
 
 // Executa um pool de promises com concorrência limitada
@@ -2068,108 +2073,75 @@ async function startRealImport() {
   const prog = document.getElementById('real-progress');
   if (prog) prog.style.display = 'block';
 
-  logReal(`🚀 Iniciando busca de ${qty} leads (motor v3)...`, 'info');
-  logReal(`🔍 Segmento: ${cnaeFilter} | UF: ${ufFilter !== 'all' ? ufFilter : 'Todo Brasil'} | Tipo: ${tipoOpt}`, 'info');
+  logReal('Iniciando busca de ' + qty + ' leads (motor v4 - Minha Receita)...', 'info');
+  logReal('Segmento: ' + cnaeFilter + ' | UF: ' + (ufFilter !== 'all' ? ufFilter : 'Todo Brasil') + ' | Tipo: ' + tipoOpt, 'info');
 
-  // Seleciona CNAEs conforme filtro
-  const cnaes = CNAES_CONSTRUCAO[cnaeFilter] || CNAES_CONSTRUCAO['all'];
+  var cnaes = CNAES_CONSTRUCAO[cnaeFilter] || CNAES_CONSTRUCAO['all'];
+  var leads = [];
+  var cnpjsVistos = new Set(allLeads.map(function(l) { return l.cnpj ? l.cnpj.replace(/\D/g,'') : ''; }).filter(Boolean));
+  var skipped = 0, inactive = 0;
 
-  const leads = [];
-  const cnpjsVistos = new Set(allLeads.map(l => l.cnpj?.replace(/\D/g,'')).filter(Boolean));
-  let skipped = 0, notFound = 0, inactive = 0, errs = 0;
-  let cnpjQueue = [];
+  // Seleciona subset de CNAEs (os mais relevantes para construcao civil)
+  var cnaesToUse = cnaes.slice(0, Math.min(cnaes.length, 6));
+  logReal('Consultando Minha Receita com ' + cnaesToUse.length + ' CNAEs...', 'info');
 
-  // ── Fase 1: coleta de CNPJs reais via BrasilAPI por CNAE ──
-  logReal('📡 Buscando CNPJs reais por segmento via BrasilAPI...', 'info');
-  const cnaesToSearch = cnaes.slice(0, Math.min(cnaes.length, 8));
-  const pagesNeeded = Math.ceil((qty * 5) / 20 / cnaesToSearch.length) || 2;
+  var cursor = null;
+  var pagesSearched = 0;
+  var maxPages = Math.ceil(qty / 50) + 3; // paginas suficientes
 
-  await promisePool(cnaesToSearch, 3, async (cnae) => {
-    if (!realImportRunning) return;
-    for (let pg = 1; pg <= pagesNeeded && realImportRunning; pg++) {
-      const found = await fetchCnpjsByAtividadeBrasilAPI(cnae, ufFilter, pg);
-      if (found.length === 0) break; // sem mais resultados para esse CNAE
-      cnpjQueue.push(...found);
-      if (cnpjQueue.length >= qty * 8) break;
+  while (realImportRunning && leads.length < qty && pagesSearched < maxPages) {
+    var result = await fetchMRPage(cnaesToUse, ufFilter, cursor, 100);
+    pagesSearched++;
+
+    if (!result.empresas || result.empresas.length === 0) {
+      logReal('Sem mais resultados na Minha Receita.', 'info');
+      break;
     }
-  });
 
-  // Remove duplicatas e já existentes
-  cnpjQueue = [...new Set(cnpjQueue)].filter(c => c.length === 14 && !cnpjsVistos.has(c));
-  logReal(`📋 ${cnpjQueue.length} CNPJs reais na fila.`, 'info');
+    logReal('Pagina ' + pagesSearched + ': ' + result.empresas.length + ' empresas recebidas...', 'info');
 
-  if (cnpjQueue.length === 0) {
-    logReal('⚠ Nenhum CNPJ encontrado. Tente filtro de UF diferente ou segmento mais amplo.', 'warn');
-    document.getElementById('btn-real-start').disabled = false;
-    document.getElementById('btn-real-cancel').textContent = 'Cancelar';
-    realImportRunning = false;
-    return;
-  }
+    for (var i = 0; i < result.empresas.length && leads.length < qty && realImportRunning; i++) {
+      var emp = result.empresas[i];
+      var cnpjRaw = String(emp.cnpj || '').replace(/\D/g,'');
 
-  // ── Fase 2: busca de detalhes em paralelo (3 simultâneos — limite real da BrasilAPI) ──
-  logReal(`🔄 Consultando detalhes em paralelo (3 simultâneos)...`, 'info');
+      if (cnpjsVistos.has(cnpjRaw)) { skipped++; continue; }
 
-  const targetQueue = cnpjQueue.slice(0, Math.min(cnpjQueue.length, qty * 10));
-  let queueIdx = 0;
-  const mutex = { locked: false };
+      // Filtro UF manual (caso a API retorne de outras UFs)
+      if (ufFilter !== 'all' && emp.uf && emp.uf.toUpperCase() !== ufFilter.toUpperCase()) continue;
 
-  async function workerDetail() {
-    while (realImportRunning && leads.length < qty) {
-      const i = queueIdx++;
-      if (i >= targetQueue.length) break;
-
-      const cnpj = targetQueue[i];
-      const fmt  = cnpjFmt(cnpj);
-
-      if (cnpjsVistos.has(cnpj)) { skipped++; continue; }
-
-      const result = await fetchCnpjDetail(cnpj);
-
-      if (!result) { notFound++; continue; }
-      if (result.source === 'ratelimit') {
-        queueIdx--;
-        await new Promise(r => setTimeout(r, 5000));
-        continue;
-      }
-
-      const lead = normalizeLead(result, fmt, tipoOpt);
-      if (!lead) { inactive++; continue; }
-
-      // Filtro UF manual
-      if (ufFilter !== 'all' && lead.estado && lead.estado.toUpperCase() !== ufFilter.toUpperCase()) continue;
-
-      // Filtro CNAE
+      // Filtro CNAE manual
       if (cnaeFilter !== 'all') {
-        const cnaesAlvo = CNAES_CONSTRUCAO[cnaeFilter] || [];
-        const cnaePrincipal = String(lead.cnae || '').replace(/\D/g,'');
-        const cnaeOk = cnaesAlvo.some(c => cnaePrincipal === c || cnaePrincipal.startsWith(cnaeFilter));
+        var cnaesAlvo = CNAES_CONSTRUCAO[cnaeFilter] || [];
+        var cnaePrincipal = String(emp.cnae_fiscal || '').replace(/\D/g,'');
+        var cnaeOk = cnaesAlvo.some(function(c) { return cnaePrincipal === c || cnaePrincipal.startsWith(cnaeFilter); });
         if (!cnaeOk) { inactive++; continue; }
       }
 
-      // Mutex para evitar push duplicado
-      while (mutex.locked) await new Promise(r => setTimeout(r, 10));
-      if (leads.length >= qty) break;
-      mutex.locked = true;
-      if (!cnpjsVistos.has(cnpj) && leads.length < qty) {
-        leads.push(lead);
-        cnpjsVistos.add(cnpj);
-        const pct = Math.round(leads.length / qty * 100);
-        document.getElementById('real-pct').textContent = pct + '%';
-        document.getElementById('real-bar').style.width = pct + '%';
-        document.getElementById('real-status-txt').textContent = `${leads.length}/${qty} leads coletados...`;
-        if (document.getElementById('btn-jabom')) document.getElementById('btn-jabom').style.display = 'inline-flex';
-        logReal(`✅ [${leads.length}/${qty}] ${(lead.razao_social||'—').slice(0,45)} — ${lead.municipio||'?'}/${lead.estado||'?'}`, 'ok');
-        try {
-          const { error: saveErr } = await SB.from('leads').upsert([lead], { onConflict: 'cnpj', ignoreDuplicates: true });
-          if (saveErr) logReal(`⚠ Erro ao salvar: ${saveErr.message}`, 'warn');
-        } catch(ex) { logReal(`⚠ ${ex.message}`, 'warn'); }
-      }
-      mutex.locked = false;
-    }
-  }
+      var lead = normalizeMR(emp, tipoOpt);
+      if (!lead) { inactive++; continue; }
 
-  // 3 workers — alinhado com token bucket (3 req/s)
-  await Promise.all(Array.from({ length: 3 }, workerDetail));
+      leads.push(lead);
+      cnpjsVistos.add(cnpjRaw);
+
+      var pct = Math.round(leads.length / qty * 100);
+      document.getElementById('real-pct').textContent = pct + '%';
+      document.getElementById('real-bar').style.width = pct + '%';
+      document.getElementById('real-status-txt').textContent = leads.length + '/' + qty + ' leads coletados...';
+      if (document.getElementById('btn-jabom')) document.getElementById('btn-jabom').style.display = 'inline-flex';
+      logReal('[' + leads.length + '/' + qty + '] ' + (lead.razao_social||'--').slice(0,45) + ' -- ' + (lead.municipio||'?') + '/' + (lead.estado||'?'), 'ok');
+
+      // Salva no Supabase em tempo real
+      try {
+        var saveResult = await SB.from('leads').upsert([lead], { onConflict: 'cnpj', ignoreDuplicates: true });
+        if (saveResult.error) logReal('Erro ao salvar: ' + saveResult.error.message, 'warn');
+      } catch(ex) { logReal('Erro: ' + ex.message, 'warn'); }
+    }
+
+    cursor = result.cursor;
+    if (!cursor) break; // ultima pagina
+    // Pequena pausa entre paginas para nao sobrecarregar
+    if (realImportRunning && leads.length < qty) await new Promise(function(r) { setTimeout(r, 800); });
+  }
 
   if (!realImportRunning) { logReal('⏹ Importação interrompida.', 'warn'); }
 
@@ -2182,7 +2154,7 @@ async function startRealImport() {
   }
 
   await new Promise(r => setTimeout(r, 500));
-  logReal(`\n🎉 Concluído! ${leads.length} coletados | ${skipped} já existiam | ${inactive} inativos | ${notFound} não encontrados | ${errs} erros.`, 'ok');
+  logReal('Concluido! ' + leads.length + ' coletados | ' + skipped + ' ja existiam | ' + inactive + ' ignorados.', 'ok');
   document.getElementById('real-bar').style.width = '100%';
   document.getElementById('real-pct').textContent = '100%';
   document.getElementById('real-status-txt').textContent = `✅ ${leads.length} leads importados!`;
