@@ -354,7 +354,7 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
       <span>Planos</span>
 </a>
     <a onclick="nav('settings')" id="nav-settings">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 0 0 0 0 14.14"/></svg>
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
       <span>Configurações</span>
 </a>
 </nav>
@@ -388,6 +388,13 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
     <div>
       <div class="page-title">Visão Geral</div>
       <div class="page-sub" id="ov-date">Carregando...</div>
+      <div id="ov-welcome" style="display:none;margin-top:10px;padding:10px 16px;background:linear-gradient(135deg,rgba(249,115,22,.1),rgba(251,191,36,.07));border:1px solid rgba(249,115,22,.2);border-radius:10px;display:flex;align-items:center;gap:10px;width:fit-content;">
+        <span style="font-size:18px;">👋</span>
+        <div>
+          <span style="font-size:13px;font-weight:600;color:var(--text);">Bem-vindo de volta, <span id="ov-admin-name" style="color:var(--accent);">Administrador</span>!</span>
+          <div style="font-size:11px;color:var(--muted);margin-top:1px;">Você está no painel de controle do WexioLead</div>
+        </div>
+      </div>
 </div>
     <div class="topbar-right">
       <button class="btn btn-ghost btn-sm" onclick="refreshOverview()">
@@ -1607,10 +1614,16 @@ function showLoginError(msg) {
 
 function updateAdminUI(user) {
   const name = user.user_metadata?.full_name || user.email;
+  const firstName = name.split(' ')[0];
   const el  = document.getElementById('admin-name');
   const ava = document.getElementById('admin-ava');
   if (el)  el.textContent  = name;
   if (ava) ava.textContent = name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+  // Bem-vindo no topbar
+  const welcomeEl = document.getElementById('ov-welcome');
+  const welcomeNameEl = document.getElementById('ov-admin-name');
+  if (welcomeEl)     { welcomeEl.style.display = 'flex'; }
+  if (welcomeNameEl) { welcomeNameEl.textContent = firstName; }
 }
 
 // Login com Google — redireciona de volta para admin.html
@@ -1947,6 +1960,21 @@ function normalizeLead(result, cnpjFmtd, tipoOpt) {
 }
 
 let realImportRunning = false;
+
+// Função de log do painel de importação real
+function logReal(msg, type = '') {
+  const log = document.getElementById('real-log');
+  if (!log) return;
+  const line = document.createElement('div');
+  const colors = { ok: 'var(--green)', warn: 'var(--accent2)', err: 'var(--red)', info: 'var(--blue)' };
+  line.style.cssText = `font-size:12px;padding:2px 0;color:${colors[type] || 'var(--text)'};font-family:monospace;word-break:break-all;`;
+  line.textContent = msg;
+  log.appendChild(line);
+  log.scrollTop = log.scrollHeight;
+  // Atualiza texto de status
+  const statusTxt = document.getElementById('real-status-txt');
+  if (statusTxt && msg && !msg.startsWith('\n')) statusTxt.textContent = msg.replace(/^[^\s]+\s/, '').slice(0, 60);
+}
 
 async function startRealImport() {
   if (realImportRunning) return;
