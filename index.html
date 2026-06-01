@@ -1803,8 +1803,8 @@ function generateSampleLeads() {
 // ══════════════════════════════════════════════════════
 // ══════════════════════════════════════════════════════
 // BUSCA DE DADOS REAIS — Multi-fonte com fallback
-// Fonte 1: receitaws.com.br (CNAE + UF, sem limite)
-// Fonte 2: open.cnpja.com (enriquecimento de dados)
+// Fonte 1: publica.cnpj.ws (CNAE + UF, CORS aberto)
+// Fonte 2: open.cnpja.com (fallback + enriquecimento)
 // ══════════════════════════════════════════════════════
 
 // Mapeamento CNAE → segmento + tipo
@@ -1853,16 +1853,21 @@ const UF_ESTADOS = {
   'RR':'Roraima','DF':'Distrito Federal',
 };
 
-// Busca CNPJs reais via ReceitaWS (paginação por CNAE + UF)
+// Busca CNPJs reais via publica.cnpj.ws (CORS aberto, filtra por CNAE + UF)
 async function fetchCnpjsByAtividade(cnae, uf, pagina = 1) {
   try {
-    let url = `https://receitaws.com.br/v1/cnpj/search?atividade=${cnae}&situacao=ATIVA`;
-    if (uf && uf !== 'all') url += `&uf=${uf}`;
-    url += `&pagina=${pagina}`;
+    // publica.cnpj.ws aceita busca por atividade principal e UF com CORS aberto
+    let url = `https://publica.cnpj.ws/cnpj/search?atividade_principal=${cnae}&situacao=Ativa&pagina=${pagina}`;
+    if (uf && uf !== 'all') url += `&municipio_uf=${uf}`;
     const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
     if (!resp.ok) return [];
     const data = await resp.json();
-    return (data.cnpjs || data.empresas || []).map(e => (e.cnpj || e).replace(/\D/g,''));
+    // Resposta pode ser array direto ou { data: [...] }
+    const lista = Array.isArray(data) ? data : (data.data || data.cnpjs || []);
+    return lista.map(e => {
+      const raw = e.cnpj || e.tax_id || e;
+      return String(raw).replace(/\D/g, '');
+    }).filter(c => c.length === 14);
   } catch(e) {
     return [];
   }
@@ -2006,26 +2011,35 @@ async function startRealImport() {
   let pagina = 1;
   let cnaeIdx = 0;
 
-  // Coleta CNPJs da ReceitaWS por CNAE/UF
-  logReal('📡 Buscando CNPJs na base pública...', 'info');
+  // Coleta CNPJs via publica.cnpj.ws (CORS aberto, busca por CNAE + UF)
+  logReal('📡 Buscando CNPJs em publica.cnpj.ws...', 'info');
   for (const cnae of cnaes.slice(0, 8)) {
     if (!realImportRunning) break;
-    const found = await fetchCnpjsByAtividade(cnae, ufFilter, 1);
-    cnpjQueue.push(...found);
+    // Página 1
+    const found1 = await fetchCnpjsByAtividade(cnae, ufFilter, 1);
+    cnpjQueue.push(...found1);
+    // Página 2 se precisar de mais
+    if (cnpjQueue.length < qty * 3 && found1.length > 0) {
+      const found2 = await fetchCnpjsByAtividade(cnae, ufFilter, 2);
+      cnpjQueue.push(...found2);
+    }
     if (cnpjQueue.length >= qty * 10) break;
-    await new Promise(r => setTimeout(r, 300));
+    await new Promise(r => setTimeout(r, 350));
   }
 
-  // Fallback: se ReceitaWS não retornou nada, usa CNPJs sequenciais por CNAE via BrasilAPI
+  // Fallback: se publica.cnpj.ws não retornou nada, tenta open.cnpja.com/offices (também com CORS)
   if (cnpjQueue.length === 0) {
-    logReal('⚠ ReceitaWS sem resultados — usando BrasilAPI direta por CNAE...', 'warn');
+    logReal('⚠ publica.cnpj.ws sem resultados — tentando open.cnpja.com...', 'warn');
     for (const cnae of cnaes.slice(0, 5)) {
       if (!realImportRunning) break;
       try {
-        const resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/search?cnae=${cnae}&uf=${ufFilter !== 'all' ? ufFilter : ''}&pagina=1`);
+        let url = `https://open.cnpja.com/offices?activity=${cnae}&status=ACTIVE&limit=20`;
+        if (ufFilter !== 'all') url += `&state=${ufFilter}`;
+        const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
         if (resp.ok) {
           const data = await resp.json();
-          const found = (data.data || data || []).map(e => (e.cnpj || '').replace(/\D/g,'')).filter(c => c.length === 14);
+          const lista = Array.isArray(data) ? data : (data.data || []);
+          const found = lista.map(e => String(e.tax_id || e.cnpj || '').replace(/\D/g,'')).filter(c => c.length === 14);
           cnpjQueue.push(...found);
         }
       } catch(e) {}
