@@ -842,7 +842,7 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
       <div class="tbl-wrap">
         <table>
           <thead><tr>
-            <th>Funcionário</th><th>Cliente</th><th>Plano</th><th>Status CRM</th><th>Follow-up</th><th>Adicionado</th><th>Ações</th>
+            <th>Funcionário</th><th>Cliente</th><th>Plano / Vencimento</th><th>Status CRM</th><th>Follow-up</th><th>Origem</th><th>Anotações</th><th>Adicionado</th><th>Ações</th>
           </tr></thead>
           <tbody id="emp-clientes-tbody"></tbody>
         </table>
@@ -3104,23 +3104,44 @@ function renderEmpTabela() {
 }
 
 function renderEmpClientesTab() {
-  const crmLabels = {novo:'Novo', contatado:'Contatado', negociando:'Negociando', fechado:'Fechado'};
-  const crmBadge = {novo:'b-blue', contatado:'b-yellow', negociando:'b-orange', fechado:'b-green'};
+  const crmLabels = {novo:'Novo', contatado:'Contatado', negociando:'Negociando', fechado:'Fechado', perdido:'Perdido'};
+  const crmBadge  = {novo:'b-blue', contatado:'b-yellow', negociando:'b-orange', fechado:'b-green', perdido:'b-red'};
+  const origemLabel = {indicacao:'Indicação', wexiolead:'WexioLead', instagram:'Instagram', google:'Google', linkedin:'LinkedIn', outros:'Outros'};
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+
   document.getElementById('emp-clientes-tbody').innerHTML = allEmployeeClients.map(c => {
     const emp = allEmployees.find(e => e.id === c.employee_id);
+    let vencBadge = '';
+    if (c.vencimento_plano) {
+      const venc = new Date(c.vencimento_plano + 'T12:00:00');
+      const diff = Math.ceil((venc - hoje) / (1000*60*60*24));
+      if (diff < 0) vencBadge = ' <span class="badge b-red" style="font-size:10px;">VENCIDO</span>';
+      else if (diff <= 7) vencBadge = ` <span class="badge b-yellow" style="font-size:10px;">⚠ ${diff}d</span>`;
+    }
+    let followBadge = '';
+    if (c.data_followup) {
+      const fup = new Date(c.data_followup + 'T12:00:00');
+      if (fup < hoje) followBadge = ' <span class="badge b-red" style="font-size:10px;">Atrasado</span>';
+    }
     return `<tr>
-      <td style="font-weight:500;">${emp ? emp.nome : '—'}</td>
+      <td style="font-weight:500;font-size:12px;">${emp ? emp.nome : '—'}</td>
       <td>
         <div style="font-weight:500;">${c.nome_cliente}</div>
         <div style="font-size:11px;color:var(--muted);">${c.email_cliente||''}</div>
+        <div style="font-size:11px;color:var(--muted);">${c.telefone_cliente||''}</div>
       </td>
-      <td><span class="badge b-orange">${(c.plano||'free').toUpperCase()}</span></td>
+      <td>
+        <span class="badge b-orange">${(c.plano||'free').toUpperCase()}</span>${vencBadge}
+        <div style="font-size:10px;color:var(--muted);margin-top:3px;">${c.vencimento_plano ? new Date(c.vencimento_plano+'T12:00:00').toLocaleDateString('pt-BR') : '—'}</div>
+      </td>
       <td><span class="badge ${crmBadge[c.status_crm]||'b-gray'}">${crmLabels[c.status_crm]||c.status_crm}</span></td>
-      <td class="td-muted" style="font-size:12px;">${c.data_followup ? new Date(c.data_followup+'T12:00:00').toLocaleDateString('pt-BR') : '—'}</td>
+      <td class="td-muted" style="font-size:12px;">${c.data_followup ? new Date(c.data_followup+'T12:00:00').toLocaleDateString('pt-BR') : '—'}${followBadge}</td>
+      <td class="td-muted" style="font-size:11px;">${origemLabel[c.origem]||c.origem||'—'}</td>
+      <td class="td-muted" style="font-size:12px;max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${c.notas||''}">${c.notas||'—'}</td>
       <td class="td-muted" style="font-size:12px;">${new Date(c.created_at).toLocaleDateString('pt-BR')}</td>
-      <td><button class="btn btn-red btn-sm" onclick="event.stopPropagation();deleteEmpCliente('${c.id}','${c.nome_cliente.replace(/'/g,"\\'")}')">Excluir</button></td>
+      <td><button class="btn btn-red btn-sm" onclick="event.stopPropagation();deleteEmpCliente('${c.id}','${c.nome_cliente.replace(/'/g,"\'")}')">Excluir</button></td>
     </tr>`;
-  }).join('') || '<tr><td colspan="7"><div class="empty"><p>Nenhum cliente cadastrado ainda</p></div></td></tr>';
+  }).join('') || '<tr><td colspan="9"><div class="empty"><p>Nenhum cliente cadastrado ainda</p></div></td></tr>';
 }
 
 async function deleteEmpCliente(id, nome) {
