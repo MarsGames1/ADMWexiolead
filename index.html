@@ -3634,7 +3634,7 @@ const CONVITES_PER_PAGE = 20;
 let allConvites = [];
 
 // Resend API Key
-const RESEND_API_KEY = 're_TE7RfHXT_AeguuUMahNiDjZqnRX5dEoQr';
+const SEND_EMAIL_URL = 'https://tbnoiwkproawwncuorpw.supabase.co/functions/v1/send-email';
 
 const EMAIL_CORPO = `Olá,
 
@@ -3764,15 +3764,11 @@ async function enviarProximoConvite() {
     const corpoAtual = document.getElementById('conv-email-body')?.value || EMAIL_CORPO;
 
     // Envio via Resend API
-    const res = await fetch('https://api.resend.com/emails', {
+    const res = await fetch(SEND_EMAIL_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${RESEND_API_KEY}`
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        from: 'WexioLead <contato@wexiolead.com>',
-        to: [proximo.email_comercial],
+        to: proximo.email_comercial,
         subject: 'Encontre leads qualificados para sua empresa — WexioLead',
         text: corpoAtual
       })
@@ -4001,15 +3997,11 @@ async function enviarAlertaRenovacao(clienteId, emailCliente, nomeCliente, plano
     .replace('{situacao}', situacao);
 
   try {
-    const res = await fetch('https://api.resend.com/emails', {
+    const res = await fetch(SEND_EMAIL_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${RESEND_API_KEY}`
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        from: 'WexioLead <contato@wexiolead.com>',
-        to: [emailCliente],
+        to: emailCliente,
         subject: `⚠️ Seu plano WexioLead está ${situacao}`,
         text: corpo
       })
