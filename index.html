@@ -1460,9 +1460,9 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
         <div>
           <label class="form-label">Quantidade de leads</label>
           <select class="form-input form-select" id="real-qty" style="font-size:12px;">
-            <option value="20">20 leads (~2 min)</option>
-            <option value="40" selected>40 leads (~4 min)</option>
-            <option value="60">60 leads (~6 min)</option>
+            <option value="20">20 leads (~40 seg)</option>
+            <option value="40" selected>40 leads (~90 seg)</option>
+            <option value="60">60 leads (~2 min)</option>
           </select>
         </div>
         <div>
@@ -1853,154 +1853,85 @@ const UF_ESTADOS = {
 };
 
 // ══════════════════════════════════════════════════════
-// MOTOR DE BUSCA v2 — paralelo, multi-fonte, sem delay fixo
+// MOTOR DE BUSCA v3 — BrasilAPI puro, concorrência real, sem seeds sintéticos
 // ══════════════════════════════════════════════════════
 
-// Controle de rate limit por domínio
+// Controle de rate limit por domínio (token bucket simples)
 const _rateLimitState = {
-  'publica.cnpj.ws': { lastCall: 0, minDelay: 1200, backoff: 1200 },
-  'brasilapi.com.br': { lastCall: 0, minDelay: 350, backoff: 350 },
+  'brasilapi.com.br': { lastCalls: [], windowMs: 1000, maxPerWindow: 3, backoffUntil: 0 },
 };
 
 async function domainThrottle(domain) {
   const s = _rateLimitState[domain];
   if (!s) return;
-  const wait = s.minDelay - (Date.now() - s.lastCall);
-  if (wait > 0) await new Promise(r => setTimeout(r, wait));
-  s.lastCall = Date.now();
+  // Se em backoff, espera acabar
+  const now = Date.now();
+  if (s.backoffUntil > now) {
+    await new Promise(r => setTimeout(r, s.backoffUntil - now + 50));
+  }
+  // Remove chamadas fora da janela
+  s.lastCalls = s.lastCalls.filter(t => Date.now() - t < s.windowMs);
+  // Se chegou no limite, espera a mais antiga sair da janela
+  if (s.lastCalls.length >= s.maxPerWindow) {
+    const oldest = s.lastCalls[0];
+    const wait = s.windowMs - (Date.now() - oldest) + 20;
+    if (wait > 0) await new Promise(r => setTimeout(r, wait));
+    s.lastCalls = s.lastCalls.filter(t => Date.now() - t < s.windowMs);
+  }
+  s.lastCalls.push(Date.now());
 }
 
-function domainBackoff(domain) {
+function domainBackoff(domain, ms = 4000) {
   const s = _rateLimitState[domain];
   if (!s) return;
-  s.minDelay = Math.min(s.minDelay * 1.5, 10000);
-  logReal(`⏸ Rate limit em ${domain} — aguardando ${Math.round(s.minDelay/1000)}s`, 'warn');
+  s.backoffUntil = Date.now() + ms;
+  logReal(`⏸ Rate limit em ${domain} — aguardando ${Math.round(ms/1000)}s`, 'warn');
 }
 
 function domainReset(domain) {
   const s = _rateLimitState[domain];
-  if (!s) return;
-  s.minDelay = s.backoff;
+  if (s) s.backoffUntil = 0;
 }
 
-// Busca lista de CNPJs via BrasilAPI (fonte primária de lista — mais estável)
-// ── Tabela de CNPJs-semente por CNAE (prefixos reais conhecidos da RF) ──────
-// Cada entrada é um CNPJ base de 8 dígitos; o sistema busca a partir deles
-// usando variações de sufixo 0001..0020 para gerar uma fila grande.
-const SEED_CNPJS_POR_CNAE = {
-  '4120400': ['33530486','34028316','07237373','10510088','11222707','12016041','14065182','17298983','19777773','22446839',
-              '24772462','27867757','29234644','30641006','31600745','33415041','35099624','36712175','38001825','39874217'],
-  '4211101': ['01543698','05914650','07908982','09286006','11519539','14288236','16487392','19403850','22178645','25039417',
-              '27643289','30127854','32698741','34871265','37043289','39215874','41387526','43589214','45761398','47932541'],
-  '4211102': ['02651874','06183492','08274651','10365892','12456983','14548074','16639215','18730396','20821537','22912678'],
-  '4212000': ['03741852','07382963','09473014','11564125','13655296','15746387','17837498','19928539','22019680','24110771'],
-  '4213800': ['04851963','08492074','10583185','12674296','14765347','16856498','18947549','21038650','23129761','25220872'],
-  '4291000': ['05962074','09103185','11194296','13285347','15376498','17467549','19558650','21649761','23740872','25831983'],
-  '4292801': ['06072185','10213296','12304347','14395498','16486549','18577650','20668761','22759872','24850983','26942094'],
-  '4292802': ['07182296','11323407','13414458','15505569','17596620','19687731','21778842','23869953','25961064','28052175'],
-  '4299501': ['08292407','12433518','14524569','16615620','18706731','20797842','22888953','24980064','27071175','29162286'],
-  '4299599': ['09302518','13443629','15534680','17625731','19716842','21807953','23899064','25990175','28081286','30172397'],
-  '4311801': ['10412629','14553740','16644791','18735842','20826953','22918064','25009175','27100286','29191397','31282508'],
-  '4311802': ['11522740','15663851','17754902','19845953','21937064','24028175','26119286','28210397','30301508','32392619'],
-  '4312600': ['12632851','16773962','18865013','20956064','23047175','25138286','27229397','29320508','31411619','33502730'],
-  '4313400': ['13742962','17884073','19975124','22066175','24157286','26248397','28339508','30430619','32521730','34612841'],
-  '4319300': ['14853073','18994184','21085235','23176286','25267397','27358508','29449619','31540730','33631841','35722952'],
-  '4321500': ['15963184','20104295','22195346','24286397','26377508','28468619','30559730','32650841','34741952','36833063'],
-  '4322301': ['17073295','21214406','23305457','25396508','27487619','29578730','31669841','33760952','35852063','37943174'],
-  '4322302': ['18183406','22324517','24415568','26506619','28597730','30688841','32779952','34871063','36962174','39053285'],
-  '4329101': ['19293517','23434628','25525679','27616730','29707841','31798952','33890063','35981174','38072285','40163396'],
-  '4329199': ['20403628','24544739','26635790','28726841','30817952','32909063','35000174','37091285','39182396','41273507'],
-  '4330401': ['21513739','25654850','27745901','29836952','31928063','34019174','36110285','38201396','40292507','42383618'],
-  '4330404': ['22623850','26764961','28856012','30947063','33038174','35129285','37220396','39311507','41402618','43493729'],
-  '4391600': ['23733961','27875072','29966123','32057174','34148285','36239396','38330507','40421618','42512729','44603840'],
-  '4399101': ['24844072','28985183','31076234','33167285','35258396','37349507','39440618','41531729','43622840','45713951'],
-  '4399199': ['25954183','30095294','32186345','34277396','36368507','38459618','40550729','42641840','44732951','46824062'],
-  '4741500': ['26064294','31205405','33296456','35387507','37478618','39569729','41660840','43751951','45843062','47934173'],
-  '4742300': ['27174405','32315516','34406567','36497618','38588729','40679840','42770951','44862062','46953173','49044284'],
-  '4744001': ['28284516','33425627','35516678','37607729','39698840','41789951','43881062','45972173','48063284','50154395'],
-  '4744002': ['29394627','34535738','36626789','38717840','40808951','42900062','44991173','47082284','49173395','51264506'],
-};
-
-// Gera lista de CNPJs candidatos a partir dos seeds de um CNAE
-// Cada seed (8 dígitos) gera N variações com sufixo 0001..000N + dígitos verificadores corretos
-function gerarCandidatosCNPJ(cnae, quantidade = 40) {
-  const seeds = SEED_CNPJS_POR_CNAE[cnae] || SEED_CNPJS_POR_CNAE['4120400'];
-  const candidatos = [];
-  // Para cada seed, tenta sufixos 0001, 0002, 0003
-  for (const base of seeds) {
-    if (candidatos.length >= quantidade) break;
-    for (let ordem = 1; ordem <= 3 && candidatos.length < quantidade; ordem++) {
-      const sufixo = String(ordem).padStart(4, '0');
-      const cnpjBase = base + sufixo;
-      // Calcula os dois dígitos verificadores
-      const cnpjCompleto = cnpjBase + calcDV(cnpjBase);
-      candidatos.push(cnpjCompleto);
-    }
-  }
-  return candidatos;
-}
-
-function calcDV(cnpj12) {
-  // Calcula os dois dígitos verificadores de um CNPJ com 12 dígitos
-  const calc = (n) => {
-    let soma = 0, peso = n === 13 ? 5 : 6;
-    for (let i = 0; i < n - 1; i++) {
-      soma += parseInt(cnpj12[i] || 0) * peso;
-      peso = peso === 2 ? 9 : peso - 1;
-    }
-    const r = soma % 11;
-    return r < 2 ? 0 : 11 - r;
-  };
-  const d1 = calc(13);
-  const d2 = calc(14);
-  return String(d1) + String(d2);
-}
-
-// Substitui o endpoint quebrado (publica.cnpj.ws/cnpj/search não existe mais na API pública)
-// Agora usa CNPJs-semente por CNAE e verifica cada um via BrasilAPI
+// Busca CNPJs reais via BrasilAPI endpoint de listagem por CNAE
+// https://brasilapi.com.br/api/cnpj/v1?cnae=4120400&uf=SP&page=1
 async function fetchCnpjsByAtividadeBrasilAPI(cnae, uf, pagina = 1) {
   try {
-    const offset = (pagina - 1) * 20;
-    const todos = gerarCandidatosCNPJ(cnae, 60);
-    // Retorna fatia de 20 candidatos por página (serão verificados na fase de detalhe)
-    return todos.slice(offset, offset + 20);
+    await domainThrottle('brasilapi.com.br');
+    const params = new URLSearchParams({ cnae, page: pagina, size: 20 });
+    if (uf && uf !== 'all') params.set('uf', uf);
+    const resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1?${params}`, {
+      signal: AbortSignal.timeout(10000),
+      headers: { 'Accept': 'application/json' }
+    });
+    if (resp.status === 429) { domainBackoff('brasilapi.com.br', 5000); return []; }
+    if (resp.status === 404) return []; // CNAE sem resultados nessa UF — normal
+    if (!resp.ok) return [];
+    domainReset('brasilapi.com.br');
+    const data = await resp.json();
+    // Retorna lista de CNPJs (14 dígitos sem formatação)
+    if (Array.isArray(data)) return data.map(d => String(d.cnpj || d).replace(/\D/g,'')).filter(c => c.length === 14);
+    return [];
   } catch(e) {
     return [];
   }
 }
 
-// Busca detalhes de um CNPJ — tenta BrasilAPI primeiro (sem rate limit pesado), depois publica.cnpj.ws
+// Busca detalhes de UM CNPJ — apenas BrasilAPI (publica.cnpj.ws removido — rate limit muito baixo)
 async function fetchCnpjDetail(cnpj) {
-  // Fonte 1: BrasilAPI (estável, sem autenticação, rate limit generoso)
   try {
     await domainThrottle('brasilapi.com.br');
     const resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, {
-      signal: AbortSignal.timeout(12000),
+      signal: AbortSignal.timeout(10000),
       headers: { 'Accept': 'application/json' }
     });
-    if (resp.ok) {
-      domainReset('brasilapi.com.br');
-      const d = await resp.json();
-      if (d && d.cnpj) return { source: 'brasilapi', data: d };
-    }
-    if (resp.status === 429) domainBackoff('brasilapi.com.br');
+    if (resp.status === 429) { domainBackoff('brasilapi.com.br', 5000); return { source: 'ratelimit', data: null }; }
+    if (resp.status === 400 || resp.status === 404) return null; // CNPJ inválido/inexistente
+    if (!resp.ok) return null;
+    domainReset('brasilapi.com.br');
+    const d = await resp.json();
+    if (d && d.cnpj) return { source: 'brasilapi', data: d };
   } catch(e) {}
-
-  // Fonte 2: publica.cnpj.ws (fallback)
-  try {
-    await domainThrottle('publica.cnpj.ws');
-    const resp = await fetch(`https://publica.cnpj.ws/cnpj/${cnpj}`, {
-      signal: AbortSignal.timeout(12000),
-      headers: { 'Accept': 'application/json' }
-    });
-    if (resp.ok) {
-      domainReset('publica.cnpj.ws');
-      const d = await resp.json();
-      if (d && (d.cnpj || d.razao_social || d.estabelecimento)) return { source: 'cnpjws', data: d };
-    }
-    if (resp.status === 429) { domainBackoff('publica.cnpj.ws'); return { source: 'ratelimit', data: null }; }
-  } catch(e) {}
-
   return null;
 }
 
@@ -2137,10 +2068,10 @@ async function startRealImport() {
   const prog = document.getElementById('real-progress');
   if (prog) prog.style.display = 'block';
 
-  logReal(`🚀 Iniciando busca de ${qty} leads (modo paralelo v2)...`, 'info');
+  logReal(`🚀 Iniciando busca de ${qty} leads (motor v3)...`, 'info');
   logReal(`🔍 Segmento: ${cnaeFilter} | UF: ${ufFilter !== 'all' ? ufFilter : 'Todo Brasil'} | Tipo: ${tipoOpt}`, 'info');
 
-  // Seleciona CNAEs conforme filtro — usa mais CNAEs para ter fila grande
+  // Seleciona CNAEs conforme filtro
   const cnaes = CNAES_CONSTRUCAO[cnaeFilter] || CNAES_CONSTRUCAO['all'];
 
   const leads = [];
@@ -2148,28 +2079,24 @@ async function startRealImport() {
   let skipped = 0, notFound = 0, inactive = 0, errs = 0;
   let cnpjQueue = [];
 
-  // ── Fase 1: coleta de CNPJs (paralela, até 3 CNAEs simultâneos) ──
-  logReal('📡 Gerando candidatos por segmento e consultando via BrasilAPI...', 'info');
-  const cnaesToSearch = cnaes.slice(0, Math.min(cnaes.length, 10));
+  // ── Fase 1: coleta de CNPJs reais via BrasilAPI por CNAE ──
+  logReal('📡 Buscando CNPJs reais por segmento via BrasilAPI...', 'info');
+  const cnaesToSearch = cnaes.slice(0, Math.min(cnaes.length, 8));
+  const pagesNeeded = Math.ceil((qty * 5) / 20 / cnaesToSearch.length) || 2;
 
   await promisePool(cnaesToSearch, 3, async (cnae) => {
     if (!realImportRunning) return;
-    const found = await fetchCnpjsByAtividadeBrasilAPI(cnae, ufFilter, 1);
-    if (found.length > 0) {
+    for (let pg = 1; pg <= pagesNeeded && realImportRunning; pg++) {
+      const found = await fetchCnpjsByAtividadeBrasilAPI(cnae, ufFilter, pg);
+      if (found.length === 0) break; // sem mais resultados para esse CNAE
       cnpjQueue.push(...found);
-    }
-    // Página 2 se precisar de mais
-    if (cnpjQueue.length < qty * 4) {
-      const found2 = await fetchCnpjsByAtividadeBrasilAPI(cnae, ufFilter, 2);
-      if (found2.length > 0) cnpjQueue.push(...found2);
-      const found3 = await fetchCnpjsByAtividadeBrasilAPI(cnae, ufFilter, 3);
-      if (found3.length > 0) cnpjQueue.push(...found3);
+      if (cnpjQueue.length >= qty * 8) break;
     }
   });
 
   // Remove duplicatas e já existentes
   cnpjQueue = [...new Set(cnpjQueue)].filter(c => c.length === 14 && !cnpjsVistos.has(c));
-  logReal(`📋 ${cnpjQueue.length} CNPJs únicos na fila.`, 'info');
+  logReal(`📋 ${cnpjQueue.length} CNPJs reais na fila.`, 'info');
 
   if (cnpjQueue.length === 0) {
     logReal('⚠ Nenhum CNPJ encontrado. Tente filtro de UF diferente ou segmento mais amplo.', 'warn');
@@ -2179,17 +2106,15 @@ async function startRealImport() {
     return;
   }
 
-  // ── Fase 2: busca de detalhes em paralelo (5 simultâneos) ──
-  logReal(`🔄 Consultando detalhes em paralelo (5 simultâneos)...`, 'info');
+  // ── Fase 2: busca de detalhes em paralelo (3 simultâneos — limite real da BrasilAPI) ──
+  logReal(`🔄 Consultando detalhes em paralelo (3 simultâneos)...`, 'info');
 
-  // Fila de trabalho compartilhada com mutex simples
-  const targetQueue = cnpjQueue.slice(0, Math.min(cnpjQueue.length, qty * 15));
+  const targetQueue = cnpjQueue.slice(0, Math.min(cnpjQueue.length, qty * 10));
   let queueIdx = 0;
   const mutex = { locked: false };
 
   async function workerDetail() {
     while (realImportRunning && leads.length < qty) {
-      // Pega próximo CNPJ da fila
       const i = queueIdx++;
       if (i >= targetQueue.length) break;
 
@@ -2202,9 +2127,8 @@ async function startRealImport() {
 
       if (!result) { notFound++; continue; }
       if (result.source === 'ratelimit') {
-        // Devolve para a fila e aguarda
         queueIdx--;
-        await new Promise(r => setTimeout(r, 3000));
+        await new Promise(r => setTimeout(r, 5000));
         continue;
       }
 
@@ -2214,17 +2138,16 @@ async function startRealImport() {
       // Filtro UF manual
       if (ufFilter !== 'all' && lead.estado && lead.estado.toUpperCase() !== ufFilter.toUpperCase()) continue;
 
-      // Filtro CNAE: verifica se a empresa retornada tem o CNAE pedido (principal ou secundário)
+      // Filtro CNAE
       if (cnaeFilter !== 'all') {
         const cnaesAlvo = CNAES_CONSTRUCAO[cnaeFilter] || [];
         const cnaePrincipal = String(lead.cnae || '').replace(/\D/g,'');
-        // Aceita se o CNAE principal começa com o grupo pedido OU está na lista exata
         const cnaeOk = cnaesAlvo.some(c => cnaePrincipal === c || cnaePrincipal.startsWith(cnaeFilter));
         if (!cnaeOk) { inactive++; continue; }
       }
 
-      // Mutex para evitar duplicata de push
-      while (mutex.locked) await new Promise(r => setTimeout(r, 20));
+      // Mutex para evitar push duplicado
+      while (mutex.locked) await new Promise(r => setTimeout(r, 10));
       if (leads.length >= qty) break;
       mutex.locked = true;
       if (!cnpjsVistos.has(cnpj) && leads.length < qty) {
@@ -2236,7 +2159,6 @@ async function startRealImport() {
         document.getElementById('real-status-txt').textContent = `${leads.length}/${qty} leads coletados...`;
         if (document.getElementById('btn-jabom')) document.getElementById('btn-jabom').style.display = 'inline-flex';
         logReal(`✅ [${leads.length}/${qty}] ${(lead.razao_social||'—').slice(0,45)} — ${lead.municipio||'?'}/${lead.estado||'?'}`, 'ok');
-        // Salva no Supabase
         try {
           const { error: saveErr } = await SB.from('leads').upsert([lead], { onConflict: 'cnpj', ignoreDuplicates: true });
           if (saveErr) logReal(`⚠ Erro ao salvar: ${saveErr.message}`, 'warn');
@@ -2246,8 +2168,8 @@ async function startRealImport() {
     }
   }
 
-  // Lança 4 workers em paralelo (BrasilAPI suporta concorrência razoável)
-  await Promise.all(Array.from({ length: 4 }, workerDetail));
+  // 3 workers — alinhado com token bucket (3 req/s)
+  await Promise.all(Array.from({ length: 3 }, workerDetail));
 
   if (!realImportRunning) { logReal('⏹ Importação interrompida.', 'warn'); }
 
