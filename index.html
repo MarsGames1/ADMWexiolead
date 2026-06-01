@@ -331,6 +331,11 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
       <span>Convites</span>
       <span class="nav-badge" id="badge-convites">0</span>
 </a>
+    <a onclick="nav('renovacoes')" id="nav-renovacoes">
+      <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
+      <span>Renovações</span>
+      <span class="nav-badge" id="badge-renovacoes" style="background:var(--red);">0</span>
+</a>
     <a onclick="nav('packs')" id="nav-packs">
       <svg viewBox="0 0 24 24"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
       <span>Pacotes Curados</span>
@@ -1098,6 +1103,97 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
 </div>
 
 
+
+<!-- ══════════════════ RENOVAÇÕES ══════════════════ -->
+<div class="page" id="page-renovacoes">
+  <div class="topbar">
+    <div>
+      <div class="page-title">Renovações</div>
+      <div class="page-sub">Clientes com plano vencendo em até 7 dias ou já vencidos</div>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-ghost btn-sm" onclick="loadRenovacoes()">
+        <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
+        Atualizar
+      </button>
+      <button class="btn btn-accent btn-sm" onclick="enviarTodosAlertas()">
+        <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        Enviar alertas pendentes
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row" style="grid-template-columns:repeat(3,1fr);">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:#ff3b3b22;color:var(--red);">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
+      <div class="stat-lbl">Planos vencidos</div>
+      <div class="stat-val" id="ren-vencidos">—</div>
+      <div class="stat-delta">precisam renovar urgente</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:#ffb30022;color:var(--accent);">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </div>
+      <div class="stat-lbl">Vencendo em 7 dias</div>
+      <div class="stat-val" id="ren-em7dias">—</div>
+      <div class="stat-delta">alerta de renovação</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--green-bg);color:var(--green);">
+        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="stat-lbl">Alertas enviados hoje</div>
+      <div class="stat-val" id="ren-enviados-hoje">—</div>
+      <div class="stat-delta">emails de renovação</div>
+    </div>
+  </div>
+
+  <!-- Tabela -->
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <div class="card-title">Clientes que precisam renovar</div>
+        <div class="card-sub" id="ren-sub">Carregando...</div>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>Funcionário</th>
+          <th>Cliente</th>
+          <th>Email</th>
+          <th>Plano</th>
+          <th>Vencimento</th>
+          <th>Situação</th>
+          <th>Último alerta</th>
+          <th>Ações</th>
+        </tr></thead>
+        <tbody id="ren-tbody">
+          <tr><td colspan="8" class="td-muted" style="text-align:center;padding:30px;">Carregando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Preview email de renovação -->
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <div class="card-title">Mensagem de renovação</div>
+        <div class="card-sub">Editável — enviada para o email do cliente</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <textarea id="ren-email-body" class="form-input" style="min-height:180px;font-family:monospace;font-size:12px;line-height:1.7;resize:vertical;"></textarea>
+      <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+        <button class="btn btn-ghost btn-sm" onclick="resetRenovacaoCorpo()">↺ Restaurar padrão</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 </main>
 
@@ -2837,6 +2933,7 @@ function nav(page) {
     }
     if (page==='employees') renderEmployees();
     if (page==='convites') loadConvites();
+    if (page==='renovacoes') loadRenovacoes();
   }, 60);
 }
 
@@ -3768,6 +3865,195 @@ function resetEmailCorpo() {
   const el = document.getElementById('conv-email-body');
   if (el) el.value = EMAIL_CORPO;
   toast('Mensagem restaurada para o padrão.', 'info');
+}
+
+// ══════════════════════════════════════════
+// RENOVAÇÕES
+// ══════════════════════════════════════════
+const EMAIL_RENOVACAO = `Olá, {nome_cliente}!
+
+Passando para avisar que o seu plano {plano} na WexioLead está {situacao}.
+
+Para continuar tendo acesso a todos os recursos — leads verificados, filtros avançados e a assistente Wex — é só renovar pelo link abaixo:
+
+👉 https://wexiolead.com/#precos
+
+Qualquer dúvida estamos à disposição.
+
+Atenciosamente,
+Equipe WexioLead
+contato@wexiolead.com`;
+
+let allRenovacoes = [];
+
+function resetRenovacaoCorpo() {
+  const el = document.getElementById('ren-email-body');
+  if (el) el.value = EMAIL_RENOVACAO;
+  toast('Mensagem restaurada para o padrão.', 'info');
+}
+
+async function loadRenovacoes() {
+  if (!SB) return;
+
+  // Inicializar textarea
+  const bodyEl = document.getElementById('ren-email-body');
+  if (bodyEl && !bodyEl.value) bodyEl.value = EMAIL_RENOVACAO;
+
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const em7 = new Date(hoje); em7.setDate(em7.getDate() + 7);
+  const hojeStr = hoje.toISOString().slice(0,10);
+  const em7Str  = em7.toISOString().slice(0,10);
+
+  try {
+    // Buscar clientes com vencimento_plano <= 7 dias ou vencido
+    const { data: clientes } = await SB
+      .from('employee_clients')
+      .select('*, employees(nome, email)')
+      .not('vencimento_plano', 'is', null)
+      .lte('vencimento_plano', em7Str)
+      .not('email_cliente', 'is', null)
+      .neq('email_cliente', '')
+      .order('vencimento_plano', { ascending: true });
+
+    allRenovacoes = clientes || [];
+
+    const vencidos  = allRenovacoes.filter(c => c.vencimento_plano < hojeStr).length;
+    const em7dias   = allRenovacoes.filter(c => c.vencimento_plano >= hojeStr).length;
+
+    // Alertas enviados hoje
+    const { count: enviadosHoje } = await SB
+      .from('alertas_renovacao')
+      .select('*', { count: 'exact', head: true })
+      .gte('enviado_em', hojeStr + 'T00:00:00');
+
+    document.getElementById('ren-vencidos').textContent = vencidos;
+    document.getElementById('ren-em7dias').textContent  = em7dias;
+    document.getElementById('ren-enviados-hoje').textContent = enviadosHoje || 0;
+    document.getElementById('badge-renovacoes').textContent  = vencidos + em7dias;
+    document.getElementById('ren-sub').textContent =
+      `${allRenovacoes.length} cliente${allRenovacoes.length !== 1 ? 's' : ''} precisando de atenção`;
+
+    renderRenovacoes();
+  } catch(e) {
+    document.getElementById('ren-tbody').innerHTML =
+      '<tr><td colspan="8" class="td-muted" style="text-align:center;padding:30px;">Crie a tabela <strong>alertas_renovacao</strong> no Supabase.</td></tr>';
+  }
+}
+
+async function renderRenovacoes() {
+  const tbody = document.getElementById('ren-tbody');
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const hojeStr = hoje.toISOString().slice(0,10);
+
+  if (!allRenovacoes.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="td-muted" style="text-align:center;padding:30px;">✅ Nenhum cliente com vencimento próximo.</td></tr>';
+    return;
+  }
+
+  // Buscar últimos alertas enviados
+  const { data: alertas } = await SB
+    .from('alertas_renovacao')
+    .select('employee_client_id, enviado_em')
+    .in('employee_client_id', allRenovacoes.map(c => c.id))
+    .order('enviado_em', { ascending: false });
+
+  const ultimoAlerta = {};
+  (alertas || []).forEach(a => {
+    if (!ultimoAlerta[a.employee_client_id]) ultimoAlerta[a.employee_client_id] = a.enviado_em;
+  });
+
+  tbody.innerHTML = allRenovacoes.map(c => {
+    const venc = new Date(c.vencimento_plano + 'T12:00:00');
+    const diff = Math.ceil((venc - hoje) / (1000*60*60*24));
+    const vencido = diff < 0;
+    const situBadge = vencido
+      ? '<span class="badge b-red">🔴 Vencido</span>'
+      : `<span class="badge b-yellow">⚠️ Vence em ${diff}d</span>`;
+    const funcNome = c.employees?.nome || '—';
+    const ultimo = ultimoAlerta[c.id]
+      ? new Date(ultimoAlerta[c.id]).toLocaleDateString('pt-BR')
+      : '—';
+    const jaEnviadoHoje = ultimoAlerta[c.id]?.slice(0,10) === hojeStr;
+
+    return `<tr>
+      <td style="font-size:12px;color:var(--muted);">${funcNome}</td>
+      <td style="font-weight:500;">${c.nome_cliente}</td>
+      <td class="td-muted" style="font-size:12px;">${c.email_cliente}</td>
+      <td><span class="badge b-orange">${(c.plano||'free').toUpperCase()}</span></td>
+      <td class="td-muted" style="font-size:12px;">${venc.toLocaleDateString('pt-BR')}</td>
+      <td>${situBadge}</td>
+      <td class="td-muted" style="font-size:12px;">${ultimo}</td>
+      <td>
+        <button class="btn btn-sm ${jaEnviadoHoje ? 'btn-ghost' : 'btn-accent'}"
+          onclick="enviarAlertaRenovacao('${c.id}','${c.email_cliente}','${c.nome_cliente.replace(/'/g,"\'")}','${c.plano||'free'}','${diff < 0 ? 'vencido' : 'vencendo em ' + diff + ' dia(s)'}')"
+          ${jaEnviadoHoje ? 'disabled title="Já enviado hoje"' : ''}>
+          ${jaEnviadoHoje ? '✅ Enviado' : '📧 Enviar'}
+        </button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function enviarAlertaRenovacao(clienteId, emailCliente, nomeCliente, plano, situacao) {
+  const corpo = (document.getElementById('ren-email-body')?.value || EMAIL_RENOVACAO)
+    .replace('{nome_cliente}', nomeCliente)
+    .replace('{plano}', plano.toUpperCase())
+    .replace('{situacao}', situacao);
+
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${RESEND_API_KEY}`
+      },
+      body: JSON.stringify({
+        from: 'WexioLead <contato@wexiolead.com>',
+        to: [emailCliente],
+        subject: `⚠️ Seu plano WexioLead está ${situacao}`,
+        text: corpo
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.message || 'Erro ' + res.status);
+    }
+
+    // Registrar alerta no Supabase
+    await SB.from('alertas_renovacao').insert({
+      employee_client_id: clienteId,
+      email_cliente:      emailCliente,
+      enviado_em:         new Date().toISOString()
+    });
+
+    toast(`📧 Alerta enviado para ${emailCliente}`, 'success');
+    await loadRenovacoes();
+  } catch(e) {
+    toast('Erro ao enviar: ' + e.message, 'error');
+  }
+}
+
+async function enviarTodosAlertas() {
+  const hojeStr = new Date().toISOString().slice(0,10);
+  const { data: jaEnviados } = await SB
+    .from('alertas_renovacao')
+    .select('employee_client_id')
+    .gte('enviado_em', hojeStr + 'T00:00:00');
+  const jaSet = new Set((jaEnviados||[]).map(a => a.employee_client_id));
+
+  const pendentes = allRenovacoes.filter(c => !jaSet.has(c.id) && c.email_cliente);
+  if (!pendentes.length) { toast('Nenhum alerta pendente para hoje.', 'info'); return; }
+
+  toast(`Enviando ${pendentes.length} alertas...`, 'info');
+  for (const c of pendentes) {
+    const venc = new Date(c.vencimento_plano + 'T12:00:00');
+    const diff = Math.ceil((venc - new Date()) / (1000*60*60*24));
+    const sit  = diff < 0 ? 'vencido' : `vencendo em ${diff} dia(s)`;
+    await enviarAlertaRenovacao(c.id, c.email_cliente, c.nome_cliente, c.plano||'free', sit);
+    await new Promise(r => setTimeout(r, 500)); // pequeno delay entre envios
+  }
+  toast('Todos os alertas enviados!', 'success');
 }
 
 window.addEventListener('load', () =>{
