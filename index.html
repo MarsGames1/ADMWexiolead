@@ -608,7 +608,7 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
     <div class="topbar-right">
       <div class="search">
         <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        <input id="lead-search" placeholder="Buscar leads..." oninput="filterLeads()">
+        <input id="lead-search" placeholder="Buscar por nome, CNPJ, cidade, sócio, telefone, email..." oninput="filterLeads()">
 </div>
       <select class="form-input form-select btn-sm" id="lead-seg-filter" onchange="filterLeads()" style="width:150px;">
         <option value="">Todos os segmentos</option>
@@ -1734,35 +1734,20 @@ var enrichRunning = false;
 async function enriquecerLead(lead) {
   const nome = lead.razao_social || lead.nome_fantasia || '';
   const cidade = [lead.municipio, lead.estado].filter(Boolean).join(' ');
-  const prompt = `Busque na web informações de contato reais e atualizadas da empresa "${nome}" localizada em ${cidade}, Brasil.
-
-Retorne APENAS um JSON válido com esses campos (null se não encontrar):
-{
-  "telefone_1": "telefone principal com DDD, ex: (11) 99999-9999",
-  "telefone_2": "segundo telefone/celular se a empresa tiver mais de um número real",
-  "email_comercial": "email principal da empresa",
-  "email_2": "segundo email se a empresa tiver mais de um email real e diferente",
-  "site": "URL do site oficial"
-}
-
-Regras importantes:
-- Use null APENAS se o dado nao existir ou nao parecer real (inventado, placeholder, claramente falso).
-- ACEITE emails de dominios comuns como Gmail, Hotmail, Yahoo, Outlook — assistentes e empresas pequenas usam contas pessoais no trabalho legitimamente. Nao descarte por causa do dominio.
-- Se a empresa tiver mais de um telefone ou email reais, preencha telefone_2 e email_2.
-- Busque no site oficial, Google Maps ou redes sociais verificadas.
-- Retorne SOMENTE o JSON sem texto adicional.`;
+  const prompt = 'Encontre dados de contato da empresa "' + nome + '" em ' + cidade + ', Brasil. Faca no maximo 1-2 buscas.\n\nRetorne SOMENTE este JSON (use null se nao achar rapido, nao insista):\n{"telefone_1":null,"telefone_2":null,"email_comercial":null,"email_2":null,"site":null}\n\nRegras: aceite Gmail/Hotmail/Yahoo. Nao invente. Se nao encontrar em 1-2 buscas, retorne campos null. Apenas o JSON.';
 
   try {
-    // Chama Edge Function proxy — chave Anthropic fica segura no Supabase Vault
     const resp = await fetch('https://tbnoiwkproawwncuorpw.supabase.co/functions/v1/anthropic-proxy', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 300,
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        max_tokens: 250,
+        tools: [{
+          type: 'web_search_20250305',
+          name: 'web_search',
+          max_uses: 2
+        }],
         messages: [{ role: 'user', content: prompt }]
       }),
       signal: AbortSignal.timeout(30000)
@@ -1773,14 +1758,15 @@ Regras importantes:
     if (!resp.ok) return null;
 
     const data = await resp.json();
-    // Extrai o texto da resposta
     const textBlock = data.content?.find(b => b.type === 'text');
     if (!textBlock) return null;
-    // Limpa e parseia o JSON
     const raw = textBlock.text.replace(/```json|```/g, '').trim();
     const match = raw.match(/\{[\s\S]*\}/);
     if (!match) return null;
-    return JSON.parse(match[0]);
+    const parsed = JSON.parse(match[0]);
+    const temAlgo = parsed.telefone_1 || parsed.telefone_2 || parsed.email_comercial || parsed.email_2 || parsed.site;
+    if (!temAlgo) return { vazio: true };
+    return parsed;
   } catch(e) {
     return null;
   }
@@ -1820,31 +1806,54 @@ async function startEnrichment() {
   };
 
   const total = allLeads.filter(l => l.razao_social || l.nome_fantasia).length;
-  logLine('🔍 ' + total + ' leads no banco → ' + semContato.length + ' com dados suspeitos/incompletos para enriquecer.', 'info');
-  logLine('🤖 Iniciando enriquecimento via Anthropic + web search...', 'info');
-  logLine('💰 Custo estimado: ~$' + (semContato.length * 0.001).toFixed(2) + ' USD', 'info');
 
-  var ok = 0, pulados = 0, erros = 0;
+  // TETO por execução — evita gastar demais de uma vez. Pergunta quantos processar.
+  const tetoInput = prompt(
+    semContato.length + ' leads com dados incompletos.\n\nQuantos deseja enriquecer agora?\n(cada um custa ~US$0,002 — comece com poucos para testar)',
+    Math.min(20, semContato.length).toString()
+  );
+  if (tetoInput === null) { btn.disabled = false; enrichRunning = false; return; } // cancelou
+  const teto = Math.max(1, Math.min(parseInt(tetoInput) || 20, semContato.length));
+  const fila = semContato.slice(0, teto);
 
-  for (var i = 0; i < semContato.length; i++) {
+  logLine('🔍 ' + total + ' leads no banco → ' + semContato.length + ' incompletos. Processando ' + teto + ' agora.', 'info');
+  logLine('💰 Custo estimado: ~US$' + (teto * 0.002).toFixed(2), 'info');
+
+  var ok = 0, vazios = 0, erros = 0, vaziosSeguidos = 0;
+
+  for (var i = 0; i < fila.length; i++) {
     if (!enrichRunning) break;
-    const lead = semContato[i];
-    logLine('[' + (i+1) + '/' + semContato.length + '] ' + (lead.razao_social||'').slice(0,40) + '...', 'info');
+    const lead = fila[i];
+    logLine('[' + (i+1) + '/' + fila.length + '] ' + (lead.razao_social||'').slice(0,40) + '...', 'info');
 
     const contatos = await enriquecerLead(lead);
 
-    if (!contatos) { pulados++; continue; }
+    if (!contatos) { erros++; continue; }
     if (contatos.erro === 'ratelimit') {
       logLine('⏸ Rate limit — aguardando 30s...', 'warn');
       await new Promise(r => setTimeout(r, 30000));
-      i--; continue; // retry
+      i--; continue;
     }
     if (contatos.erro === 'auth') {
-      logLine('❌ Erro de autenticação na API. Verifique a chave.', 'err');
+      logLine('❌ Erro de autenticação. Verifique a chave no Supabase Vault.', 'err');
       break;
     }
+    // IA não achou nada — não conta como erro, mas monitora sequência
+    if (contatos.vazio) {
+      vazios++;
+      vaziosSeguidos++;
+      logLine('○ ' + (lead.razao_social||'').slice(0,30) + ' — sem dados públicos encontrados', 'warn');
+      // Se 8 vazios seguidos, pausa e pergunta se continua (evita gastar à toa)
+      if (vaziosSeguidos >= 8) {
+        const seguir = confirm('8 leads seguidos sem retorno. A busca pode não estar achando dados para esse perfil de empresa.\n\nContinuar mesmo assim?');
+        if (!seguir) { logLine('⏹ Interrompido pelo usuário após sequência sem retorno.', 'warn'); break; }
+        vaziosSeguidos = 0;
+      }
+      await new Promise(r => setTimeout(r, 1200));
+      continue;
+    }
+    vaziosSeguidos = 0; // achou algo, zera contador
 
-    // Atualiza todos os campos que a IA encontrou (sobrescreve dados falsos da RF)
     const updates = {};
     if (contatos.telefone_1)       updates.telefone_1 = contatos.telefone_1;
     if (contatos.telefone_2)       updates.telefone_2 = contatos.telefone_2;
@@ -1852,7 +1861,7 @@ async function startEnrichment() {
     if (contatos.email_2)          updates.email_2 = contatos.email_2;
     if (contatos.site)             updates.site = contatos.site;
 
-    if (Object.keys(updates).length === 0) { pulados++; continue; }
+    if (Object.keys(updates).length === 0) { vazios++; continue; }
 
     const { error } = await SB.from('leads').update(updates).eq('id', lead.id);
     if (!error) {
@@ -1863,11 +1872,11 @@ async function startEnrichment() {
       erros++;
     }
 
-    // Pausa entre chamadas — Haiku suporta ~50 req/min
     await new Promise(r => setTimeout(r, 1500));
   }
 
-  logLine('\n🏁 Concluído: ' + ok + ' enriquecidos | ' + pulados + ' sem dados | ' + erros + ' erros.', 'ok');
+  logLine('\n🏁 Concluído: ' + ok + ' enriquecidos | ' + vazios + ' sem dados públicos | ' + erros + ' erros.', 'ok');
+  if (ok > 0) logLine('💡 Restam ' + (semContato.length - fila.length) + ' leads incompletos. Rode de novo para continuar.', 'info');
   btn.disabled = false;
   enrichRunning = false;
   await loadLeads();
@@ -2039,7 +2048,12 @@ async function fetchMRPage(cnaes, uf, cursor, limit) {
     }
     var data = await resp.json();
     var empresas = Array.isArray(data) ? data : (data.data || []);
-    var nextCursor = data.cursor || null;
+    // Cursor da Minha Receita = CNPJ da ÚLTIMA empresa da página (não um campo "cursor")
+    var nextCursor = null;
+    if (empresas.length > 0) {
+      var ultima = empresas[empresas.length - 1];
+      nextCursor = String(ultima.cnpj || '').replace(/\D/g, '') || null;
+    }
     return { empresas: empresas, cursor: nextCursor };
   } catch(e) {
     logReal('Timeout/erro Minha Receita: ' + e.message, 'warn');
@@ -2244,6 +2258,7 @@ async function startRealImport() {
   logReal('Consultando Minha Receita com ' + cnaesToUse.length + ' CNAEs...', 'info');
 
   var cursor = null;
+  var cursorAnterior = null;
   var pagesSearched = 0;
   var maxPages = Math.ceil(qty / 15) + 5; // paginas suficientes
 
@@ -2296,7 +2311,8 @@ async function startRealImport() {
     }
 
     cursor = result.cursor;
-    if (!cursor) break; // ultima pagina
+    if (!cursor || cursor === cursorAnterior) break; // última página ou cursor travado
+    cursorAnterior = cursor;
     // Pequena pausa entre paginas para nao sobrecarregar
     if (realImportRunning && leads.length < qty) await new Promise(function(r) { setTimeout(r, 800); });
   }
@@ -2484,10 +2500,20 @@ function renderLeads() {
   }
 
   let filtered = allLeads.filter(l =>{
-    const q = leadsFilter.search.toLowerCase();
-    const matchSearch = !q || (l.razao_social||'').toLowerCase().includes(q) ||
-      (l.nome_fantasia||'').toLowerCase().includes(q) || (l.municipio||'').toLowerCase().includes(q) ||
-      (l.nome_socio_1||'').toLowerCase().includes(q);
+    const q = leadsFilter.search.toLowerCase().trim();
+    const qDigits = q.replace(/\D/g, '');
+    const matchSearch = !q ||
+      (l.razao_social||'').toLowerCase().includes(q) ||
+      (l.nome_fantasia||'').toLowerCase().includes(q) ||
+      (l.municipio||'').toLowerCase().includes(q) ||
+      (l.nome_socio_1||'').toLowerCase().includes(q) ||
+      (l.segmento_simplificado||'').toLowerCase().includes(q) ||
+      (l.estado||'').toLowerCase() === q ||
+      (l.email_comercial||'').toLowerCase().includes(q) ||
+      (l.email_2||'').toLowerCase().includes(q) ||
+      (l.site||'').toLowerCase().includes(q) ||
+      (qDigits.length >= 3 && (l.cnpj||'').replace(/\D/g,'').includes(qDigits)) ||
+      (qDigits.length >= 4 && ((l.telefone_1||'').replace(/\D/g,'').includes(qDigits) || (l.telefone_2||'').replace(/\D/g,'').includes(qDigits)));
     const matchSeg = !leadsFilter.seg || l.segmento_simplificado === leadsFilter.seg;
     const matchTipo = !leadsFilter.tipo || (l.tipo_empresa||'').toLowerCase() === leadsFilter.tipo;
     return matchSearch && matchSeg && matchTipo;
