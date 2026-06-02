@@ -623,8 +623,13 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
         <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         Importar CSV
 </button>
+      <button class="btn btn-ghost btn-sm" id="btn-enrich" onclick="startEnrichment()" title="Busca telefone 2, email 2 e site via Google para leads sem contato completo">
+        <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M11 8v6M8 11h6"/></svg>
+        Enriquecer Contatos
+</button>
 </div>
 </div>
+<div id="enrich-log" style="display:none;margin:0 18px 12px;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;max-height:160px;overflow-y:auto;font-family:monospace;"></div>
   <div class="card">
     <div class="tbl-wrap">
       <table>
@@ -1321,8 +1326,11 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div class="form-group"><label class="form-label">Razão Social</label><input class="form-input" id="le-razao" type="text"></div>
         <div class="form-group"><label class="form-label">Nome Fantasia</label><input class="form-input" id="le-fantasia" type="text"></div>
-        <div class="form-group"><label class="form-label">Telefone</label><input class="form-input" id="le-tel" type="text"></div>
+        <div class="form-group"><label class="form-label">Telefone 1</label><input class="form-input" id="le-tel" type="text"></div>
+        <div class="form-group"><label class="form-label">Telefone 2</label><input class="form-input" id="le-tel2" type="text"></div>
         <div class="form-group"><label class="form-label">E-mail Comercial</label><input class="form-input" id="le-email" type="email"></div>
+        <div class="form-group"><label class="form-label">E-mail 2</label><input class="form-input" id="le-email2" type="email"></div>
+        <div class="form-group" style="grid-column:span 2;"><label class="form-label">Site</label><input class="form-input" id="le-site" type="url" placeholder="https://"></div>
         <div class="form-group"><label class="form-label">Sócio / Decisor</label><input class="form-input" id="le-socio" type="text"></div>
         <div class="form-group"><label class="form-label">Cidade</label><input class="form-input" id="le-cidade" type="text"></div>
         <div class="form-group"><label class="form-label">Estado (UF)</label><input class="form-input" id="le-uf" type="text" maxlength="2" style="text-transform:uppercase;"></div>
@@ -1715,6 +1723,115 @@ async function loadUsers() {
     tipo: u.tipo_empresa || u.source || ''
   }));
 }
+
+// ══════════════════════════════════════════════════════
+// MOTOR DE ENRIQUECIMENTO — Google Custom Search API
+// ══════════════════════════════════════════════════════
+const GCSAPI_KEY = 'AIzaSyCl5ni9780_oKNSXMDGcZUTpicvF03SsdU';
+const GCSAPI_CX  = '14c4d7a0fc38a45fe';
+var enrichRunning = false;
+
+// Extrai telefone, email e site de um bloco de texto
+function extrairContatos(textos) {
+  const txt = textos.join(' ');
+  const tel = txt.match(/\(?\d{2}\)?\s?\d{4,5}[-\s]?\d{4}/g);
+  const email = txt.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g);
+  const site  = textos.find(t => /^https?:\/\//i.test(t)) || null;
+  return {
+    telefone: tel   ? tel[0].replace(/\s/g,'-') : null,
+    telefone2:tel && tel[1] ? tel[1].replace(/\s/g,'-') : null,
+    email:    email ? email[0].toLowerCase() : null,
+    email2:   email && email[1] ? email[1].toLowerCase() : null,
+    site:     site,
+  };
+}
+
+// Busca no Google CSE e retorna contatos extraídos
+async function enriquecerLead(lead) {
+  const query = encodeURIComponent(
+    '"' + (lead.razao_social || lead.nome_fantasia || '') + '" ' +
+    (lead.municipio || '') + ' ' + (lead.estado || '') +
+    ' telefone contato'
+  );
+  const url = 'https://www.googleapis.com/customsearch/v1?key=' + GCSAPI_KEY +
+              '&cx=' + GCSAPI_CX + '&q=' + query + '&num=5';
+  try {
+    const resp = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (resp.status === 429) return { erro: 'quota' };
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (!data.items || data.items.length === 0) return null;
+    // Coleta snippets e links
+    const textos = data.items.flatMap(i => [
+      i.snippet || '', i.title || '', i.link || '',
+      ...(i.pagemap?.metatags?.[0] ? Object.values(i.pagemap.metatags[0]) : [])
+    ]);
+    return extrairContatos(textos);
+  } catch(e) { return null; }
+}
+
+// UI — botão enriquecer na seção de leads
+async function startEnrichment() {
+  if (enrichRunning) return;
+  enrichRunning = true;
+  const btn = document.getElementById('btn-enrich');
+  const log = document.getElementById('enrich-log');
+  btn.disabled = true;
+  log.style.display = 'block';
+  log.innerHTML = '';
+
+  const semContato = allLeads.filter(l =>
+    !l.telefone_2 && !l.email_2 && !l.site && (l.razao_social || l.nome_fantasia)
+  );
+
+  const logLine = (msg, type) => {
+    const c = type === 'ok' ? '#4ade80' : type === 'warn' ? '#fbbf24' : '#94a3b8';
+    log.innerHTML += '<div style="color:' + c + ';font-size:11px;line-height:1.7;">' + msg + '</div>';
+    log.scrollTop = log.scrollHeight;
+  };
+
+  logLine('🔍 ' + semContato.length + ' leads para enriquecer (100 buscas/dia grátis)...', 'info');
+
+  var ok = 0, pulados = 0, quota = false;
+
+  for (var i = 0; i < semContato.length && !quota; i++) {
+    const lead = semContato[i];
+    logLine('[' + (i+1) + '/' + semContato.length + '] ' + (lead.razao_social||'').slice(0,40) + '...', 'info');
+
+    const contatos = await enriquecerLead(lead);
+
+    if (!contatos) { pulados++; continue; }
+    if (contatos.erro === 'quota') {
+      logLine('⚠ Cota diária (100 buscas) atingida. Tente amanhã.', 'warn');
+      quota = true; break;
+    }
+
+    // Só atualiza campos que estão vazios no lead
+    const updates = {};
+    if (!lead.telefone_2 && contatos.telefone2) updates.telefone_2 = contatos.telefone2;
+    if (!lead.telefone_1 && contatos.telefone)  updates.telefone_1 = contatos.telefone;
+    if (!lead.email_comercial && contatos.email) updates.email_comercial = contatos.email;
+    if (!lead.email_2 && contatos.email2)        updates.email_2 = contatos.email2;
+    if (!lead.site && contatos.site)             updates.site = contatos.site;
+
+    if (Object.keys(updates).length === 0) { pulados++; continue; }
+
+    const { error } = await SB.from('leads').update(updates).eq('id', lead.id);
+    if (!error) {
+      ok++;
+      logLine('✅ ' + (lead.razao_social||'').slice(0,35) + ' — ' + JSON.stringify(updates), 'ok');
+    }
+
+    // Pausa entre buscas para não derrubar a quota
+    if (i < semContato.length - 1) await new Promise(r => setTimeout(r, 1200));
+  }
+
+  logLine('\n✅ Concluído: ' + ok + ' enriquecidos | ' + pulados + ' sem dados encontrados.', 'ok');
+  btn.disabled = false;
+  enrichRunning = false;
+  await loadLeads(); renderAll();
+}
+
 
 async function loadLeads() {
   let all = [], from = 0;
@@ -2861,6 +2978,9 @@ function viewLead(id) {
   document.getElementById('le-fantasia').value = l.nome_fantasia || '';
   document.getElementById('le-tel').value = l.telefone_1 || '';
   document.getElementById('le-email').value = l.email_comercial || '';
+  document.getElementById('le-tel2').value = l.telefone_2 || '';
+  document.getElementById('le-email2').value = l.email_2 || '';
+  document.getElementById('le-site').value = l.site || '';
   document.getElementById('le-socio').value = l.nome_socio_1 || '';
   document.getElementById('le-cidade').value = l.municipio || '';
   document.getElementById('le-uf').value = l.estado || '';
@@ -2887,7 +3007,10 @@ async function saveLeadEdit() {
     razao_social:          document.getElementById('le-razao').value.trim() || null,
     nome_fantasia:         document.getElementById('le-fantasia').value.trim() || null,
     telefone_1:            document.getElementById('le-tel').value.trim() || null,
+    telefone_2:            document.getElementById('le-tel2').value.trim() || null,
     email_comercial:       document.getElementById('le-email').value.trim() || null,
+    email_2:               document.getElementById('le-email2').value.trim() || null,
+    site:                  document.getElementById('le-site').value.trim() || null,
     nome_socio_1:          document.getElementById('le-socio').value.trim() || null,
     municipio:             document.getElementById('le-cidade').value.trim() || null,
     estado:                document.getElementById('le-uf').value.trim().toUpperCase() || null,
