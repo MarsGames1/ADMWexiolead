@@ -623,7 +623,7 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
         <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         Importar CSV
 </button>
-      <button class="btn btn-ghost btn-sm" id="btn-enrich" onclick="startEnrichment()" title="Busca telefone 2, email 2 e site via Google para leads sem contato completo">
+      <button class="btn btn-ghost btn-sm" id="btn-enrich" onclick="startEnrichment()" title="Enriquece contatos via Anthropic AI + web search — busca telefone, email e site reais">
         <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M11 8v6M8 11h6"/></svg>
         Enriquecer Contatos
 </button>
@@ -1725,49 +1725,62 @@ async function loadUsers() {
 }
 
 // ══════════════════════════════════════════════════════
-// MOTOR DE ENRIQUECIMENTO — Google Custom Search API
+// MOTOR DE ENRIQUECIMENTO — Anthropic API + Web Search
 // ══════════════════════════════════════════════════════
-const GCSAPI_KEY = 'AIzaSyCl5ni9780_oKNSXMDGcZUTpicvF03SsdU';
-const GCSAPI_CX  = '14c4d7a0fc38a45fe';
+const ANTHROPIC_KEY = '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';
 var enrichRunning = false;
 
-// Extrai telefone, email e site de um bloco de texto
-function extrairContatos(textos) {
-  const txt = textos.join(' ');
-  const tel = txt.match(/\(?\d{2}\)?\s?\d{4,5}[-\s]?\d{4}/g);
-  const email = txt.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g);
-  const site  = textos.find(t => /^https?:\/\//i.test(t)) || null;
-  return {
-    telefone: tel   ? tel[0].replace(/\s/g,'-') : null,
-    telefone2:tel && tel[1] ? tel[1].replace(/\s/g,'-') : null,
-    email:    email ? email[0].toLowerCase() : null,
-    email2:   email && email[1] ? email[1].toLowerCase() : null,
-    site:     site,
-  };
+// Enriquece um lead via Anthropic API com web search
+async function enriquecerLead(lead) {
+  const nome = lead.razao_social || lead.nome_fantasia || '';
+  const cidade = [lead.municipio, lead.estado].filter(Boolean).join(' ');
+  const prompt = `Busque na web informações de contato reais e atualizadas da empresa "${nome}" localizada em ${cidade}, Brasil.
+
+Retorne APENAS um JSON válido com esses campos (null se não encontrar):
+{
+  "telefone_1": "telefone principal com DDD, ex: (11) 99999-9999",
+  "telefone_2": "segundo telefone se houver",
+  "email_comercial": "email principal",
+  "email_2": "segundo email se houver",
+  "site": "URL do site oficial"
 }
 
-// Busca no Google CSE e retorna contatos extraídos
-async function enriquecerLead(lead) {
-  const query = encodeURIComponent(
-    '"' + (lead.razao_social || lead.nome_fantasia || '') + '" ' +
-    (lead.municipio || '') + ' ' + (lead.estado || '') +
-    ' telefone contato'
-  );
-  const url = 'https://www.googleapis.com/customsearch/v1?key=' + GCSAPI_KEY +
-              '&cx=' + GCSAPI_CX + '&q=' + query + '&num=5';
+Não invente dados. Se não encontrar um campo, use null. Retorne SOMENTE o JSON, sem texto adicional.`;
+
   try {
-    const resp = await fetch(url, { signal: AbortSignal.timeout(10000) });
-    if (resp.status === 429) return { erro: 'quota' };
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 300,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        messages: [{ role: 'user', content: prompt }]
+      }),
+      signal: AbortSignal.timeout(30000)
+    });
+
+    if (resp.status === 429) return { erro: 'ratelimit' };
+    if (resp.status === 401) return { erro: 'auth' };
     if (!resp.ok) return null;
+
     const data = await resp.json();
-    if (!data.items || data.items.length === 0) return null;
-    // Coleta snippets e links
-    const textos = data.items.flatMap(i => [
-      i.snippet || '', i.title || '', i.link || '',
-      ...(i.pagemap?.metatags?.[0] ? Object.values(i.pagemap.metatags[0]) : [])
-    ]);
-    return extrairContatos(textos);
-  } catch(e) { return null; }
+    // Extrai o texto da resposta
+    const textBlock = data.content?.find(b => b.type === 'text');
+    if (!textBlock) return null;
+    // Limpa e parseia o JSON
+    const raw = textBlock.text.replace(/```json|```/g, '').trim();
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    return JSON.parse(match[0]);
+  } catch(e) {
+    return null;
+  }
 }
 
 // UI — botão enriquecer na seção de leads
@@ -1780,56 +1793,70 @@ async function startEnrichment() {
   log.style.display = 'block';
   log.innerHTML = '';
 
-  const semContato = allLeads.filter(l =>
-    !l.telefone_2 && !l.email_2 && !l.site && (l.razao_social || l.nome_fantasia)
-  );
+  // Prioriza leads sem contato nenhum, depois os com contato incompleto
+  const semContato = allLeads.filter(l => l.razao_social || l.nome_fantasia).sort((a, b) => {
+    const scoreA = (a.telefone_1 ? 1 : 0) + (a.email_comercial ? 1 : 0);
+    const scoreB = (b.telefone_1 ? 1 : 0) + (b.email_comercial ? 1 : 0);
+    return scoreA - scoreB;
+  });
 
   const logLine = (msg, type) => {
-    const c = type === 'ok' ? '#4ade80' : type === 'warn' ? '#fbbf24' : '#94a3b8';
+    const c = type === 'ok' ? '#4ade80' : type === 'warn' ? '#fbbf24' : type === 'err' ? '#f87171' : '#94a3b8';
     log.innerHTML += '<div style="color:' + c + ';font-size:11px;line-height:1.7;">' + msg + '</div>';
     log.scrollTop = log.scrollHeight;
   };
 
-  logLine('🔍 ' + semContato.length + ' leads para enriquecer (100 buscas/dia grátis)...', 'info');
+  logLine('🤖 Enriquecendo ' + semContato.length + ' leads via Anthropic + web search...', 'info');
+  logLine('💰 Custo estimado: ~$' + (semContato.length * 0.001).toFixed(2) + ' USD', 'info');
 
-  var ok = 0, pulados = 0, quota = false;
+  var ok = 0, pulados = 0, erros = 0;
 
-  for (var i = 0; i < semContato.length && !quota; i++) {
+  for (var i = 0; i < semContato.length; i++) {
+    if (!enrichRunning) break;
     const lead = semContato[i];
     logLine('[' + (i+1) + '/' + semContato.length + '] ' + (lead.razao_social||'').slice(0,40) + '...', 'info');
 
     const contatos = await enriquecerLead(lead);
 
     if (!contatos) { pulados++; continue; }
-    if (contatos.erro === 'quota') {
-      logLine('⚠ Cota diária (100 buscas) atingida. Tente amanhã.', 'warn');
-      quota = true; break;
+    if (contatos.erro === 'ratelimit') {
+      logLine('⏸ Rate limit — aguardando 30s...', 'warn');
+      await new Promise(r => setTimeout(r, 30000));
+      i--; continue; // retry
+    }
+    if (contatos.erro === 'auth') {
+      logLine('❌ Erro de autenticação na API. Verifique a chave.', 'err');
+      break;
     }
 
-    // Só atualiza campos que estão vazios no lead
+    // Só atualiza campos vazios
     const updates = {};
-    if (!lead.telefone_2 && contatos.telefone2) updates.telefone_2 = contatos.telefone2;
-    if (!lead.telefone_1 && contatos.telefone)  updates.telefone_1 = contatos.telefone;
-    if (!lead.email_comercial && contatos.email) updates.email_comercial = contatos.email;
-    if (!lead.email_2 && contatos.email2)        updates.email_2 = contatos.email2;
-    if (!lead.site && contatos.site)             updates.site = contatos.site;
+    if (!lead.telefone_1 && contatos.telefone_1)       updates.telefone_1 = contatos.telefone_1;
+    if (!lead.telefone_2 && contatos.telefone_2)       updates.telefone_2 = contatos.telefone_2;
+    if (!lead.email_comercial && contatos.email_comercial) updates.email_comercial = contatos.email_comercial;
+    if (!lead.email_2 && contatos.email_2)             updates.email_2 = contatos.email_2;
+    if (!lead.site && contatos.site)                   updates.site = contatos.site;
 
     if (Object.keys(updates).length === 0) { pulados++; continue; }
 
     const { error } = await SB.from('leads').update(updates).eq('id', lead.id);
     if (!error) {
       ok++;
-      logLine('✅ ' + (lead.razao_social||'').slice(0,35) + ' — ' + JSON.stringify(updates), 'ok');
+      const resumo = Object.entries(updates).map(([k,v]) => k.replace('_','') + ': ' + String(v).slice(0,30)).join(' | ');
+      logLine('✅ ' + (lead.razao_social||'').slice(0,30) + ' → ' + resumo, 'ok');
+    } else {
+      erros++;
     }
 
-    // Pausa entre buscas para não derrubar a quota
-    if (i < semContato.length - 1) await new Promise(r => setTimeout(r, 1200));
+    // Pausa entre chamadas — Haiku suporta ~50 req/min
+    await new Promise(r => setTimeout(r, 1500));
   }
 
-  logLine('\n✅ Concluído: ' + ok + ' enriquecidos | ' + pulados + ' sem dados encontrados.', 'ok');
+  logLine('\n🏁 Concluído: ' + ok + ' enriquecidos | ' + pulados + ' sem dados | ' + erros + ' erros.', 'ok');
   btn.disabled = false;
   enrichRunning = false;
-  await loadLeads(); renderAll();
+  await loadLeads();
+  renderAll();
 }
 
 
@@ -2009,7 +2036,7 @@ function normalizeMR(d, tipoOpt) {
   if (!d) return null;
   var sc = d.situacao_cadastral;
   var scDesc = String(d.descricao_situacao_cadastral || '').toLowerCase();
-  if (sc && sc !== 2 && scDesc !== 'ativa') return null;
+  if (sc !== undefined && sc !== null && sc !== '') { if (!(sc == 2 || scDesc.includes('ativa'))) return null; }
 
   var cnpjRaw = String(d.cnpj || '').replace(/\D/g,'');
   if (cnpjRaw.length !== 14) return null;
@@ -2198,12 +2225,12 @@ async function startRealImport() {
   var skipped = 0, inactive = 0;
 
   // Seleciona subset de CNAEs (os mais relevantes para construcao civil)
-  var cnaesToUse = cnaes.slice(0, Math.min(cnaes.length, 6));
+  var cnaesToUse = cnaes.slice(0, Math.min(cnaes.length, 12));
   logReal('Consultando Minha Receita com ' + cnaesToUse.length + ' CNAEs...', 'info');
 
   var cursor = null;
   var pagesSearched = 0;
-  var maxPages = Math.ceil(qty / 50) + 3; // paginas suficientes
+  var maxPages = Math.ceil(qty / 15) + 5; // paginas suficientes
 
   while (realImportRunning && leads.length < qty && pagesSearched < maxPages) {
     var result = await fetchMRPage(cnaesToUse, ufFilter, cursor, 100);
