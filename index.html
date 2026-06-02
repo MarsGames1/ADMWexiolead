@@ -1749,12 +1749,10 @@ Não invente dados. Se não encontrar um campo, use null. Retorne SOMENTE o JSON
 
   try {
     // Chama Edge Function proxy — chave Anthropic fica segura no Supabase Vault
-    const sbKey = typeof SB_KEY !== 'undefined' ? SB_KEY : '';
     const resp = await fetch('https://tbnoiwkproawwncuorpw.supabase.co/functions/v1/anthropic-proxy', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + sbKey,
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
@@ -1829,13 +1827,13 @@ async function startEnrichment() {
       break;
     }
 
-    // Só atualiza campos vazios
+    // Atualiza todos os campos que a IA encontrou (sobrescreve dados falsos da RF)
     const updates = {};
-    if (!lead.telefone_1 && contatos.telefone_1)       updates.telefone_1 = contatos.telefone_1;
-    if (!lead.telefone_2 && contatos.telefone_2)       updates.telefone_2 = contatos.telefone_2;
-    if (!lead.email_comercial && contatos.email_comercial) updates.email_comercial = contatos.email_comercial;
-    if (!lead.email_2 && contatos.email_2)             updates.email_2 = contatos.email_2;
-    if (!lead.site && contatos.site)                   updates.site = contatos.site;
+    if (contatos.telefone_1)       updates.telefone_1 = contatos.telefone_1;
+    if (contatos.telefone_2)       updates.telefone_2 = contatos.telefone_2;
+    if (contatos.email_comercial)  updates.email_comercial = contatos.email_comercial;
+    if (contatos.email_2)          updates.email_2 = contatos.email_2;
+    if (contatos.site)             updates.site = contatos.site;
 
     if (Object.keys(updates).length === 0) { pulados++; continue; }
 
