@@ -1739,13 +1739,18 @@ async function enriquecerLead(lead) {
 Retorne APENAS um JSON válido com esses campos (null se não encontrar):
 {
   "telefone_1": "telefone principal com DDD, ex: (11) 99999-9999",
-  "telefone_2": "segundo telefone se houver",
-  "email_comercial": "email principal",
-  "email_2": "segundo email se houver",
+  "telefone_2": "segundo telefone/celular se a empresa tiver mais de um número real",
+  "email_comercial": "email principal da empresa",
+  "email_2": "segundo email se a empresa tiver mais de um email real e diferente",
   "site": "URL do site oficial"
 }
 
-Não invente dados. Se não encontrar um campo, use null. Retorne SOMENTE o JSON, sem texto adicional.`;
+Regras importantes:
+- Use null APENAS se o dado nao existir ou nao parecer real (inventado, placeholder, claramente falso).
+- ACEITE emails de dominios comuns como Gmail, Hotmail, Yahoo, Outlook — assistentes e empresas pequenas usam contas pessoais no trabalho legitimamente. Nao descarte por causa do dominio.
+- Se a empresa tiver mais de um telefone ou email reais, preencha telefone_2 e email_2.
+- Busque no site oficial, Google Maps ou redes sociais verificadas.
+- Retorne SOMENTE o JSON sem texto adicional.`;
 
   try {
     // Chama Edge Function proxy — chave Anthropic fica segura no Supabase Vault
@@ -1791,12 +1796,22 @@ async function startEnrichment() {
   log.style.display = 'block';
   log.innerHTML = '';
 
-  // Prioriza leads sem contato nenhum, depois os com contato incompleto
-  const semContato = allLeads.filter(l => l.razao_social || l.nome_fantasia).sort((a, b) => {
-    const scoreA = (a.telefone_1 ? 1 : 0) + (a.email_comercial ? 1 : 0);
-    const scoreB = (b.telefone_1 ? 1 : 0) + (b.email_comercial ? 1 : 0);
-    return scoreA - scoreB;
-  });
+  // Enriquece se telefone inválido/vazio OU sem site
+  // Não filtra por domínio de email — empresas pequenas usam Gmail/Hotmail legitimamente
+  function dadoSuspeito(lead) {
+    const telRaw = (lead.telefone_1 || '').replace(/\D/g, '');
+    const telInvalido = !telRaw || telRaw.length < 10 || /^(\d)\1+$/.test(telRaw);
+    const semSite = !lead.site;
+    return telInvalido || semSite;
+  }
+
+  const semContato = allLeads
+    .filter(l => (l.razao_social || l.nome_fantasia) && dadoSuspeito(l))
+    .sort((a, b) => {
+      const scoreA = (a.telefone_1 ? 1 : 0) + (a.email_comercial ? 1 : 0) + (a.site ? 1 : 0);
+      const scoreB = (b.telefone_1 ? 1 : 0) + (b.email_comercial ? 1 : 0) + (b.site ? 1 : 0);
+      return scoreA - scoreB;
+    });
 
   const logLine = (msg, type) => {
     const c = type === 'ok' ? '#4ade80' : type === 'warn' ? '#fbbf24' : type === 'err' ? '#f87171' : '#94a3b8';
@@ -1804,7 +1819,9 @@ async function startEnrichment() {
     log.scrollTop = log.scrollHeight;
   };
 
-  logLine('🤖 Enriquecendo ' + semContato.length + ' leads via Anthropic + web search...', 'info');
+  const total = allLeads.filter(l => l.razao_social || l.nome_fantasia).length;
+  logLine('🔍 ' + total + ' leads no banco → ' + semContato.length + ' com dados suspeitos/incompletos para enriquecer.', 'info');
+  logLine('🤖 Iniciando enriquecimento via Anthropic + web search...', 'info');
   logLine('💰 Custo estimado: ~$' + (semContato.length * 0.001).toFixed(2) + ' USD', 'info');
 
   var ok = 0, pulados = 0, erros = 0;
