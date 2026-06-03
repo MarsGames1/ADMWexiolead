@@ -1438,12 +1438,23 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
           <label class="form-label">Segmento (CNAE)</label>
           <select class="form-input form-select" id="real-cnae" style="font-size:12px;">
             <option value="all">Todos os segmentos</option>
-            <option value="41">CNAE 41 — Construção de Edifícios</option>
-            <option value="42">CNAE 42 — Obras de Infraestrutura</option>
-            <option value="43">CNAE 43 — Serviços Especializados</option>
+            <optgroup label="── Construção Civil ──">
+            <option value="41">Construção de Edifícios</option>
+            <option value="42">Obras de Infraestrutura</option>
+            <option value="43">Serviços Especializados</option>
             <option value="mat">Materiais de Construção</option>
-            <option value="ele">Instalações Elétricas</option>
-            <option value="hid">Hidráulica e Encanamento</option>
+            </optgroup>
+            <optgroup label="── Serviços Profissionais ──">
+            <option value="jur">Advocacia e Jurídico</option>
+            <option value="cont">Contabilidade e Consultoria</option>
+            <option value="adm">Serviços Administrativos</option>
+            <option value="eng">Engenharia e Arquitetura</option>
+            <option value="ti">TI e Tecnologia</option>
+            <option value="saude">Saúde e Clínicas</option>
+            <option value="imob">Imobiliário</option>
+            <option value="atac">Comércio Atacadista</option>
+            <option value="transp">Transporte e Logística</option>
+            </optgroup>
           </select>
         </div>
         <div>
@@ -2011,6 +2022,7 @@ function cnpjFmt(c) {
 
 // CNAEs do setor de construção civil para busca
 const CNAES_CONSTRUCAO = {
+  // Construção civil
   all:  ['4120400','4211101','4211102','4212000','4213800','4291000','4292801','4292802','4299501','4299599',
          '4311801','4311802','4312600','4313400','4319300','4321500','4322301','4322302','4329101','4329102',
          '4329103','4329104','4329105','4329199','4330401','4330402','4330403','4330404','4330405','4391600',
@@ -2023,6 +2035,24 @@ const CNAES_CONSTRUCAO = {
          '4330403','4330404','4330405','4391600','4399101','4399102','4399103','4399104',
          '4399105','4399199'],
   'mat':['4741500','4742300','4744001','4744002','4744003','4744004','4744005','4744006','4744099'],
+  // Serviços profissionais e jurídicos
+  'jur':['6911701','6911702','6912500','6920601','6920602'],
+  // Contabilidade e consultoria
+  'cont':['6920601','6920602','7020400','7490104','7490105'],
+  // Escritórios e serviços administrativos
+  'adm':['8211300','8219901','8219999','8220200','8230001','8230002'],
+  // Engenharia e arquitetura
+  'eng':['7111100','7112000','7119701','7119702','7119703','7119704','7119799'],
+  // TI e tecnologia
+  'ti':['6201501','6201502','6202300','6203100','6204000','6209100','6311900','6319400'],
+  // Saúde
+  'saude':['8610101','8610102','8621601','8621602','8630501','8630502','8630503','8711501','8711502'],
+  // Comércio atacadista de materiais
+  'atac':['4679601','4679602','4679603','4679604','4679605','4679699','4689301','4689302','4689399'],
+  // Imobiliário
+  'imob':['6810201','6810202','6821801','6821802','6822600'],
+  // Transporte e logística
+  'transp':['4921301','4921302','4922101','4922102','4922103','4930201','4930202','4940000'],
 };
 
 // Estados brasileiros para busca por UF
@@ -2084,7 +2114,18 @@ function normalizeMR(d, tipoOpt) {
 
   var cnae = String(d.cnae_fiscal || '');
   var meta = cnaeToMeta(cnae);
-  var tipo = tipoOpt === 'auto' ? meta.tipo : tipoOpt;
+  // Detecta tipo por CNAE para setores além de construção
+  var tipoAuto = meta.tipo;
+  var cnaeNum = parseInt(cnae);
+  if (!tipoAuto || tipoAuto === 'outro') {
+    if (cnaeNum >= 6900000 && cnaeNum <= 6999999) tipoAuto = 'juridico';
+    else if (cnaeNum >= 6200000 && cnaeNum <= 6399999) tipoAuto = 'ti';
+    else if (cnaeNum >= 8600000 && cnaeNum <= 8799999) tipoAuto = 'saude';
+    else if (cnaeNum >= 6800000 && cnaeNum <= 6899999) tipoAuto = 'imobiliario';
+    else if (cnaeNum >= 4900000 && cnaeNum <= 4999999) tipoAuto = 'transportadora';
+    else tipoAuto = 'prestador';
+  }
+  var tipo = tipoOpt === 'auto' ? tipoAuto : tipoOpt;
 
   var telefone = null;
   var ddd1 = String(d.ddd_telefone_1 || '').trim().replace(/\D/g,'');
@@ -2265,25 +2306,61 @@ async function startRealImport() {
   var cnpjsVistos = new Set(allLeads.map(function(l) { return l.cnpj ? l.cnpj.replace(/\D/g,'') : ''; }).filter(Boolean));
   var skipped = 0, inactive = 0;
 
-  // Seleciona subset de CNAEs (os mais relevantes para construcao civil)
-  var cnaesToUse = cnaes.slice(0, Math.min(cnaes.length, 12));
-  logReal('Consultando Minha Receita com ' + cnaesToUse.length + ' CNAEs...', 'info');
+  // Estrategia: 1 CNAE por vez em rodizio
+  // Corrige o bug "700 empresas recebidas, 0 coletadas":
+  // Quando mandamos 12 CNAEs juntos sem UF, a API retorna empresas de outros setores
+  // que sao todas rejeitadas pelo filtro de CNAE manual.
+  // Com 1 CNAE por vez, as empresas retornadas sempre correspondem ao CNAE buscado.
+  var cnaesToUse = cnaes.slice(0, Math.min(cnaes.length, 20));
+  var cnaeIdx = 0;
+  var cursoresPorCnae = {};
+  var pagsPorCnae = {};
+  var maxPagesPorCnae = Math.ceil(qty / Math.min(cnaesToUse.length, 5)) + 3;
+  logReal('Rodizio com ' + cnaesToUse.length + ' CNAEs (1 por vez) — max ' + maxPagesPorCnae + ' pags/CNAE...', 'info');
 
-  var cursor = null;
-  var cursorAnterior = null;
-  var pagesSearched = 0;
-  var maxPages = Math.ceil(qty / 15) + 5; // paginas suficientes
+  var semResultadosSeguidos = 0;
 
-  while (realImportRunning && leads.length < qty && pagesSearched < maxPages) {
-    var result = await fetchMRPage(cnaesToUse, ufFilter, cursor, 100);
-    pagesSearched++;
-
-    if (!result.empresas || result.empresas.length === 0) {
-      logReal('Sem mais resultados na Minha Receita.', 'info');
+  while (realImportRunning && leads.length < qty) {
+    // Encontra proximo CNAE com paginas disponiveis
+    var tentativas = 0;
+    while (tentativas < cnaesToUse.length) {
+      var cnaeAtual = cnaesToUse[cnaeIdx % cnaesToUse.length];
+      if ((pagsPorCnae[cnaeAtual] || 0) < maxPagesPorCnae) break;
+      cnaeIdx++;
+      tentativas++;
+    }
+    if (tentativas >= cnaesToUse.length) {
+      logReal('Todos os CNAEs esgotados para este filtro.', 'info');
       break;
     }
 
-    logReal('Pagina ' + pagesSearched + ': ' + result.empresas.length + ' empresas recebidas...', 'info');
+    var cnaeAtual = cnaesToUse[cnaeIdx % cnaesToUse.length];
+    var cursorAtual = cursoresPorCnae[cnaeAtual] || null;
+
+    var result = await fetchMRPage([cnaeAtual], ufFilter, cursorAtual, 100);
+    pagsPorCnae[cnaeAtual] = (pagsPorCnae[cnaeAtual] || 0) + 1;
+
+    if (!result.empresas || result.empresas.length === 0) {
+      semResultadosSeguidos++;
+      pagsPorCnae[cnaeAtual] = maxPagesPorCnae; // marca como esgotado
+      if (semResultadosSeguidos >= cnaesToUse.length) {
+        logReal('Sem mais resultados disponiveis.', 'info');
+        break;
+      }
+      cnaeIdx++;
+      continue;
+    }
+
+    semResultadosSeguidos = 0;
+    logReal('CNAE ' + cnaeAtual + ' p' + pagsPorCnae[cnaeAtual] + ': ' + result.empresas.length + ' empresas...', 'info');
+
+    // Atualiza cursor para este CNAE
+    if (result.cursor) {
+      cursoresPorCnae[cnaeAtual] = result.cursor;
+    } else {
+      pagsPorCnae[cnaeAtual] = maxPagesPorCnae; // sem proxima pagina
+    }
+    cnaeIdx++;
 
     for (var i = 0; i < result.empresas.length && leads.length < qty && realImportRunning; i++) {
       var emp = result.empresas[i];
@@ -2291,14 +2368,14 @@ async function startRealImport() {
 
       if (cnpjsVistos.has(cnpjRaw)) { skipped++; continue; }
 
-      // Filtro UF manual (caso a API retorne de outras UFs)
+      // Filtro UF manual
       if (ufFilter !== 'all' && emp.uf && emp.uf.toUpperCase() !== ufFilter.toUpperCase()) continue;
 
-      // Filtro CNAE manual
+      // Filtro CNAE manual (quando nao e all)
       if (cnaeFilter !== 'all') {
         var cnaesAlvo = CNAES_CONSTRUCAO[cnaeFilter] || [];
         var cnaePrincipal = String(emp.cnae_fiscal || '').replace(/\D/g,'');
-        var cnaeOk = cnaesAlvo.some(function(c) { return cnaePrincipal === c || cnaePrincipal.startsWith(cnaeFilter); });
+        var cnaeOk = cnaesAlvo.some(function(c) { return cnaePrincipal === c || cnaePrincipal.startsWith(cnaeFilter.replace(/[^0-9]/g,'')); });
         if (!cnaeOk) { inactive++; continue; }
       }
 
@@ -2315,18 +2392,14 @@ async function startRealImport() {
       if (document.getElementById('btn-jabom')) document.getElementById('btn-jabom').style.display = 'inline-flex';
       logReal('[' + leads.length + '/' + qty + '] ' + (lead.razao_social||'--').slice(0,45) + ' -- ' + (lead.municipio||'?') + '/' + (lead.estado||'?'), 'ok');
 
-      // Salva no Supabase em tempo real
       try {
         var saveResult = await SB.from('leads').upsert([lead], { onConflict: 'cnpj', ignoreDuplicates: true });
         if (saveResult.error) logReal('Erro ao salvar: ' + saveResult.error.message, 'warn');
       } catch(ex) { logReal('Erro: ' + ex.message, 'warn'); }
     }
 
-    cursor = result.cursor;
-    if (!cursor || cursor === cursorAnterior) break; // última página ou cursor travado
-    cursorAnterior = cursor;
-    // Pequena pausa entre paginas para nao sobrecarregar
-    if (realImportRunning && leads.length < qty) await new Promise(function(r) { setTimeout(r, 800); });
+    // Pausa curta entre chamadas
+    if (realImportRunning && leads.length < qty) await new Promise(function(r) { setTimeout(r, 600); });
   }
 
   if (!realImportRunning) { logReal('⏹ Importação interrompida.', 'warn'); }
