@@ -489,9 +489,34 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
 </select>
       <select class="form-input form-select btn-sm" id="user-tipo-filter" onchange="filterUsers()" style="width:140px;">
         <option value="">Todos os tipos</option>
-        <option value="fornecedor">Fornecedor</option>
-        <option value="construtora">Construtora</option>
-        <option value="empreiteiro">Empreiteiro</option>
+<optgroup label="── Construção Civil ──">
+  <option value="construtora">🏗️ Construtora</option>
+  <option value="empreiteiro">🔨 Empreiteiro</option>
+  <option value="fornecedor">🏭 Fornecedor de Materiais</option>
+  <option value="eletricista">⚡ Eletricista / Elétrica</option>
+  <option value="hidraulica">🔧 Hidráulica / Encanamento</option>
+  <option value="pintor">🎨 Pintor / Pintura</option>
+  <option value="revestimento">🪟 Piso / Revestimento</option>
+  <option value="reformas">🛠️ Reformas e Manutenção</option>
+</optgroup>
+<optgroup label="── Serviços Profissionais ──">
+  <option value="juridico">⚖️ Advocacia / Jurídico</option>
+  <option value="contabilidade">📊 Contabilidade</option>
+  <option value="consultoria">💼 Consultoria</option>
+  <option value="engenharia">📐 Engenharia / Arquitetura</option>
+  <option value="ti">💻 TI / Tecnologia</option>
+  <option value="marketing">📣 Marketing / Publicidade</option>
+</optgroup>
+<optgroup label="── Saúde ──">
+  <option value="clinica">🏥 Clínica / Consultório</option>
+  <option value="farmacia">💊 Farmácia / Drogaria</option>
+</optgroup>
+<optgroup label="── Outros ──">
+  <option value="imobiliaria">🏠 Imobiliária</option>
+  <option value="transportadora">🚚 Transportadora / Logística</option>
+  <option value="comercio">📦 Comércio Atacadista</option>
+  <option value="prestador">👷 Prestador de Serviço</option>
+</optgroup>
 </select>
       <button class="btn btn-accent btn-sm" onclick="openModal('modal-add-user')">
         <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -613,11 +638,36 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
       <select class="form-input form-select btn-sm" id="lead-seg-filter" onchange="filterLeads()" style="width:150px;">
         <option value="">Todos os segmentos</option>
 </select>
-      <select class="form-input form-select btn-sm" id="lead-tipo-filter" onchange="filterLeads()" style="width:140px;">
-        <option value="">Tipo de empresa</option>
-        <option value="construtora">Construtora</option>
-        <option value="fornecedor">Fornecedor</option>
-        <option value="empreiteiro">Empreiteiro</option>
+      <select class="form-input form-select btn-sm" id="lead-tipo-filter" onchange="filterLeads()" style="width:200px;">
+        <option value="">Todos os tipos</option>
+<optgroup label="── Construção Civil ──">
+  <option value="construtora">🏗️ Construtora</option>
+  <option value="empreiteiro">🔨 Empreiteiro</option>
+  <option value="fornecedor">🏭 Fornecedor de Materiais</option>
+  <option value="eletricista">⚡ Eletricista / Elétrica</option>
+  <option value="hidraulica">🔧 Hidráulica / Encanamento</option>
+  <option value="pintor">🎨 Pintor / Pintura</option>
+  <option value="revestimento">🪟 Piso / Revestimento</option>
+  <option value="reformas">🛠️ Reformas e Manutenção</option>
+</optgroup>
+<optgroup label="── Serviços Profissionais ──">
+  <option value="juridico">⚖️ Advocacia / Jurídico</option>
+  <option value="contabilidade">📊 Contabilidade</option>
+  <option value="consultoria">💼 Consultoria</option>
+  <option value="engenharia">📐 Engenharia / Arquitetura</option>
+  <option value="ti">💻 TI / Tecnologia</option>
+  <option value="marketing">📣 Marketing / Publicidade</option>
+</optgroup>
+<optgroup label="── Saúde ──">
+  <option value="clinica">🏥 Clínica / Consultório</option>
+  <option value="farmacia">💊 Farmácia / Drogaria</option>
+</optgroup>
+<optgroup label="── Outros ──">
+  <option value="imobiliaria">🏠 Imobiliária</option>
+  <option value="transportadora">🚚 Transportadora / Logística</option>
+  <option value="comercio">📦 Comércio Atacadista</option>
+  <option value="prestador">👷 Prestador de Serviço</option>
+</optgroup>
 </select>
       <button class="btn btn-accent btn-sm" onclick="openModal('modal-seed')">
         <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -1245,9 +1295,34 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
     <div class="form-group"><label class="form-label">E-mail</label><input class="form-input" id="new-email" placeholder="joao@empresa.com.br"></div>
     <div class="form-group"><label class="form-label">Tipo de Empresa</label>
       <select class="form-input form-select" id="new-tipo">
-        <option value="fornecedor">Fornecedor</option>
-        <option value="construtora">Construtora</option>
-        <option value="empreiteiro">Empreiteiro</option>
+<optgroup label="── Construção Civil ──">
+  <option value="construtora">🏗️ Construtora</option>
+  <option value="empreiteiro">🔨 Empreiteiro</option>
+  <option value="fornecedor">🏭 Fornecedor de Materiais</option>
+  <option value="eletricista">⚡ Eletricista / Elétrica</option>
+  <option value="hidraulica">🔧 Hidráulica / Encanamento</option>
+  <option value="pintor">🎨 Pintor / Pintura</option>
+  <option value="revestimento">🪟 Piso / Revestimento</option>
+  <option value="reformas">🛠️ Reformas e Manutenção</option>
+</optgroup>
+<optgroup label="── Serviços Profissionais ──">
+  <option value="juridico">⚖️ Advocacia / Jurídico</option>
+  <option value="contabilidade">📊 Contabilidade</option>
+  <option value="consultoria">💼 Consultoria</option>
+  <option value="engenharia">📐 Engenharia / Arquitetura</option>
+  <option value="ti">💻 TI / Tecnologia</option>
+  <option value="marketing">📣 Marketing / Publicidade</option>
+</optgroup>
+<optgroup label="── Saúde ──">
+  <option value="clinica">🏥 Clínica / Consultório</option>
+  <option value="farmacia">💊 Farmácia / Drogaria</option>
+</optgroup>
+<optgroup label="── Outros ──">
+  <option value="imobiliaria">🏠 Imobiliária</option>
+  <option value="transportadora">🚚 Transportadora / Logística</option>
+  <option value="comercio">📦 Comércio Atacadista</option>
+  <option value="prestador">👷 Prestador de Serviço</option>
+</optgroup>
 </select>
 </div>
     <div class="form-group"><label class="form-label">Plano</label>
@@ -1295,9 +1370,34 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
     </div>
     <div class="form-group"><label class="form-label">Tipo de Empresa</label>
       <select class="form-input form-select" id="eu-tipo">
-        <option value="fornecedor">Fornecedor</option>
-        <option value="construtora">Construtora</option>
-        <option value="empreiteiro">Empreiteiro</option>
+<optgroup label="── Construção Civil ──">
+  <option value="construtora">🏗️ Construtora</option>
+  <option value="empreiteiro">🔨 Empreiteiro</option>
+  <option value="fornecedor">🏭 Fornecedor de Materiais</option>
+  <option value="eletricista">⚡ Eletricista / Elétrica</option>
+  <option value="hidraulica">🔧 Hidráulica / Encanamento</option>
+  <option value="pintor">🎨 Pintor / Pintura</option>
+  <option value="revestimento">🪟 Piso / Revestimento</option>
+  <option value="reformas">🛠️ Reformas e Manutenção</option>
+</optgroup>
+<optgroup label="── Serviços Profissionais ──">
+  <option value="juridico">⚖️ Advocacia / Jurídico</option>
+  <option value="contabilidade">📊 Contabilidade</option>
+  <option value="consultoria">💼 Consultoria</option>
+  <option value="engenharia">📐 Engenharia / Arquitetura</option>
+  <option value="ti">💻 TI / Tecnologia</option>
+  <option value="marketing">📣 Marketing / Publicidade</option>
+</optgroup>
+<optgroup label="── Saúde ──">
+  <option value="clinica">🏥 Clínica / Consultório</option>
+  <option value="farmacia">💊 Farmácia / Drogaria</option>
+</optgroup>
+<optgroup label="── Outros ──">
+  <option value="imobiliaria">🏠 Imobiliária</option>
+  <option value="transportadora">🚚 Transportadora / Logística</option>
+  <option value="comercio">📦 Comércio Atacadista</option>
+  <option value="prestador">👷 Prestador de Serviço</option>
+</optgroup>
       </select>
     </div>
     <div style="background:#fff8f0;border:1px solid #ffd4c0;border-radius:8px;padding:10px 13px;font-size:12px;color:#8a3800;margin-bottom:16px;">
@@ -1487,10 +1587,35 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
         <div>
           <label class="form-label">Tipo de empresa</label>
           <select class="form-input form-select" id="real-tipo" style="font-size:12px;">
-            <option value="auto">Detectar automaticamente</option>
-            <option value="construtora">Construtora</option>
-            <option value="fornecedor">Fornecedor</option>
-            <option value="empreiteiro">Empreiteiro</option>
+<option value="auto">Detectar automaticamente</option>
+<optgroup label="── Construção Civil ──">
+  <option value="construtora">🏗️ Construtora</option>
+  <option value="empreiteiro">🔨 Empreiteiro</option>
+  <option value="fornecedor">🏭 Fornecedor de Materiais</option>
+  <option value="eletricista">⚡ Eletricista / Elétrica</option>
+  <option value="hidraulica">🔧 Hidráulica / Encanamento</option>
+  <option value="pintor">🎨 Pintor / Pintura</option>
+  <option value="revestimento">🪟 Piso / Revestimento</option>
+  <option value="reformas">🛠️ Reformas e Manutenção</option>
+</optgroup>
+<optgroup label="── Serviços Profissionais ──">
+  <option value="juridico">⚖️ Advocacia / Jurídico</option>
+  <option value="contabilidade">📊 Contabilidade</option>
+  <option value="consultoria">💼 Consultoria</option>
+  <option value="engenharia">📐 Engenharia / Arquitetura</option>
+  <option value="ti">💻 TI / Tecnologia</option>
+  <option value="marketing">📣 Marketing / Publicidade</option>
+</optgroup>
+<optgroup label="── Saúde ──">
+  <option value="clinica">🏥 Clínica / Consultório</option>
+  <option value="farmacia">💊 Farmácia / Drogaria</option>
+</optgroup>
+<optgroup label="── Outros ──">
+  <option value="imobiliaria">🏠 Imobiliária</option>
+  <option value="transportadora">🚚 Transportadora / Logística</option>
+  <option value="comercio">📦 Comércio Atacadista</option>
+  <option value="prestador">👷 Prestador de Serviço</option>
+</optgroup>
           </select>
         </div>
       </div>
@@ -2114,15 +2239,21 @@ function normalizeMR(d, tipoOpt) {
 
   var cnae = String(d.cnae_fiscal || '');
   var meta = cnaeToMeta(cnae);
-  // Detecta tipo por CNAE para setores além de construção
+  // Detecta tipo por CNAE (cobre todos os setores)
   var tipoAuto = meta.tipo;
   var cnaeNum = parseInt(cnae);
-  if (!tipoAuto || tipoAuto === 'outro') {
-    if (cnaeNum >= 6900000 && cnaeNum <= 6999999) tipoAuto = 'juridico';
+  if (!tipoAuto || tipoAuto === 'outro' || tipoAuto === 'prestador') {
+    if      (cnaeNum >= 6911700 && cnaeNum <= 6912999) tipoAuto = 'juridico';
+    else if (cnaeNum >= 6920000 && cnaeNum <= 6920999) tipoAuto = 'contabilidade';
+    else if (cnaeNum >= 7020000 && cnaeNum <= 7020999) tipoAuto = 'consultoria';
+    else if (cnaeNum >= 7111000 && cnaeNum <= 7119999) tipoAuto = 'engenharia';
     else if (cnaeNum >= 6200000 && cnaeNum <= 6399999) tipoAuto = 'ti';
-    else if (cnaeNum >= 8600000 && cnaeNum <= 8799999) tipoAuto = 'saude';
-    else if (cnaeNum >= 6800000 && cnaeNum <= 6899999) tipoAuto = 'imobiliario';
+    else if (cnaeNum >= 7300000 && cnaeNum <= 7399999) tipoAuto = 'marketing';
+    else if (cnaeNum >= 8600000 && cnaeNum <= 8799999) tipoAuto = 'clinica';
+    else if (cnaeNum >= 4771000 && cnaeNum <= 4771999) tipoAuto = 'farmacia';
+    else if (cnaeNum >= 6810000 && cnaeNum <= 6899999) tipoAuto = 'imobiliaria';
     else if (cnaeNum >= 4900000 && cnaeNum <= 4999999) tipoAuto = 'transportadora';
+    else if (cnaeNum >= 4600000 && cnaeNum <= 4699999) tipoAuto = 'comercio';
     else tipoAuto = 'prestador';
   }
   var tipo = tipoOpt === 'auto' ? tipoAuto : tipoOpt;
