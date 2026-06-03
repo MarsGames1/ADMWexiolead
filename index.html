@@ -1782,18 +1782,23 @@ async function startEnrichment() {
   log.style.display = 'block';
   log.innerHTML = '';
 
-  // Enriquece se telefone inválido/vazio OU sem site
-  // Não filtra por domínio de email — empresas pequenas usam Gmail/Hotmail legitimamente
+  // Enriquece se telefone inválido/vazio OU sem email (site é opcional — muitas PMEs não têm)
+  // E pula quem já foi tentado 2+ vezes (não insiste em empresa sem dados públicos)
   function dadoSuspeito(lead) {
     const telRaw = (lead.telefone_1 || '').replace(/\D/g, '');
     const telInvalido = !telRaw || telRaw.length < 10 || /^(\d)\1+$/.test(telRaw);
-    const semSite = !lead.site;
-    return telInvalido || semSite;
+    const semEmail = !lead.email_comercial;
+    const jaTentadoDemais = (lead.enrich_attempts || 0) >= 2;
+    if (jaTentadoDemais) return false; // não escaneia de novo
+    return telInvalido || semEmail;
   }
 
   const semContato = allLeads
     .filter(l => (l.razao_social || l.nome_fantasia) && dadoSuspeito(l))
     .sort((a, b) => {
+      // Prioriza: nunca tentados primeiro, depois quem tem menos dados
+      const tentA = a.enrich_attempts || 0, tentB = b.enrich_attempts || 0;
+      if (tentA !== tentB) return tentA - tentB;
       const scoreA = (a.telefone_1 ? 1 : 0) + (a.email_comercial ? 1 : 0) + (a.site ? 1 : 0);
       const scoreB = (b.telefone_1 ? 1 : 0) + (b.email_comercial ? 1 : 0) + (b.site ? 1 : 0);
       return scoreA - scoreB;
@@ -1842,6 +1847,14 @@ async function startEnrichment() {
     if (contatos.vazio) {
       vazios++;
       vaziosSeguidos++;
+      // Marca tentativa para não reescanear infinitamente
+      try {
+        await SB.from('leads').update({
+          enrich_attempts: (lead.enrich_attempts || 0) + 1,
+          enriched_at: new Date().toISOString()
+        }).eq('id', lead.id);
+        lead.enrich_attempts = (lead.enrich_attempts || 0) + 1;
+      } catch(ex) {}
       logLine('○ ' + (lead.razao_social||'').slice(0,30) + ' — sem dados públicos encontrados', 'warn');
       // Se 8 vazios seguidos, pausa e pergunta se continua (evita gastar à toa)
       if (vaziosSeguidos >= 8) {
@@ -1854,14 +1867,16 @@ async function startEnrichment() {
     }
     vaziosSeguidos = 0; // achou algo, zera contador
 
-    const updates = {};
+    const updates = { enriched_at: new Date().toISOString(), enrich_attempts: (lead.enrich_attempts || 0) + 1 };
     if (contatos.telefone_1)       updates.telefone_1 = contatos.telefone_1;
     if (contatos.telefone_2)       updates.telefone_2 = contatos.telefone_2;
     if (contatos.email_comercial)  updates.email_comercial = contatos.email_comercial;
     if (contatos.email_2)          updates.email_2 = contatos.email_2;
     if (contatos.site)             updates.site = contatos.site;
 
-    if (Object.keys(updates).length === 0) { vazios++; continue; }
+    // Só campos de controle? então não achou nada útil
+    const camposReais = Object.keys(updates).filter(k => k !== 'enriched_at' && k !== 'enrich_attempts');
+    if (camposReais.length === 0) { vazios++; continue; }
 
     const { error } = await SB.from('leads').update(updates).eq('id', lead.id);
     if (!error) {
@@ -2048,12 +2063,9 @@ async function fetchMRPage(cnaes, uf, cursor, limit) {
     }
     var data = await resp.json();
     var empresas = Array.isArray(data) ? data : (data.data || []);
-    // Cursor da Minha Receita = CNPJ da ÚLTIMA empresa da página (não um campo "cursor")
-    var nextCursor = null;
-    if (empresas.length > 0) {
-      var ultima = empresas[empresas.length - 1];
-      nextCursor = String(ultima.cnpj || '').replace(/\D/g, '') || null;
-    }
+    // Cursor vem no campo "cursor" do JSON de resposta (ex: {"data":[...],"cursor":"42"})
+    // Quando ausente = última página
+    var nextCursor = (data && !Array.isArray(data) && data.cursor) ? String(data.cursor) : null;
     return { empresas: empresas, cursor: nextCursor };
   } catch(e) {
     logReal('Timeout/erro Minha Receita: ' + e.message, 'warn');
