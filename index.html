@@ -2317,9 +2317,13 @@ function normalizeMR(d, tipoOpt) {
   }
 
   var anos = null;
+  var dataAbertura = null;
   if (d.data_inicio_atividade) {
     anos = Math.floor((Date.now() - new Date(d.data_inicio_atividade)) / 31536000000);
     if (anos < 0 || anos > 100) anos = null;
+    // Guarda a data de abertura (formato YYYY-MM-DD) para o Radar de Empresas Novas
+    var dt = new Date(d.data_inicio_atividade);
+    if (!isNaN(dt)) dataAbertura = dt.toISOString().slice(0, 10);
   }
 
   var socio = (d.qsa && d.qsa[0]) ? d.qsa[0].nome_socio : null;
@@ -2341,6 +2345,7 @@ function normalizeMR(d, tipoOpt) {
     segmento_simplificado: meta.seg,
     tipo_empresa: tipo,
     tempo_empresa_anos: anos,
+    data_abertura: dataAbertura,
   };
 }
 
