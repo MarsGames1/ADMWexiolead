@@ -1735,6 +1735,24 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
 <div id="toast"></div>
 
 <script>
+// ── Avatar via DiceBear (open-source). Fallback p/ inicial. ──
+function setAvatar(elId, seed, inicial) {
+  var el = document.getElementById(elId);
+  if (!el) return;
+  var s = encodeURIComponent((seed || 'wexio').toLowerCase().trim());
+  var url = 'https://api.dicebear.com/9.x/notionists-neutral/svg?seed=' + s + '&backgroundColor=f97316,fb923c,fdba74&radius=20';
+  el.innerHTML = '<img src="'+url+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;" onerror="this.parentNode.textContent=\''+(inicial||'?')+'\'">';
+}
+// HTML de avatar inline para listas (DiceBear)
+function avaHtml(seed, inicial, sizePx, cls) {
+  sizePx = sizePx || 30;
+  var s = encodeURIComponent((seed || 'wexio').toLowerCase().trim());
+  var url = 'https://api.dicebear.com/9.x/notionists-neutral/svg?seed=' + s + '&backgroundColor=f97316,fb923c,fdba74&radius=20';
+  var ini = (inicial || 'U').toUpperCase();
+  return '<div class="ava '+(cls||'')+'" style="width:'+sizePx+'px;height:'+sizePx+'px;overflow:hidden;padding:0;background:none;">' +
+    '<img src="'+url+'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" onerror="this.parentNode.textContent=\''+ini+'\'"></div>';
+}
+
 // 
 // CONFIGURAÇÕES
 // 
@@ -1809,7 +1827,7 @@ function updateAdminUI(user) {
   const el  = document.getElementById('admin-name');
   const ava = document.getElementById('admin-ava');
   if (el)  el.textContent  = name;
-  if (ava) ava.textContent = name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+  if (ava) { ava.style.overflow='hidden'; ava.style.background='none'; setAvatar('admin-ava', name || user.email, name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase()); }
   // Bem-vindo no topbar
   const welcomeEl = document.getElementById('ov-welcome');
   const welcomeNameEl = document.getElementById('ov-admin-name');
@@ -2734,7 +2752,7 @@ function renderUsers() {
     const tipoLabel = u.tipo === 'construtora' ? ' Construtora' : (u.tipo === 'fornecedor' ? ' Fornecedor' : (u.tipo === 'empreiteiro' ? ' Empreiteiro' : '—'));
     return `<tr onclick="viewUser('${u.id}')">
       <td><div style="display:flex;align-items:center;gap:10px;">
-        <div class="ava ${avaColor}">${initials}</div>
+        ${avaHtml(u.name || u.email || u.id, initials, 30, avaColor)}
         <div><div style="font-weight:500;font-size:13px;">${u.name}</div><div style="font-size:11px;color:var(--muted);">${u.email}</div></div>
 </div></td>
       <td><span class="badge ${tipoBadge}">${tipoLabel}</span></td>
@@ -3614,7 +3632,7 @@ function renderEmpTabela() {
     return `<tr onclick="editEmployeeModal('${e.id}')">
       <td>
         <div style="display:flex;align-items:center;gap:10px;">
-          <div class="ava ava-orange">${initials}</div>
+          ${avaHtml(e.nome || e.email || e.id, initials, 30, 'ava-orange')}
           <div>
             <div style="font-weight:500;">${e.nome}</div>
             <div style="font-size:11px;color:var(--muted);">${e.email}</div>
