@@ -1939,9 +1939,10 @@ async function enriquecerLead(lead) {
   const prompt = 'Encontre dados de contato da empresa "' + nome + '" em ' + cidade + ', Brasil. Faca no maximo 1-2 buscas.\n\nRetorne SOMENTE este JSON (use null se nao achar rapido, nao insista):\n{"telefone_1":null,"telefone_2":null,"email_comercial":null,"email_2":null,"site":null}\n\nRegras: aceite Gmail/Hotmail/Yahoo. Nao invente. Se nao encontrar em 1-2 buscas, retorne campos null. Apenas o JSON.';
 
   try {
+    const { data: { session: _sess } } = await SB.auth.getSession();
     const resp = await fetch('https://tbnoiwkproawwncuorpw.supabase.co/functions/v1/anthropic-proxy', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (_sess?.access_token || SB_KEY) },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 250,
@@ -4250,9 +4251,10 @@ async function enviarProximoConvite() {
     const corpoAtual = document.getElementById('conv-email-body')?.value || EMAIL_CORPO;
 
     // Envio via Resend API
+    const { data: { session: _se1 } } = await SB.auth.getSession();
     const res = await fetch(SEND_EMAIL_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (_se1?.access_token || SB_KEY) },
       body: JSON.stringify({
         to: proximo.email_comercial,
         subject: 'Encontre leads qualificados para sua empresa — WexioLead',
@@ -4483,9 +4485,10 @@ async function enviarAlertaRenovacao(clienteId, emailCliente, nomeCliente, plano
     .replace('{situacao}', situacao);
 
   try {
+    const { data: { session: _se2 } } = await SB.auth.getSession();
     const res = await fetch(SEND_EMAIL_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (_se2?.access_token || SB_KEY) },
       body: JSON.stringify({
         to: emailCliente,
         subject: `Seu plano WexioLead está ${situacao}`,
