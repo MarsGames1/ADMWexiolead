@@ -3585,8 +3585,11 @@ const PLAN_PRICES_EMP = {free:0, starter:97, pro:197, agency:397};
 function updateEmpStats() {
   const ativos = allEmployees.filter(e => e.status === 'ativo').length;
   document.getElementById('emp-ativos').textContent = ativos;
+  // Total de clientes = todos registrados (independente do status CRM)
+  const todosClientes = allEmployeeClients;
   const clientesFechados = allEmployeeClients.filter(c => c.status_crm === 'fechado');
-  document.getElementById('emp-clientes-total').textContent = clientesFechados.length;
+  document.getElementById('emp-clientes-total').textContent = todosClientes.length;
+  // MRR e comissões calculados apenas sobre clientes pagantes (fechado)
   const mrrTotal = clientesFechados.reduce((s,c) => s + (PLAN_PRICES_EMP[c.plano] || 0), 0);
   document.getElementById('emp-mrr-total').textContent = 'R$' + mrrTotal.toLocaleString('pt-BR');
   const comTotal = allEmployees.reduce((s, e) => {
@@ -3730,12 +3733,12 @@ function renderEmpRanking() {
 
   const byClientes = [...ranking].sort((a,b) => b.clientes - a.clientes);
   const byMrr = [...ranking].sort((a,b) => b.mrr - a.mrr);
-  const medalhas = ['1º', '2º', '3º'];
+  const medalhas = ['1', '2', '3'];
 
   function renderRankList(list) {
     return list.slice(0, 8).map((e, i) => `
       <div style="display:flex;align-items:center;gap:12px;padding:10px;border-radius:9px;margin-bottom:6px;background:var(--surface2);border:1px solid var(--border);">
-        <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:16px;width:28px;color:${i===0?'var(--accent2)':i===1?'#C0C0C0':i===2?'#CD7F32':'var(--dim)'};">${i < 3 ? medalhas[i] : '#'+(i+1)}</div>
+        <div style="font-family:'Syne',sans-serif;font-weight:400;font-size:11px;width:18px;color:${i===0?'var(--accent)':'var(--dim)'};text-align:right;">${i + 1}</div>
         <div style="flex:1;"><div style="font-weight:500;font-size:13px;">${e.nome}</div><div style="font-size:11px;color:var(--muted);">${e.cargo||'Consultor'}</div></div>
         <div style="text-align:right;font-family:'Syne',sans-serif;font-weight:700;">${e.clientes} clientes</div>
       </div>
@@ -3745,7 +3748,7 @@ function renderEmpRanking() {
   document.getElementById('emp-ranking-list').innerHTML = renderRankList(byClientes);
   document.getElementById('emp-ranking-mrr').innerHTML = byMrr.slice(0,8).map((e,i) => `
     <div style="display:flex;align-items:center;gap:12px;padding:10px;border-radius:9px;margin-bottom:6px;background:var(--surface2);border:1px solid var(--border);">
-      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:16px;width:28px;color:${i===0?'var(--accent2)':i===1?'#C0C0C0':i===2?'#CD7F32':'var(--dim)'};">${i < 3 ? medalhas[i] : '#'+(i+1)}</div>
+      <div style="font-family:'Syne',sans-serif;font-weight:400;font-size:11px;width:18px;color:${i===0?'var(--accent)':'var(--dim)'};text-align:right;">${i + 1}</div>
       <div style="flex:1;"><div style="font-weight:500;font-size:13px;">${e.nome}</div></div>
       <div style="text-align:right;font-family:'Syne',sans-serif;font-weight:700;color:var(--green);">R$${e.mrr.toLocaleString('pt-BR')}</div>
     </div>
