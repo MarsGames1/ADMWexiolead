@@ -1628,8 +1628,11 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
           <label class="form-label">Quantidade de leads</label>
           <select class="form-input form-select" id="real-qty" style="font-size:12px;">
             <option value="20">20 leads (~15 seg)</option>
-            <option value="40" selected>40 leads (~30 seg)</option>
-            <option value="60">60 leads (~45 seg)</option>
+            <option value="50">50 leads (~40 seg)</option>
+            <option value="100" selected>100 leads (~1 min)</option>
+            <option value="200">200 leads (~2 min)</option>
+            <option value="300">300 leads (~3 min)</option>
+            <option value="500">500 leads (~5 min)</option>
           </select>
         </div>
         <div>
@@ -1985,15 +1988,15 @@ async function startEnrichment() {
   log.style.display = 'block';
   log.innerHTML = '';
 
-  // Enriquece se telefone inválido/vazio OU sem email (site é opcional — muitas PMEs não têm)
-  // E pula quem já foi tentado 2+ vezes (não insiste em empresa sem dados públicos)
+  // Enriquece se faltar telefone válido, email OU site — e pula quem já foi tentado 2+ vezes
   function dadoSuspeito(lead) {
     const telRaw = (lead.telefone_1 || '').replace(/\D/g, '');
     const telInvalido = !telRaw || telRaw.length < 10 || /^(\d)\1+$/.test(telRaw);
     const semEmail = !lead.email_comercial;
+    const semSite  = !lead.site;
     const jaTentadoDemais = (lead.enrich_attempts || 0) >= 2;
     if (jaTentadoDemais) return false; // não escaneia de novo
-    return telInvalido || semEmail;
+    return telInvalido || semEmail || semSite;
   }
 
   const semContato = allLeads
