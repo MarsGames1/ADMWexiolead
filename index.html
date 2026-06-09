@@ -2080,6 +2080,22 @@ async function startEnrichment() {
     if (contatos.email_2)          updates.email_2 = contatos.email_2;
     if (contatos.site)             updates.site = contatos.site;
 
+    // Recalcula o score do lead: dados de contato completos = lead mais qualificado.
+    // Base do capital (já existente) + bônus por canal de contato disponível.
+    const telFinal   = updates.telefone_1 || lead.telefone_1;
+    const emailFinal = updates.email_comercial || lead.email_comercial;
+    const siteFinal  = updates.site || lead.site;
+    const tel2Final  = updates.telefone_2 || lead.telefone_2;
+    const baseScore = lead.score_lead || 50;
+    let bonus = 0;
+    if (telFinal)   bonus += 12;   // telefone é o canal mais valioso em B2B
+    if (emailFinal) bonus += 10;
+    if (siteFinal)  bonus += 8;    // site = empresa estabelecida
+    if (tel2Final)  bonus += 4;
+    // Score final: mantém o maior entre o base e o recalculado, teto 100
+    const novoScore = Math.min(100, Math.max(baseScore, 50 + bonus));
+    if (novoScore !== lead.score_lead) updates.score_lead = novoScore;
+
     // Só campos de controle? então não achou nada útil
     const camposReais = Object.keys(updates).filter(k => k !== 'enriched_at' && k !== 'enrich_attempts');
     if (camposReais.length === 0) { vazios++; continue; }
