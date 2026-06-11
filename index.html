@@ -948,7 +948,6 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
       </div>
     </div>
   </div>
-</div>
 
 <!-- ══════ Tab: Comissões ══════ -->
 <div id="emp-tab-content-comissoes" style="display:none;">
@@ -1045,6 +1044,7 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
       </table>
     </div>
   </div>
+</div>
 </div>
 
 <!-- ══════ MODAL: VERIFICAR CLIENTE ══════ -->
@@ -2050,7 +2050,7 @@ async function loadEmployeesQuiet() {
   try {
     const { data: emps } = await SB.from("employees").select("*").order("created_at", {ascending:false});
     allEmployees = emps || [];
-    const { data: ec } = await SB.from("employee_clients").select("*, profiles(plan,is_active,plan_expires_at)").order("created_at", {ascending:false});
+    const { data: ec } = await SB.from("employee_clients").select("*, employees(is_isca), profiles(plan,is_active,plan_expires_at)").order("created_at", {ascending:false});
     allEmployeeClients = ec || [];
     const { data: sug } = await SB.from("employee_suggestions").select("*, employees(nome)").order("created_at", {ascending:false});
     allSugestoes = sug || [];
@@ -3749,6 +3749,8 @@ const PLAN_PRICES_EMP = {free:0, starter:97, pro:197, agency:397};
 // Pagante REAL = verificado pelo admin + plano pago + ativo + não vencido.
 // É o único estado que conta como receita/comissão de verdade.
 function ehPaganteReal(c) {
+  // Iscas: clientes "fechados" contam como reais (para teste manual e concorrência)
+  if (c.employees?.is_isca && c.status_crm === 'fechado') return true;
   if (!c.verificado) return false;
   const p = c.profiles;
   if (!p) return false;
@@ -3798,7 +3800,7 @@ async function loadEmployees() {
   const { data } = await SB.from('employees').select('*').order('created_at', {ascending:false});
   allEmployees = data || [];
 
-  const { data: ec } = await SB.from('employee_clients').select('*, profiles(plan,is_active,plan_expires_at)').order('created_at', {ascending:false});
+  const { data: ec } = await SB.from('employee_clients').select('*, employees(is_isca), profiles(plan,is_active,plan_expires_at)').order('created_at', {ascending:false});
   allEmployeeClients = ec || [];
 
   const { data: sug } = await SB.from('employee_suggestions').select('*, employees(nome)').order('created_at', {ascending:false});
@@ -4909,7 +4911,7 @@ async function renderComissoes() {
 
   // Buscar employee_clients com join em employees e profiles
   let q = SB.from('employee_clients')
-    .select(`*, employees(id,nome,email,pix,comissao_pct), profiles(id,plan,plan_expires_at,is_active,email)`)
+    .select(`*, employees(id,nome,email,pix,comissao_pct,is_isca), profiles(id,plan,plan_expires_at,is_active,email)`)
     .order('created_at', {ascending:false});
 
   if (filtroEmp) q = q.eq('employee_id', filtroEmp);
