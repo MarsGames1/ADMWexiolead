@@ -3917,16 +3917,16 @@ async function updateSugestao(id, status) {
   await renderEmployees();
 }
 
-function renderEmpRanking() {
-  const ehGestor = e => /gestor/i.test(e.cargo || '');
-  const ranking = allEmployees.filter(e => e.status==='ativo' && !ehGestor(e)).map(e => {
-    // Iscas contam por fechado (concorrência); demais, só pagante real verificado
-    const contam = e.is_isca
-      ? allEmployeeClients.filter(c => c.employee_id === e.id && c.status_crm === 'fechado')
-      : allEmployeeClients.filter(c => c.employee_id === e.id && ehPaganteReal(c));
-    const mrr = contam.reduce((s, c) => s + (PLAN_PRICES_EMP[c.profiles?.plan || c.plano] || 0), 0);
-    return { ...e, clientes: contam.length, mrr };
-  });
+async function renderEmpRanking() {
+  let ranking = [];
+  try {
+    const { data, error } = await SB.rpc('ranking_vendas');
+    if (error) throw error;
+    ranking = (data || []).map(r => ({
+      id: r.employee_id, nome: r.nome, cargo: r.cargo,
+      is_isca: r.is_isca, clientes: Number(r.clientes), mrr: Number(r.mrr)
+    }));
+  } catch(e) { console.error('ranking_vendas admin:', e); }
 
   const byClientes = [...ranking].sort((a,b) => b.clientes - a.clientes || b.mrr - a.mrr);
   const byMrr = [...ranking].sort((a,b) => b.mrr - a.mrr);
