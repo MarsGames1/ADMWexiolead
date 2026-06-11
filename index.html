@@ -886,10 +886,11 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
 
   <!-- Tabs -->
   <div style="display:flex;gap:4px;margin-bottom:16px;background:var(--surface2);border-radius:10px;padding:4px;width:fit-content;">
-    <button class="btn btn-accent btn-sm" id="emp-tab-lista" onclick="showEmpTab('lista')">Equipe</button>
+    <button class="btn btn-ghost btn-sm" id="emp-tab-lista" onclick="showEmpTab('lista')">Equipe</button>
     <button class="btn btn-ghost btn-sm" id="emp-tab-clientes" onclick="showEmpTab('clientes')">Clientes por funcionário</button>
     <button class="btn btn-ghost btn-sm" id="emp-tab-sugestoes" onclick="showEmpTab('sugestoes')">Sugestões</button>
     <button class="btn btn-ghost btn-sm" id="emp-tab-ranking" onclick="showEmpTab('ranking')">Ranking</button>
+    <button class="btn btn-accent btn-sm" id="emp-tab-comissoes" onclick="showEmpTab('comissoes')">Comissões</button>
   </div>
 
   <!-- Tab: Lista -->
@@ -945,6 +946,150 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
         <div class="card-head"><div class="card-title">Ranking por MRR gerado</div></div>
         <div class="card-body" id="emp-ranking-mrr"></div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ Tab: Comissões ══════ -->
+<div id="emp-tab-content-comissoes" style="display:none;">
+
+  <!-- Filtros e resumo -->
+  <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">
+    <select class="form-input" id="com-mes" style="width:160px;" onchange="renderComissoes()">
+    </select>
+    <select class="form-input" id="com-filter-emp" style="width:200px;" onchange="renderComissoes()">
+      <option value="">Todos os funcionários</option>
+    </select>
+    <select class="form-input" id="com-filter-status" style="width:170px;" onchange="renderComissoes()">
+      <option value="">Todos os status</option>
+      <option value="pendente">Não verificados</option>
+      <option value="verificado">Verificados</option>
+      <option value="pago">Comissão paga</option>
+    </select>
+    <button class="btn btn-accent btn-sm" onclick="renderComissoes()">Atualizar</button>
+    <button class="btn btn-ghost btn-sm" onclick="revalidarVerificados()">Revalidar pagantes</button>
+    <button class="btn btn-ghost btn-sm" onclick="exportarComissoes()">Exportar Excel</button>
+  </div>
+
+  <!-- Cards de resumo + gráfico de distribuição -->
+  <div style="display:grid;grid-template-columns:1fr 320px;gap:16px;margin-bottom:20px;align-items:start;">
+    <div class="stats-row" style="grid-template-columns:repeat(2,1fr);gap:12px;">
+      <div class="stat-card">
+        <div class="stat-lbl">Total clientes no mês</div>
+        <div class="stat-val" id="com-total-clientes">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-lbl">Pagantes reais confirmados</div>
+        <div class="stat-val" id="com-total-verificados">—</div>
+      </div>
+      <div class="stat-card" style="border:1px solid rgba(52,211,153,.3);">
+        <div class="stat-lbl">Comissão sobre receita REAL</div>
+        <div class="stat-val" id="com-total-valor" style="color:var(--green);">R$—</div>
+        <div class="stat-delta" id="com-total-delta">só pagantes confirmados</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-lbl">A pagar agora</div>
+        <div class="stat-val" id="com-total-pendente" style="color:var(--accent);">R$—</div>
+        <div class="stat-delta" id="com-total-pago-delta"></div>
+      </div>
+    </div>
+    <div class="card" style="padding:16px;">
+      <div style="font-weight:600;font-size:13px;margin-bottom:4px;">Distribuição da carteira</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px;">Por que nem tudo é receita real</div>
+      <canvas id="carteira-donut" width="240" height="240" style="display:block;margin:0 auto;max-width:240px;"></canvas>
+      <div id="carteira-legenda" style="margin-top:12px;font-size:12px;"></div>
+    </div>
+  </div>
+
+  <!-- Tabela de clientes com verificação -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div style="font-weight:600;font-size:15px;">Clientes registrados pelos funcionários</div>
+      <div style="font-size:12px;color:var(--muted);">Verifique se o cliente tem plano ativo antes de confirmar a comissão</div>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>Funcionário</th>
+          <th>Cliente</th>
+          <th>E-mail</th>
+          <th>Plano registrado</th>
+          <th>Plano real</th>
+          <th>Tipo lead</th>
+          <th>Pagamento</th>
+          <th>Comissão</th>
+          <th>Verificado</th>
+          <th>Ações</th>
+        </tr></thead>
+        <tbody id="com-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Resumo por funcionário -->
+  <div class="card" style="margin-top:16px;">
+    <div style="font-weight:600;font-size:15px;margin-bottom:14px;">Resumo por funcionário</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>Funcionário</th>
+          <th>Clientes</th>
+          <th>Verificados</th>
+          <th>Pagantes</th>
+          <th>Comissão total</th>
+          <th>Pago</th>
+          <th>Pendente</th>
+          <th>Ação</th>
+        </tr></thead>
+        <tbody id="com-resumo-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ MODAL: VERIFICAR CLIENTE ══════ -->
+<div class="modal-overlay" id="modal-verificar-cliente">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-title">Verificar cliente pagante</div>
+    <input type="hidden" id="vc-client-id">
+    <div style="margin-bottom:14px;">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:6px;">Cliente registrado pelo funcionário:</div>
+      <div style="font-weight:600;font-size:16px;" id="vc-nome-cliente"></div>
+      <div style="font-size:13px;color:var(--muted);" id="vc-email-cliente"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Buscar cliente por e-mail, nome ou empresa</label>
+      <input class="form-input" id="vc-email-busca" placeholder="email@empresa.com ou nome da empresa" oninput="buscarCandidatos()">
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">Digite o e-mail exato do cadastro, ou o nome para ver candidatos. Pagantes válidos aparecem destacados.</div>
+      <div id="vc-candidatos" style="margin-top:8px;"></div>
+      <div id="vc-profile-result" style="margin-top:8px;font-size:13px;"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Tipo de lead (sugere o percentual padrão)</label>
+      <select class="form-input" id="vc-tipo-lead" onchange="ajustarPctPadrao()">
+        <option value="indicado">Indicado (padrão 20%)</option>
+        <option value="proprio">Próprio — gerado pelo funcionário (padrão 30%)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Percentual de comissão — ajuste livre de 20% a 30%</label>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <input type="range" id="vc-pct-range" min="20" max="30" step="1" value="20" style="flex:1;accent-color:var(--accent);" oninput="document.getElementById('vc-pct-num').value=this.value;buscarProfileCliente()">
+        <div style="display:flex;align-items:center;gap:4px;">
+          <input class="form-input" id="vc-pct-num" type="number" min="20" max="30" step="1" value="20" style="width:64px;text-align:center;" oninput="document.getElementById('vc-pct-range').value=this.value;buscarProfileCliente()">
+          <span style="font-weight:600;">%</span>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">Ex.: quer pagar só 22%? É só ajustar. Vale para qualquer plano.</div>
+    </div>
+    <div id="vc-comissao-preview" style="background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:16px;display:none;">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:4px;">Comissão calculada</div>
+      <div style="font-size:22px;font-weight:700;color:var(--accent);" id="vc-valor-comissao">R$0,00</div>
+      <div style="font-size:12px;color:var(--muted);" id="vc-detalhe-comissao"></div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-verificar-cliente')">Cancelar</button>
+      <button class="btn btn-accent btn-sm" id="vc-confirmar-btn" onclick="confirmarVerificacao()" disabled>Confirmar pagante</button>
     </div>
   </div>
 </div>
@@ -1905,7 +2050,7 @@ async function loadEmployeesQuiet() {
   try {
     const { data: emps } = await SB.from("employees").select("*").order("created_at", {ascending:false});
     allEmployees = emps || [];
-    const { data: ec } = await SB.from("employee_clients").select("*").order("created_at", {ascending:false});
+    const { data: ec } = await SB.from("employee_clients").select("*, profiles(plan,is_active,plan_expires_at)").order("created_at", {ascending:false});
     allEmployeeClients = ec || [];
     const { data: sug } = await SB.from("employee_suggestions").select("*, employees(nome)").order("created_at", {ascending:false});
     allSugestoes = sug || [];
@@ -3601,30 +3746,59 @@ let allEmployeeClients = [];
 let allSugestoes = [];
 const PLAN_PRICES_EMP = {free:0, starter:97, pro:197, agency:397};
 
+// Pagante REAL = verificado pelo admin + plano pago + ativo + não vencido.
+// É o único estado que conta como receita/comissão de verdade.
+function ehPaganteReal(c) {
+  if (!c.verificado) return false;
+  const p = c.profiles;
+  if (!p) return false;
+  const plano = p.plan || 'free';
+  if (plano === 'free' || !p.is_active) return false;
+  if (p.plan_expires_at && new Date(p.plan_expires_at) < new Date()) return false;
+  return true;
+}
+// Classifica um cliente registrado em uma categoria para o gráfico de distribuição
+function categoriaCliente(c) {
+  const p = c.profiles;
+  if (ehPaganteReal(c)) return 'pagante';
+  if (c.verificado && p && p.plan && p.plan !== 'free' && p.plan_expires_at && new Date(p.plan_expires_at) < new Date()) return 'vencido';
+  if (c.verificado && p && (!p.plan || p.plan === 'free')) return 'free';
+  if (c.status_crm === 'fechado' && !c.verificado) return 'nao_verificado';
+  return 'em_andamento';
+}
+
 function updateEmpStats() {
   const ativos = allEmployees.filter(e => e.status === 'ativo').length;
   document.getElementById('emp-ativos').textContent = ativos;
-  // Total de clientes = todos registrados (independente do status CRM)
   const todosClientes = allEmployeeClients;
-  const clientesFechados = allEmployeeClients.filter(c => c.status_crm === 'fechado');
+  // Receita e comissão REAIS = apenas pagantes verificados, ativos e não vencidos
+  const pagantesReais = allEmployeeClients.filter(ehPaganteReal);
   document.getElementById('emp-clientes-total').textContent = todosClientes.length;
-  // MRR e comissões calculados apenas sobre clientes pagantes (fechado)
-  const mrrTotal = clientesFechados.reduce((s,c) => s + (PLAN_PRICES_EMP[c.plano] || 0), 0);
+  const mrrTotal = pagantesReais.reduce((s,c) => s + (PLAN_PRICES_EMP[c.profiles?.plan] || 0), 0);
   document.getElementById('emp-mrr-total').textContent = 'R$' + mrrTotal.toLocaleString('pt-BR');
   const comTotal = allEmployees.reduce((s, e) => {
-    const myCli = allEmployeeClients.filter(c => c.employee_id === e.id && c.status_crm === 'fechado');
-    const mrr = myCli.reduce((ss, c) => ss + (PLAN_PRICES_EMP[c.plano] || 0), 0);
+    const myCli = allEmployeeClients.filter(c => c.employee_id === e.id && ehPaganteReal(c));
+    const mrr = myCli.reduce((ss, c) => ss + (PLAN_PRICES_EMP[c.profiles?.plan] || 0), 0);
     return s + mrr * (parseFloat(e.comissao_pct || 20) / 100);
   }, 0);
   document.getElementById('emp-com-total').textContent = 'R$' + comTotal.toLocaleString('pt-BR', {minimumFractionDigits:2});
   document.getElementById('emp-sub').textContent = allEmployees.length + ' funcionário' + (allEmployees.length!==1?'s':'') + ' cadastrados';
+
+  // Atualiza os rótulos para deixar claro que é receita REAL
+  const lblMrr = document.querySelector('#emp-mrr-total')?.nextElementSibling;
+  if (lblMrr) lblMrr.textContent = 'só pagantes confirmados';
+  const lblCom = document.querySelector('#emp-com-total')?.nextElementSibling;
+  if (lblCom) lblCom.textContent = 'sobre receita real';
+
+  // Desenha o gráfico de distribuição da carteira
+  renderCarteiraDonut();
 }
 
 async function loadEmployees() {
   const { data } = await SB.from('employees').select('*').order('created_at', {ascending:false});
   allEmployees = data || [];
 
-  const { data: ec } = await SB.from('employee_clients').select('*').order('created_at', {ascending:false});
+  const { data: ec } = await SB.from('employee_clients').select('*, profiles(plan,is_active,plan_expires_at)').order('created_at', {ascending:false});
   allEmployeeClients = ec || [];
 
   const { data: sug } = await SB.from('employee_suggestions').select('*, employees(nome)').order('created_at', {ascending:false});
@@ -3744,44 +3918,61 @@ async function updateSugestao(id, status) {
 }
 
 function renderEmpRanking() {
-  const ranking = allEmployees.map(e => {
-    const myCli = allEmployeeClients.filter(c => c.employee_id === e.id && c.status_crm === 'fechado');
-    const mrr = myCli.reduce((s, c) => s + (PLAN_PRICES_EMP[c.plano] || 0), 0);
-    return { ...e, clientes: myCli.length, mrr };
+  const ehGestor = e => /gestor/i.test(e.cargo || '');
+  const ranking = allEmployees.filter(e => e.status==='ativo' && !ehGestor(e)).map(e => {
+    // Iscas contam por fechado (concorrência); demais, só pagante real verificado
+    const contam = e.is_isca
+      ? allEmployeeClients.filter(c => c.employee_id === e.id && c.status_crm === 'fechado')
+      : allEmployeeClients.filter(c => c.employee_id === e.id && ehPaganteReal(c));
+    const mrr = contam.reduce((s, c) => s + (PLAN_PRICES_EMP[c.profiles?.plan || c.plano] || 0), 0);
+    return { ...e, clientes: contam.length, mrr };
   });
 
-  const byClientes = [...ranking].sort((a,b) => b.clientes - a.clientes);
+  const byClientes = [...ranking].sort((a,b) => b.clientes - a.clientes || b.mrr - a.mrr);
   const byMrr = [...ranking].sort((a,b) => b.mrr - a.mrr);
-  const medalhas = ['1', '2', '3'];
 
-  function renderRankList(list) {
-    return list.slice(0, 8).map((e, i) => `
-      <div style="display:flex;align-items:center;gap:12px;padding:10px;border-radius:9px;margin-bottom:6px;background:var(--surface2);border:1px solid var(--border);">
-        <div style="font-family:'Syne',sans-serif;font-weight:400;font-size:11px;width:18px;color:${i===0?'var(--accent)':'var(--dim)'};text-align:right;">${i + 1}</div>
-        <div style="flex:1;"><div style="font-weight:500;font-size:13px;">${e.nome}</div><div style="font-size:11px;color:var(--muted);">${e.cargo||'Consultor'}</div></div>
-        <div style="text-align:right;font-family:'Syne',sans-serif;font-weight:700;">${e.clientes} clientes</div>
-      </div>
-    `).join('') || '<div class="empty"><p>Sem dados</p></div>';
+  // Medalhas visuais para o pódio
+  function medalha(i) {
+    const cores = ['#FFD700','#C0C0C0','#CD7F32'];
+    if (i < 3) return `<div style="width:30px;height:30px;border-radius:50%;background:${cores[i]};display:flex;align-items:center;justify-content:center;font-weight:800;color:#1a1a1a;font-size:14px;flex:none;box-shadow:0 2px 8px ${cores[i]}55;">${i+1}</div>`;
+    return `<div style="width:30px;height:30px;border-radius:50%;background:var(--surface3,#2a2a35);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--muted);font-size:13px;flex:none;">${i+1}</div>`;
   }
 
-  document.getElementById('emp-ranking-list').innerHTML = renderRankList(byClientes);
-  document.getElementById('emp-ranking-mrr').innerHTML = byMrr.slice(0,8).map((e,i) => `
-    <div style="display:flex;align-items:center;gap:12px;padding:10px;border-radius:9px;margin-bottom:6px;background:var(--surface2);border:1px solid var(--border);">
-      <div style="font-family:'Syne',sans-serif;font-weight:400;font-size:11px;width:18px;color:${i===0?'var(--accent)':'var(--dim)'};text-align:right;">${i + 1}</div>
-      <div style="flex:1;"><div style="font-weight:500;font-size:13px;">${e.nome}</div></div>
-      <div style="text-align:right;font-family:'Syne',sans-serif;font-weight:700;color:var(--green);">R$${e.mrr.toLocaleString('pt-BR')}</div>
-    </div>
-  `).join('') || '<div class="empty"><p>Sem dados</p></div>';
+  function renderRankList(list, tipo) {
+    const max = Math.max(1, ...list.map(e => tipo==='mrr'?e.mrr:e.clientes));
+    return list.slice(0, 8).map((e, i) => {
+      const val = tipo==='mrr' ? e.mrr : e.clientes;
+      const pctBar = Math.round((val/max)*100);
+      const valTxt = tipo==='mrr' ? `R$${e.mrr.toLocaleString('pt-BR')}` : `${e.clientes} ${e.clientes===1?'cliente':'clientes'}`;
+      const destaque = i < 3;
+      return `
+      <div style="display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:11px;margin-bottom:7px;background:${destaque?'linear-gradient(90deg,var(--surface2),transparent)':'var(--surface2)'};border:1px solid ${i===0?'rgba(255,215,0,.3)':'var(--border)'};position:relative;overflow:hidden;">
+        ${medalha(i)}
+        <div style="flex:1;min-width:0;z-index:1;">
+          <div style="font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${e.nome}</div>
+          <div style="font-size:11px;color:var(--muted);">${e.cargo||'Consultor'}</div>
+          <div style="margin-top:5px;height:4px;background:var(--surface3,#2a2a35);border-radius:2px;overflow:hidden;">
+            <div style="height:100%;width:${pctBar}%;background:${tipo==='mrr'?'var(--green)':'var(--accent)'};border-radius:2px;"></div>
+          </div>
+        </div>
+        <div style="text-align:right;font-weight:700;font-size:15px;color:${tipo==='mrr'?'var(--green)':'var(--text)'};z-index:1;flex:none;">${valTxt}</div>
+      </div>`;
+    }).join('') || '<div class="empty"><p>Sem dados</p></div>';
+  }
+
+  document.getElementById('emp-ranking-list').innerHTML = renderRankList(byClientes, 'clientes');
+  document.getElementById('emp-ranking-mrr').innerHTML = renderRankList(byMrr, 'mrr');
 }
 
 function showEmpTab(tab) {
-  ['lista','clientes','sugestoes','ranking'].forEach(t => {
+  ['lista','clientes','sugestoes','ranking','comissoes'].forEach(t => {
     document.getElementById('emp-tab-content-'+t).style.display = t === tab ? 'block' : 'none';
     const btn = document.getElementById('emp-tab-'+t);
     if (btn) {
       btn.className = t === tab ? 'btn btn-accent btn-sm' : 'btn btn-ghost btn-sm';
     }
   });
+  if (tab === 'comissoes') renderComissoes();
 }
 
 async function addEmployee() {
@@ -4673,6 +4864,619 @@ function drawConnChart(dados) {
   });
 }
 
+
+// ══════════════════════════════════════════════════
+// COMISSÕES — verificação de pagantes e cálculo
+// ══════════════════════════════════════════════════
+const PLANO_PRECO = { free:0, starter:97, pro:197, agency:397 };
+const PLANO_LABEL = { free:'Free', starter:'Starter', pro:'Pro', agency:'Agency' };
+
+// Inicializa select de meses (últimos 6 meses)
+function initComMeses() {
+  const sel = document.getElementById('com-mes');
+  if (!sel || sel.options.length > 0) return;
+  const hoje = new Date();
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+    const val = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const lbl = d.toLocaleDateString('pt-BR', { month:'long', year:'numeric' });
+    const opt = document.createElement('option');
+    opt.value = val; opt.textContent = lbl;
+    if (i === 0) opt.selected = true;
+    sel.appendChild(opt);
+  }
+}
+
+// Popula filtro de funcionários
+async function initComFuncFilter() {
+  const sel = document.getElementById('com-filter-emp');
+  if (sel.options.length > 1) return;
+  const { data: emps } = await SB.from('employees').select('id,nome').order('nome');
+  (emps||[]).forEach(e => {
+    const opt = document.createElement('option');
+    opt.value = e.id; opt.textContent = e.nome;
+    sel.appendChild(opt);
+  });
+}
+
+async function renderComissoes() {
+  initComMeses();
+  await initComFuncFilter();
+
+  const mes = document.getElementById('com-mes')?.value || '';
+  const filtroEmp = document.getElementById('com-filter-emp')?.value || '';
+  const filtroStatus = document.getElementById('com-filter-status')?.value || '';
+
+  // Buscar employee_clients com join em employees e profiles
+  let q = SB.from('employee_clients')
+    .select(`*, employees(id,nome,email,pix,comissao_pct), profiles(id,plan,plan_expires_at,is_active,email)`)
+    .order('created_at', {ascending:false});
+
+  if (filtroEmp) q = q.eq('employee_id', filtroEmp);
+  if (filtroStatus === 'pendente') q = q.eq('verificado', false);
+  if (filtroStatus === 'verificado') q = q.eq('verificado', true).eq('comissao_paga', false);
+  if (filtroStatus === 'pago') q = q.eq('comissao_paga', true);
+
+  const { data: clientes, error } = await q;
+  if (error) { console.error(error); return; }
+
+  // Filtrar por mês (mes_referencia ou mês de created_at)
+  const filtrados = (clientes||[]).filter(c => {
+    if (!mes) return true;
+    const ref = c.mes_referencia || c.created_at?.slice(0,7);
+    return ref === mes;
+  });
+
+  renderComTbody(filtrados);
+  renderComResumo(filtrados);
+  renderComStats(filtrados);
+}
+
+function planoComissao(c) {
+  const planoReal = c.profiles?.plan || c.plano || 'free';
+  const preco = PLANO_PRECO[planoReal] || 0;
+  // Usa o percentual salvo; se não houver, deriva do tipo de lead
+  let pctNum = c.comissao_pct != null ? parseFloat(c.comissao_pct) : (c.tipo_lead === 'proprio' ? 30 : 20);
+  const pct = pctNum / 100;
+  return { planoReal, preco, pct, pctNum, valor: Math.round(preco * pct * 100)/100 };
+}
+
+// Status REAL do pagante: plano pago + ativo + não vencido (fonte da verdade)
+function statusPagante(c) {
+  const p = c.profiles;
+  if (!p) return { valido:false, label:'Sem perfil', cor:'#ef4444', motivo:'Perfil não encontrado' };
+  const plano = p.plan || 'free';
+  if (plano === 'free') return { valido:false, label:'Free', cor:'var(--muted)', motivo:'Plano gratuito' };
+  if (!p.is_active) return { valido:false, label:'Inativo', cor:'#ef4444', motivo:'Conta inativa' };
+  const vencido = p.plan_expires_at && new Date(p.plan_expires_at) < new Date();
+  if (vencido) return { valido:false, label:'Vencido', cor:'#ef4444', motivo:'Plano vencido' };
+  return { valido:true, label:'Pagante', cor:'var(--green)', motivo:'Pagante válido' };
+}
+
+function renderComTbody(clientes) {
+  const tbody = document.getElementById('com-tbody');
+  if (!clientes.length) { tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:24px;">Nenhum cliente neste período</td></tr>'; return; }
+
+  tbody.innerHTML = clientes.map(c => {
+    const emp = c.employees || {};
+    const prof = c.profiles || {};
+    const { planoReal, preco, pct, valor } = planoComissao(c);
+
+    const statusVerif = c.verificado
+      ? `<span class="badge badge-green">Verificado</span>`
+      : `<span class="badge badge-muted">Pendente</span>`;
+
+    const sp = statusPagante(c);
+    const statusPlanoReal = `<span class="badge" style="background:${sp.valido?'rgba(52,211,153,.15)':'rgba(239,68,68,.12)'};color:${sp.cor};">${sp.valido?'✓ ':'✕ '}${sp.label}</span>`;
+
+    const statusPag = c.comissao_paga
+      ? `<span class="badge badge-green">Comissão paga</span>`
+      : (c.verificado ? `<span class="badge" style="background:rgba(249,115,22,.15);color:var(--accent);">A pagar</span>` : statusPlanoReal);
+
+    const venc = prof.plan_expires_at ? new Date(prof.plan_expires_at) : null;
+    const vencido = venc && venc < new Date();
+    const planoRealBadge = prof.plan
+      ? `<span class="badge ${prof.plan==='free'?'badge-muted':(vencido?'':'badge-green')}" ${vencido?'style="background:rgba(239,68,68,.12);color:#ef4444;"':''}>${PLANO_LABEL[prof.plan]||prof.plan}${venc?(' · '+venc.toLocaleDateString('pt-BR')):''}</span>`
+      : `<span style="color:#ef4444;font-size:12px;">Não cadastrado</span>`;
+
+    const acoes = c.verificado
+      ? (c.comissao_paga
+          ? `<span style="color:var(--muted);font-size:12px;">Pago</span>`
+          : `<button class="btn btn-accent btn-sm" style="font-size:11px;padding:3px 10px;" onclick="marcarComissaoPaga('${c.id}',${valor})">Marcar pago</button>`)
+      : `<button class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 10px;" onclick="abrirVerificar('${c.id}')">Verificar</button>`;
+
+    return `<tr>
+      <td><span style="font-weight:500;">${emp.nome||'—'}</span></td>
+      <td>${c.nome_cliente||'—'}</td>
+      <td style="font-size:12px;color:var(--muted);">${c.email_cliente||'—'}</td>
+      <td><span class="badge badge-muted">${PLANO_LABEL[c.plano]||c.plano||'—'}</span></td>
+      <td>${planoRealBadge}</td>
+      <td><span class="badge ${c.tipo_lead==='proprio'?'badge-green':'badge-muted'}" style="font-size:11px;">${c.tipo_lead==='proprio'?'Próprio':'Indicado'} (${planoComissao(c).pctNum}%)</span></td>
+      <td>${statusPag}</td>
+      <td style="font-weight:600;color:${valor>0?'var(--accent)':'var(--muted)'};">R$${valor.toFixed(2).replace('.',',')}</td>
+      <td>${statusVerif}</td>
+      <td>${acoes}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderComResumo(clientes) {
+  const por_emp = {};
+  clientes.forEach(c => {
+    const id = c.employee_id;
+    if (!por_emp[id]) por_emp[id] = { nome: c.employees?.nome||'—', total:0, verificados:0, pagantes:0, comissao:0, pago:0, pendente:0 };
+    por_emp[id].total++;
+    const { valor, planoReal } = planoComissao(c);
+    if (c.verificado) {
+      por_emp[id].verificados++;
+      const real = ehPaganteReal(c);
+      if (real) {
+        por_emp[id].pagantes++;
+        por_emp[id].comissao += valor;
+        if (c.comissao_paga) por_emp[id].pago += c.comissao_valor || valor;
+        else por_emp[id].pendente += c.comissao_valor || valor;
+      } else if (c.comissao_paga) {
+        // já foi pago no passado, mantém no histórico de pago
+        por_emp[id].pago += c.comissao_valor || valor;
+      }
+    }
+  });
+
+  const tbody = document.getElementById('com-resumo-tbody');
+  const rows = Object.values(por_emp);
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px;">Nenhum dado</td></tr>'; return; }
+
+  tbody.innerHTML = rows.map(r => `<tr>
+    <td style="font-weight:500;">${r.nome}</td>
+    <td>${r.total}</td>
+    <td>${r.verificados}</td>
+    <td>${r.pagantes}</td>
+    <td style="font-weight:600;">R$${r.comissao.toFixed(2).replace('.',',')}</td>
+    <td style="color:var(--green);">R$${r.pago.toFixed(2).replace('.',',')}</td>
+    <td style="color:var(--accent);font-weight:600;">R$${r.pendente.toFixed(2).replace('.',',')}</td>
+    <td><button class="btn btn-ghost btn-sm" style="font-size:11px;" onclick="pagarTodosEmp('${Object.keys(por_emp).find(k=>por_emp[k]===r)}',${r.pendente})" ${r.pendente<=0?'disabled':''}>Pagar tudo</button></td>
+  </tr>`).join('');
+}
+
+function renderComStats(clientes) {
+  const total = clientes.length;
+  // Receita/comissão REAL = só pagantes reais (verificado + ativo + não vencido)
+  const reais = clientes.filter(ehPaganteReal);
+  const totalVal = reais.reduce((s,c)=>s+planoComissao(c).valor,0);
+  const pendente = reais.filter(c=>!c.comissao_paga).reduce((s,c)=>s+(c.comissao_valor||planoComissao(c).valor),0);
+  const pago = clientes.filter(c=>c.comissao_paga).reduce((s,c)=>s+(c.comissao_valor||0),0);
+
+  document.getElementById('com-total-clientes').textContent = total;
+  document.getElementById('com-total-verificados').textContent = `${reais.length}/${total}`;
+  document.getElementById('com-total-valor').textContent = `R$${totalVal.toFixed(2).replace('.',',')}`;
+  document.getElementById('com-total-pendente').textContent = `R$${pendente.toFixed(2).replace('.',',')}`;
+  document.getElementById('com-total-delta').textContent = `Já pago: R$${pago.toFixed(2).replace('.',',')}`;
+
+  renderCarteiraDonut(clientes);
+}
+
+// Gráfico pizza/donut: distribuição da carteira por categoria
+let _carteiraDonutDrawn = false;
+function renderCarteiraDonut(clientes) {
+  const canvas = document.getElementById('carteira-donut');
+  if (!canvas) return;
+  const lista = clientes || allEmployeeClients || [];
+
+  const cats = { pagante:0, vencido:0, nao_verificado:0, free:0, em_andamento:0 };
+  lista.forEach(c => { cats[categoriaCliente(c)]++; });
+
+  const defs = [
+    { key:'pagante',       label:'Pagantes reais',        cor:'#34D399' },
+    { key:'vencido',       label:'Planos vencidos',       cor:'#ef4444' },
+    { key:'nao_verificado',label:'Fechado não verificado',cor:'#F97316' },
+    { key:'free',          label:'Free / sem plano',      cor:'#9ca3af' },
+    { key:'em_andamento',  label:'Em andamento',          cor:'#6b7280' },
+  ];
+  const total = Object.values(cats).reduce((a,b)=>a+b,0);
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  const cx=120, cy=120, rOut=100, rIn=58;
+  if (total === 0) {
+    ctx.fillStyle = '#6b7280'; ctx.font = '13px sans-serif'; ctx.textAlign='center';
+    ctx.fillText('Sem dados', cx, cy);
+    document.getElementById('carteira-legenda').innerHTML = '';
+    return;
+  }
+
+  let ang = -Math.PI/2;
+  defs.forEach(d => {
+    const val = cats[d.key];
+    if (val === 0) return;
+    const slice = (val/total) * Math.PI*2;
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,rOut,ang,ang+slice);
+    ctx.closePath();
+    ctx.fillStyle = d.cor;
+    ctx.fill();
+    ang += slice;
+  });
+  // furo central (donut)
+  ctx.beginPath();
+  ctx.arc(cx,cy,rIn,0,Math.PI*2);
+  ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--surface')||'#16161f';
+  ctx.fill();
+  // total no centro
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 22px sans-serif'; ctx.textAlign='center';
+  ctx.fillText(total, cx, cy-2);
+  ctx.fillStyle = '#9ca3af'; ctx.font = '11px sans-serif';
+  ctx.fillText('registros', cx, cy+15);
+
+  // legenda
+  document.getElementById('carteira-legenda').innerHTML = defs.filter(d=>cats[d.key]>0).map(d => {
+    const val = cats[d.key];
+    const pct = ((val/total)*100).toFixed(0);
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
+      <span style="width:10px;height:10px;border-radius:2px;background:${d.cor};flex:none;"></span>
+      <span style="flex:1;color:var(--text);">${d.label}</span>
+      <span style="color:var(--muted);">${val} · ${pct}%</span>
+    </div>`;
+  }).join('');
+}
+
+
+// Abre modal de verificação
+function abrirVerificar(clientId) {
+  SB.from('employee_clients').select('*,employees(nome)').eq('id', clientId).single().then(({data:c})=>{
+    if (!c) return;
+    document.getElementById('vc-client-id').value = clientId;
+    document.getElementById('vc-nome-cliente').textContent = c.nome_cliente || '—';
+    document.getElementById('vc-email-cliente').textContent = c.email_cliente ? `E-mail: ${c.email_cliente}` : 'Sem e-mail registrado';
+    document.getElementById('vc-email-busca').value = c.email_cliente || '';
+    document.getElementById('vc-tipo-lead').value = c.tipo_lead || 'indicado';
+    // Percentual: usa o salvo, ou o padrão do tipo
+    const pctInicial = c.comissao_pct != null ? parseFloat(c.comissao_pct) : (c.tipo_lead === 'proprio' ? 30 : 20);
+    document.getElementById('vc-pct-num').value = pctInicial;
+    document.getElementById('vc-pct-range').value = pctInicial;
+    document.getElementById('vc-profile-result').innerHTML = '';
+    document.getElementById('vc-candidatos').innerHTML = '';
+    document.getElementById('vc-comissao-preview').style.display = 'none';
+    document.getElementById('vc-confirmar-btn').disabled = true;
+    document.getElementById('vc-confirmar-btn').dataset.profileId = '';
+    openModal('modal-verificar-cliente');
+    // Se tem e-mail válido, verifica direto; senão, busca candidatos pelo nome da empresa
+    if (c.email_cliente && c.email_cliente.includes('@')) {
+      buscarProfileCliente();
+    } else if (c.nome_cliente) {
+      document.getElementById('vc-email-busca').value = c.nome_cliente;
+      buscarCandidatos();
+    }
+  });
+}
+
+let _vcBuscaTimer = null;
+let _vcCandTimer = null;
+// Busca candidatos por e-mail OU nome/empresa e lista para o admin escolher
+function buscarCandidatos() {
+  clearTimeout(_vcCandTimer);
+  _vcCandTimer = setTimeout(async () => {
+    const termo = document.getElementById('vc-email-busca').value.trim();
+    const box = document.getElementById('vc-candidatos');
+    const res = document.getElementById('vc-profile-result');
+    res.innerHTML = '';
+
+    // Se parece e-mail completo, verifica direto
+    if (termo.includes('@') && termo.includes('.')) {
+      box.innerHTML = '';
+      buscarProfileCliente();
+      return;
+    }
+    if (termo.length < 2) { box.innerHTML = ''; return; }
+
+    box.innerHTML = '<span style="color:var(--muted);font-size:12px;">Buscando…</span>';
+    const { data, error } = await SB.rpc('buscar_candidatos_cliente', { p_termo: termo });
+    if (error) { box.innerHTML = '<span style="color:#ef4444;font-size:12px;">'+error.message+'</span>'; return; }
+    if (!data || !data.length) {
+      box.innerHTML = '<span style="color:var(--muted);font-size:12px;">Nenhum cliente encontrado. Confirme o e-mail exato do cadastro.</span>';
+      return;
+    }
+
+    box.innerHTML = data.map(p => {
+      const venc = p.plan_expires_at ? new Date(p.plan_expires_at).toLocaleDateString('pt-BR') : '—';
+      return `<div onclick="selecionarCandidato('${p.email.replace(/'/g,"\\'")}')" style="cursor:pointer;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
+        <div style="min-width:0;">
+          <div style="font-weight:600;font-size:13px;">${p.full_name||p.company||p.email}</div>
+          <div style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;">${p.email}${p.company?(' · '+p.company):''}</div>
+        </div>
+        <div style="text-align:right;flex:none;">
+          <span class="badge ${p.pagante_valido?'badge-green':'badge-muted'}" style="font-size:10px;">${PLANO_LABEL[p.plano]||p.plano}</span>
+          <div style="font-size:10px;color:${p.pagante_valido?'var(--green)':'#ef4444'};margin-top:2px;">${p.pagante_valido?'✓ Pagante':'✕ Não válido'}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }, 400);
+}
+
+function selecionarCandidato(email) {
+  document.getElementById('vc-email-busca').value = email;
+  document.getElementById('vc-candidatos').innerHTML = '';
+  buscarProfileCliente();
+}
+
+function buscarProfileCliente() {
+  clearTimeout(_vcBuscaTimer);
+  _vcBuscaTimer = setTimeout(async () => {
+    const email = document.getElementById('vc-email-busca').value.trim().toLowerCase();
+    const res = document.getElementById('vc-profile-result');
+    const btn = document.getElementById('vc-confirmar-btn');
+    const preview = document.getElementById('vc-comissao-preview');
+
+    if (!email || !email.includes('@')) {
+      res.innerHTML = ''; preview.style.display='none'; btn.disabled=true; btn.dataset.profileId=''; return;
+    }
+
+    res.innerHTML = '<span style="color:var(--muted);font-size:12px;">Verificando status do plano…</span>';
+
+    // RPC robusta: checa plano + ativo + não vencido (fonte da verdade)
+    const { data, error } = await SB.rpc('verificar_status_cliente', { p_email: email });
+
+    if (error) {
+      res.innerHTML = '<span style="color:#ef4444;">Erro ao verificar: ' + error.message + '</span>';
+      preview.style.display='none'; btn.disabled=true; btn.dataset.profileId=''; return;
+    }
+
+    const prof = data && data[0];
+    if (!prof) {
+      res.innerHTML = '<span style="color:#ef4444;">⚠ Nenhum perfil encontrado com esse e-mail. O cliente não está cadastrado na plataforma.</span>';
+      preview.style.display='none'; btn.disabled=true; btn.dataset.profileId=''; return;
+    }
+
+    const plano = prof.plano || 'free';
+    const valido = prof.pagante_valido === true;
+    const preco = PLANO_PRECO[plano] || 0;
+    const tipo = document.getElementById('vc-tipo-lead').value;
+    // Percentual vem do input editável (20-30%), com sanidade
+    let pct = parseInt(document.getElementById('vc-pct-num').value, 10);
+    if (isNaN(pct)) pct = tipo === 'proprio' ? 30 : 20;
+    pct = Math.max(20, Math.min(30, pct));
+    const valorComissao = preco * (pct/100);
+
+    // Cores do status conforme o motivo
+    const corMotivo = valido ? 'var(--green)' : '#ef4444';
+    const venceTxt = prof.plan_expires_at
+      ? `${new Date(prof.plan_expires_at).toLocaleDateString('pt-BR')}` + (prof.dias_para_vencer!=null ? ` (${prof.dias_para_vencer} dias)` : '')
+      : '—';
+    const pagamentoTxt = prof.tem_pagamento_registrado
+      ? `Último pagamento: ${prof.ultimo_pagamento_status||'?'} ${prof.ultimo_pagamento_data?('em '+new Date(prof.ultimo_pagamento_data).toLocaleDateString('pt-BR')):''}`
+      : 'Sem registro em payments (ativação manual/Asaas)';
+
+    res.innerHTML = `
+      <div style="background:var(--surface2);border-radius:8px;padding:12px;margin-top:6px;">
+        <div style="font-weight:600;margin-bottom:2px;">${prof.full_name||prof.email}</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">${prof.email}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <span class="badge ${plano!=='free'?'badge-green':'badge-muted'}">${PLANO_LABEL[plano]||plano}</span>
+          <span class="badge ${prof.is_active?'badge-green':'badge-muted'}">${prof.is_active?'Conta ativa':'Inativa'}</span>
+          ${prof.vencido?'<span class="badge" style="background:rgba(239,68,68,.15);color:#ef4444;">Vencido</span>':''}
+        </div>
+        <div style="margin-top:8px;font-size:12px;color:var(--muted);">Vencimento: ${venceTxt}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">${pagamentoTxt}</div>
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-weight:600;color:${corMotivo};">
+          ${valido ? '✓ ' : '✕ '}${prof.motivo}
+        </div>
+      </div>`;
+
+    if (valido) {
+      document.getElementById('vc-valor-comissao').textContent = `R$${valorComissao.toFixed(2).replace('.',',')}`;
+      document.getElementById('vc-detalhe-comissao').textContent = `${PLANO_LABEL[plano]} = R$${preco} × ${pct}%`;
+      preview.style.display = 'block';
+    } else {
+      preview.style.display = 'none';
+    }
+
+    // Só permite confirmar se for pagante VÁLIDO de verdade
+    btn.disabled = !valido;
+    btn.dataset.profileId = valido ? prof.profile_id : '';
+    btn.dataset.plano = plano;
+    btn.dataset.valor = valorComissao.toFixed(2);
+    btn.dataset.pct = pct;
+  }, 500);
+}
+
+// Ao trocar o tipo de lead, sugere o percentual padrão (mas mantém editável)
+function ajustarPctPadrao() {
+  const tipo = document.getElementById('vc-tipo-lead').value;
+  const padrao = tipo === 'proprio' ? 30 : 20;
+  document.getElementById('vc-pct-num').value = padrao;
+  document.getElementById('vc-pct-range').value = padrao;
+  buscarProfileCliente();
+}
+
+async function confirmarVerificacao() {
+  const btn = document.getElementById('vc-confirmar-btn');
+  const clientId = document.getElementById('vc-client-id').value;
+  const profileId = btn.dataset.profileId;
+  const valor = parseFloat(btn.dataset.valor);
+  const pct = parseFloat(btn.dataset.pct) || 20;
+  const tipo = document.getElementById('vc-tipo-lead').value;
+  const mes = document.getElementById('com-mes')?.value || new Date().toISOString().slice(0,7);
+
+  if (!profileId) { toast('Selecione um perfil válido', 'error'); return; }
+
+  const { error } = await SB.from('employee_clients').update({
+    profile_id: profileId,
+    verificado: true,
+    verificado_em: new Date().toISOString(),
+    tipo_lead: tipo,
+    comissao_pct: pct,
+    comissao_valor: valor,
+    mes_referencia: mes,
+  }).eq('id', clientId);
+
+  if (error) { toast('Erro ao verificar: ' + error.message, 'error'); return; }
+
+  toast('Cliente verificado! Comissão calculada.', 'success');
+  closeModal('modal-verificar-cliente');
+  renderComissoes();
+}
+
+async function marcarComissaoPaga(clientId, valor) {
+  // Revalida o status do cliente ANTES de liberar pagamento (pode ter vencido após verificação)
+  const { data: c } = await SB.from('employee_clients')
+    .select('nome_cliente,profiles(plan,is_active,plan_expires_at)')
+    .eq('id', clientId).single();
+  if (c) {
+    const sp = statusPagante(c);
+    if (!sp.valido) {
+      if (!confirm(`⚠ ATENÇÃO: ${c.nome_cliente} não é mais pagante válido (${sp.motivo}).\n\nPagar a comissão mesmo assim?`)) return;
+    }
+  }
+  if (!confirm(`Confirmar pagamento de comissão R$${String(valor).replace('.',',')} para este cliente?`)) return;
+  const { error } = await SB.from('employee_clients').update({
+    comissao_paga: true,
+    comissao_paga_em: new Date().toISOString(),
+    comissao_valor: valor,
+  }).eq('id', clientId);
+
+  if (error) { toast('Erro: ' + error.message, 'error'); return; }
+  toast('Comissão marcada como paga!', 'success');
+  renderComissoes();
+}
+
+async function pagarTodosEmp(empId, totalPendente) {
+  if (!confirm(`Marcar todos os R$${totalPendente.toFixed(2).replace('.',',')} do mês como pagos para este funcionário?`)) return;
+  const mes = document.getElementById('com-mes')?.value || '';
+  const { data: clientes } = await SB.from('employee_clients')
+    .select('id,comissao_valor')
+    .eq('employee_id', empId)
+    .eq('verificado', true)
+    .eq('comissao_paga', false);
+
+  if (!clientes?.length) { toast('Nenhuma comissão pendente', 'error'); return; }
+
+  const ids = clientes.map(c => c.id);
+  const { error } = await SB.from('employee_clients').update({
+    comissao_paga: true,
+    comissao_paga_em: new Date().toISOString(),
+  }).in('id', ids);
+
+  if (error) { toast('Erro: ' + error.message, 'error'); return; }
+  toast(`${ids.length} comissões marcadas como pagas!`, 'success');
+  renderComissoes();
+}
+
+// Revalida clientes já verificados: se algum deixou de ser pagante (venceu/cancelou),
+// alerta o admin. Protege contra pagar comissão de quem não é mais pagante.
+async function revalidarVerificados() {
+  const mes = document.getElementById('com-mes')?.value || '';
+  const { data: clientes } = await SB.from('employee_clients')
+    .select('id,nome_cliente,profile_id,comissao_paga,profiles(plan,is_active,plan_expires_at)')
+    .eq('verificado', true);
+
+  if (!clientes?.length) { toast('Nenhum cliente verificado para revalidar', 'info'); return; }
+
+  const problemas = [];
+  (clientes||[]).forEach(c => {
+    const sp = statusPagante(c);
+    if (!sp.valido && !c.comissao_paga) problemas.push(`• ${c.nome_cliente}: ${sp.motivo}`);
+  });
+
+  if (!problemas.length) {
+    toast('Todos os clientes verificados continuam pagantes válidos ✓', 'success');
+  } else {
+    alert('Atenção — clientes verificados que NÃO são mais pagantes válidos:\n\n' + problemas.join('\n') + '\n\nRevise antes de pagar a comissão.');
+  }
+  renderComissoes();
+}
+
+async function exportarComissoes() {
+  const mes = document.getElementById('com-mes')?.value || 'mes';
+  toast('Gerando Excel…', 'info');
+
+  // Garante SheetJS carregado
+  if (typeof XLSX === 'undefined') {
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    }).catch(() => { toast('Falha ao carregar gerador de Excel', 'error'); });
+    if (typeof XLSX === 'undefined') return;
+  }
+
+  // Busca dados frescos com join
+  let q = SB.from('employee_clients')
+    .select('*, employees(nome,email,pix), profiles(plan,is_active,plan_expires_at,email,full_name)')
+    .order('created_at', {ascending:false});
+  const filtroEmp = document.getElementById('com-filter-emp')?.value;
+  if (filtroEmp) q = q.eq('employee_id', filtroEmp);
+  const { data: clientes } = await q;
+
+  const filtrados = (clientes||[]).filter(c => {
+    const ref = c.mes_referencia || c.created_at?.slice(0,7);
+    return !mes || ref === mes;
+  });
+
+  // Planilha 1: Detalhado
+  const detalhado = filtrados.map(c => {
+    const pc = planoComissao(c);
+    const real = ehPaganteReal(c);
+    const sp = statusPagante(c);
+    return {
+      'Funcionário': c.employees?.nome || '—',
+      'PIX do funcionário': c.employees?.pix || '—',
+      'Cliente': c.nome_cliente || '—',
+      'E-mail do cliente': c.email_cliente || '—',
+      'Plano registrado': PLANO_LABEL[c.plano] || c.plano || '—',
+      'Plano real': c.profiles?.plan ? (PLANO_LABEL[c.profiles.plan]||c.profiles.plan) : 'Não cadastrado',
+      'Status do plano': sp.label,
+      'Vencimento': c.profiles?.plan_expires_at ? new Date(c.profiles.plan_expires_at).toLocaleDateString('pt-BR') : '—',
+      'Tipo lead': c.tipo_lead === 'proprio' ? 'Próprio' : 'Indicado',
+      'Comissão %': pc.pctNum + '%',
+      'Valor comissão': real ? pc.valor : 0,
+      'Pagante real': real ? 'SIM' : 'NÃO',
+      'Verificado': c.verificado ? 'SIM' : 'NÃO',
+      'Comissão paga': c.comissao_paga ? 'SIM' : 'NÃO',
+      'Data verificação': c.verificado_em ? new Date(c.verificado_em).toLocaleDateString('pt-BR') : '—',
+    };
+  });
+
+  // Planilha 2: Resumo por funcionário (só pagantes reais)
+  const porEmp = {};
+  filtrados.forEach(c => {
+    const id = c.employee_id;
+    if (!porEmp[id]) porEmp[id] = { nome:c.employees?.nome||'—', pix:c.employees?.pix||'—', clientes:0, pagantes:0, total:0, pago:0, pendente:0 };
+    porEmp[id].clientes++;
+    if (ehPaganteReal(c)) {
+      const pc = planoComissao(c);
+      porEmp[id].pagantes++;
+      porEmp[id].total += pc.valor;
+      if (c.comissao_paga) porEmp[id].pago += c.comissao_valor || pc.valor;
+      else porEmp[id].pendente += c.comissao_valor || pc.valor;
+    }
+  });
+  const resumo = Object.values(porEmp).map(r => ({
+    'Funcionário': r.nome,
+    'PIX': r.pix,
+    'Clientes registrados': r.clientes,
+    'Pagantes reais': r.pagantes,
+    'Comissão total (R$)': Number(r.total.toFixed(2)),
+    'Já pago (R$)': Number(r.pago.toFixed(2)),
+    'A pagar (R$)': Number(r.pendente.toFixed(2)),
+  }));
+
+  const wb = XLSX.utils.book_new();
+  const ws1 = XLSX.utils.json_to_sheet(resumo);
+  const ws2 = XLSX.utils.json_to_sheet(detalhado);
+  // Largura de colunas do resumo
+  ws1['!cols'] = [{wch:28},{wch:18},{wch:18},{wch:14},{wch:18},{wch:14},{wch:14}];
+  ws2['!cols'] = [{wch:26},{wch:18},{wch:24},{wch:28},{wch:15},{wch:14},{wch:16},{wch:12},{wch:12},{wch:11},{wch:14},{wch:12},{wch:11},{wch:13},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, ws1, 'Resumo por funcionário');
+  XLSX.utils.book_append_sheet(wb, ws2, 'Detalhado');
+  XLSX.writeFile(wb, `Comissoes_WexioLead_${mes}.xlsx`);
+  toast('Excel gerado!', 'success');
+}
+
+// Atualizar prévia ao mudar tipo de lead no modal
+document.addEventListener('change', e => {
+  if (e.target.id === 'vc-tipo-lead') buscarProfileCliente();
+});
 
 window.addEventListener('load', () =>{
   initAdminAuth();
