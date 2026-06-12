@@ -354,6 +354,11 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
       <span>Funcionários</span>
       <span class="nav-badge" id="badge-employees">0</span>
 </a>
+    <a onclick="nav('curriculos')" id="nav-curriculos">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <span>Currículos</span>
+      <span class="nav-badge" id="badge-curriculos">0</span>
+</a>
     <a onclick="nav('plans')" id="nav-plans">
       <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
       <span>Planos</span>
@@ -899,7 +904,7 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
       <div class="tbl-wrap">
         <table>
           <thead><tr>
-            <th>Funcionário</th><th>Cargo</th><th>Clientes</th><th>MRR carteira</th><th>Comissão/mês</th><th>Meta</th><th>Status</th><th>Cadastro</th><th></th>
+            <th>Funcionário</th><th>Cargo</th><th>Clientes</th><th>MRR carteira</th><th>Comissão/mês</th><th>Meta</th><th>Status</th><th>Último acesso</th><th>Cadastro</th><th></th>
           </tr></thead>
           <tbody id="emp-tbody"></tbody>
         </table>
@@ -1201,6 +1206,43 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
 </div>
 
 <!-- ══════════════════ CONVITES ══════════════════ -->
+<!-- ══════ PAGE: CURRÍCULOS ══════ -->
+<div class="page" id="page-curriculos">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:18px;">
+    <div><div class="page-title">Currículos</div><div class="page-sub" id="cand-sub">Candidaturas do Trabalhe Conosco</div></div>
+    <button class="btn btn-ghost btn-sm" onclick="exportarCandidatos()">Exportar Excel</button>
+  </div>
+  <div class="card">
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>Candidato</th><th>Contato</th><th>Cidade/UF</th><th>Exp. vendas</th><th>B2B</th><th>Disponibilidade</th><th>Enviado</th><th></th>
+        </tr></thead>
+        <tbody id="cand-tbody"></tbody>
+      </table>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;">
+      <div style="font-size:12px;color:var(--muted);" id="cand-pageinfo"></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost btn-sm" id="cand-prev" onclick="loadCurriculos(_candPage-1)">← Anterior</button>
+        <button class="btn btn-ghost btn-sm" id="cand-next" onclick="loadCurriculos(_candPage+1)">Próxima →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ MODAL: CURRÍCULO DO CANDIDATO ══════ -->
+<div class="modal-overlay" id="modal-curriculo">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-title" id="mc-nome">Candidato</div>
+    <div id="mc-body" style="font-size:13.5px;"></div>
+    <div style="display:flex;gap:10px;justify-content:space-between;margin-top:18px;">
+      <button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="excluirCandidato()">Excluir candidatura</button>
+      <button class="btn btn-accent btn-sm" onclick="closeModal('modal-curriculo')">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <div class="page" id="page-convites">
   <div class="topbar">
     <div>
@@ -3582,6 +3624,7 @@ function nav(page) {
       drawSegChart(s); drawSignupChart();
     }
     if (page==='employees') renderEmployees();
+    if (page==='curriculos') loadCurriculos(1);
     if (page==='convites') loadConvites();
     if (page==='renovacoes') loadRenovacoes();
     if (page==='conexoes') loadConexoesAdmin();
@@ -3819,6 +3862,20 @@ async function renderEmployees() {
 }
 
 function renderEmpTabela() {
+  // "Visto por último": relativo + cor por recência (verde<1h, padrão<24h, âmbar<7d, vermelho 7d+)
+  function ultimoAcesso(ts) {
+    if (!ts) return '<span style="font-size:11px;color:var(--dim);">Nunca entrou</span>';
+    const diff = Date.now() - new Date(ts).getTime();
+    const min = Math.floor(diff/60000), h = Math.floor(min/60), d = Math.floor(h/24);
+    let txt, cor;
+    if (min < 11)      { txt = 'Online agora';  cor = 'var(--green)'; }
+    else if (min < 60) { txt = `há ${min} min`; cor = 'var(--green)'; }
+    else if (h < 24)   { txt = `há ${h}h`;      cor = 'var(--text)'; }
+    else if (d < 7)    { txt = `há ${d} dia${d>1?'s':''}`; cor = '#D97706'; }
+    else               { txt = `há ${d} dias`;  cor = 'var(--red)'; }
+    const dataFull = new Date(ts).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    return `<span style="font-size:12px;color:${cor};font-weight:${min<11?'600':'400'};" title="${dataFull}">${min<11?'● ':''}${txt}</span>`;
+  }
   document.getElementById('emp-tbody').innerHTML = allEmployees.map(e => {
     const myCli = allEmployeeClients.filter(c => c.employee_id === e.id && c.status_crm === 'fechado');
     const mrr = myCli.reduce((s, c) => s + (PLAN_PRICES_EMP[c.plano] || 0), 0);
@@ -3851,6 +3908,7 @@ function renderEmpTabela() {
           : '<span style="font-size:11px;color:var(--dim);">Sem meta</span>'}
       </td>
       <td><span class="badge ${e.status === 'ativo' ? 'b-green' : 'b-red'}">${e.status === 'ativo' ? 'Ativo' : 'Inativo'}</span></td>
+      <td>${ultimoAcesso(e.last_seen_at)}</td>
       <td class="td-muted" style="font-size:12px;">${new Date(e.created_at).toLocaleDateString('pt-BR')}</td>
       <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();editEmployeeModal('${e.id}')">Editar</button></td>
     </tr>`;
@@ -5479,6 +5537,126 @@ async function exportarComissoes() {
 document.addEventListener('change', e => {
   if (e.target.id === 'vc-tipo-lead') buscarProfileCliente();
 });
+
+// ══════════════════════════════════════════════════
+// CURRÍCULOS — candidaturas do Trabalhe Conosco
+// ══════════════════════════════════════════════════
+const CAND_LBL = {
+  exp_vendas: { nenhuma:'Nenhuma', ate_1:'Até 1 ano', '1_3':'1–3 anos', '3_mais':'3+ anos' },
+  disponibilidade: { integral:'Integral', parcial:'Meio período', flexivel:'Flexível/FDS' },
+};
+let _candPage = 1, _candTotal = 0, _candAtual = null;
+const CAND_POR_PAGINA = 12;
+
+async function loadCurriculos(pagina) {
+  if (pagina < 1) pagina = 1;
+  const from = (pagina-1) * CAND_POR_PAGINA;
+  const { data, count, error } = await SB.from('candidaturas')
+    .select('*', { count: 'exact' })
+    .order('created_at', { ascending:false })
+    .range(from, from + CAND_POR_PAGINA - 1);
+  if (error) { console.error(error); return; }
+
+  _candPage = pagina; _candTotal = count || 0;
+  const tbody = document.getElementById('cand-tbody');
+  if (!data?.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:28px;">Nenhuma candidatura recebida ainda</td></tr>';
+  } else {
+    tbody.innerHTML = data.map(c => `<tr onclick='verCurriculo(${JSON.stringify(c).replace(/'/g,"&#39;")})' style="cursor:pointer;">
+      <td>
+        <div style="font-weight:500;">${c.nome}${!c.visto?' <span class="badge" style="background:rgba(249,115,22,.15);color:var(--accent);font-size:10px;">Novo</span>':''}</div>
+        <div style="font-size:11px;color:var(--muted);">${c.email}</div>
+      </td>
+      <td style="font-size:12px;">${c.whatsapp||'—'}</td>
+      <td style="font-size:12px;" class="td-muted">${c.cidade||'—'}</td>
+      <td style="font-size:12px;">${CAND_LBL.exp_vendas[c.exp_vendas]||'—'}</td>
+      <td>${c.exp_b2b==='sim'?'<span class="badge b-green">Sim</span>':'<span class="badge" style="background:rgba(255,255,255,.06);color:var(--muted);">Não</span>'}</td>
+      <td style="font-size:12px;" class="td-muted">${CAND_LBL.disponibilidade[c.disponibilidade]||'—'}</td>
+      <td style="font-size:12px;" class="td-muted">${new Date(c.created_at).toLocaleDateString('pt-BR')}</td>
+      <td><button class="btn btn-ghost btn-sm" style="font-size:11px;" onclick='event.stopPropagation();verCurriculo(${JSON.stringify(c).replace(/'/g,"&#39;")})'>Ver</button></td>
+    </tr>`).join('');
+  }
+
+  const totalPag = Math.max(1, Math.ceil(_candTotal / CAND_POR_PAGINA));
+  document.getElementById('cand-pageinfo').textContent = `${_candTotal} candidatura${_candTotal!==1?'s':''} · página ${_candPage} de ${totalPag}`;
+  document.getElementById('cand-prev').disabled = _candPage <= 1;
+  document.getElementById('cand-next').disabled = _candPage >= totalPag;
+  document.getElementById('cand-sub').textContent = `${_candTotal} candidatura${_candTotal!==1?'s':''} recebida${_candTotal!==1?'s':''}`;
+  atualizarBadgeCurriculos();
+}
+
+async function atualizarBadgeCurriculos() {
+  const { count } = await SB.from('candidaturas').select('id', { count:'exact', head:true }).eq('visto', false);
+  const b = document.getElementById('badge-curriculos');
+  if (b) { b.textContent = count || 0; b.style.display = count ? '' : 'none'; }
+}
+
+function verCurriculo(c) {
+  _candAtual = c;
+  document.getElementById('mc-nome').textContent = c.nome;
+  const li = (k,v) => `<div style="display:flex;justify-content:space-between;gap:14px;padding:8px 0;border-bottom:1px solid var(--border);"><span style="color:var(--muted);flex:none;">${k}</span><span style="text-align:right;">${v||'—'}</span></div>`;
+  const sim = v => v===true||v==='sim' ? '<span style="color:var(--green);font-weight:600;">Sim</span>' : '<span style="color:var(--muted);">Não</span>';
+  document.getElementById('mc-body').innerHTML =
+    li('E-mail', `<a href="mailto:${c.email}" style="color:var(--accent);">${c.email}</a>`) +
+    li('WhatsApp', c.whatsapp ? `<a href="https://wa.me/55${(c.whatsapp||'').replace(/\D/g,'')}" target="_blank" style="color:var(--accent);">${c.whatsapp}</a>` : '—') +
+    li('Cidade/UF', c.cidade) +
+    li('LinkedIn', c.linkedin ? `<a href="${c.linkedin.startsWith('http')?c.linkedin:'https://'+c.linkedin}" target="_blank" style="color:var(--accent);">abrir perfil</a>` : '—') +
+    li('Maior de 18', sim(c.idade_18)) +
+    li('Experiência em vendas', CAND_LBL.exp_vendas[c.exp_vendas]) +
+    li('Já vendeu B2B', sim(c.exp_b2b)) +
+    li('Vivência em construção', sim(c.ja_construcao)) +
+    li('Disponibilidade', CAND_LBL.disponibilidade[c.disponibilidade]) +
+    li('Aceita 100% comissionado', sim(c.aceita_comissao)) +
+    li('Enviado em', new Date(c.created_at).toLocaleString('pt-BR')) +
+    `<div style="margin-top:14px;"><div style="color:var(--muted);font-size:12px;margin-bottom:6px;">Apresentação do candidato</div>
+     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:13px;line-height:1.7;white-space:pre-wrap;">${(c.apresentacao||'—').replace(/</g,'&lt;')}</div></div>`;
+  openModal('modal-curriculo');
+  if (!c.visto) {
+    SB.from('candidaturas').update({ visto:true }).eq('id', c.id).then(()=>{ c.visto = true; atualizarBadgeCurriculos(); });
+  }
+}
+
+async function excluirCandidato() {
+  if (!_candAtual) return;
+  if (!confirm(`Excluir a candidatura de ${_candAtual.nome}? Esta ação não pode ser desfeita.`)) return;
+  const { error } = await SB.from('candidaturas').delete().eq('id', _candAtual.id);
+  if (error) { toast('Erro: ' + error.message, 'error'); return; }
+  toast('Candidatura excluída', 'success');
+  closeModal('modal-curriculo');
+  loadCurriculos(_candPage);
+}
+
+async function exportarCandidatos() {
+  toast('Gerando Excel…', 'info');
+  if (typeof XLSX === 'undefined') {
+    await new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload = res; s.onerror = rej; document.head.appendChild(s);
+    }).catch(()=>{});
+    if (typeof XLSX === 'undefined') { toast('Falha ao carregar gerador de Excel', 'error'); return; }
+  }
+  const { data } = await SB.from('candidaturas').select('*').order('created_at', { ascending:false });
+  if (!data?.length) { toast('Nenhuma candidatura para exportar', 'error'); return; }
+  const rows = data.map(c => ({
+    'Nome': c.nome, 'E-mail': c.email, 'WhatsApp': c.whatsapp||'',
+    'Cidade/UF': c.cidade||'', 'LinkedIn': c.linkedin||'',
+    'Maior de 18': c.idade_18?'SIM':'NÃO',
+    'Experiência vendas': CAND_LBL.exp_vendas[c.exp_vendas]||'',
+    'Vendeu B2B': c.exp_b2b==='sim'?'SIM':'NÃO',
+    'Vivência construção': c.ja_construcao==='sim'?'SIM':'NÃO',
+    'Disponibilidade': CAND_LBL.disponibilidade[c.disponibilidade]||'',
+    'Aceita comissionado': c.aceita_comissao?'SIM':'NÃO',
+    'Apresentação': c.apresentacao||'',
+    'Enviado em': new Date(c.created_at).toLocaleString('pt-BR'),
+  }));
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{wch:26},{wch:28},{wch:16},{wch:20},{wch:24},{wch:11},{wch:16},{wch:10},{wch:16},{wch:14},{wch:16},{wch:60},{wch:17}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Candidatos');
+  XLSX.writeFile(wb, `Candidatos_WexioLead_${new Date().toISOString().slice(0,10)}.xlsx`);
+  toast('Excel gerado!', 'success');
+}
 
 window.addEventListener('load', () =>{
   initAdminAuth();
