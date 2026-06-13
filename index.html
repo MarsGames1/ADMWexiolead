@@ -25,7 +25,7 @@ html{font-size:14px;}
 body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-weight:400;display:flex;min-height:100vh;-webkit-font-smoothing:antialiased;}
 
 /*  SIDEBAR  */
-aside{width:228px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;background:var(--surface);position:sticky;top:0;z-index:100;overflow:hidden;}
+aside{width:228px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;max-height:100vh;background:var(--surface);position:sticky;top:0;z-index:100;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;}
 .logo{padding:20px 18px 18px;font-family:'Syne',sans-serif;font-weight:800;font-size:18px;border-bottom:1px solid var(--border);color:var(--text);letter-spacing:-.3px;display:flex;align-items:center;gap:9px;}
 .logo-mark{width:28px;height:28px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .logo-mark svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2.5;}
@@ -247,6 +247,14 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
   .grid-2,.grid-3{grid-template-columns:1fr;}
   .stats-row{grid-template-columns:1fr 1fr;}
 }
+
+/* Sidebar rolável (zoom/telas baixas não cortam o menu) */
+aside::-webkit-scrollbar{width:6px;}
+aside::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+aside{scrollbar-width:thin;}
+.sidebar-bottom{flex-shrink:0;}
+.wex-btn{flex-shrink:0;}
+@media(max-height:560px){ .nav-section{padding-top:10px;} nav a{padding-top:7px;padding-bottom:7px;} }
 </style>
 </head>
 <body>
@@ -326,11 +334,6 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
       <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       <span>Log de Exportações</span>
 </a>
-    <a onclick="nav('convites')" id="nav-convites">
-      <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-      <span>Convites</span>
-      <span class="nav-badge" id="badge-convites">0</span>
-</a>
     <a onclick="nav('renovacoes')" id="nav-renovacoes">
       <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
       <span>Renovações</span>
@@ -340,10 +343,6 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
       <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       <span>Conexões B2B</span>
       <span class="nav-badge" id="badge-conexoes">0</span>
-</a>
-    <a onclick="nav('packs')" id="nav-packs">
-      <svg viewBox="0 0 24 24"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
-      <span>Pacotes Curados</span>
 </a>
 </nav>
 
@@ -683,9 +682,13 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
         <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         Importar CSV
 </button>
-      <button class="btn btn-ghost btn-sm" id="btn-enrich" onclick="startEnrichment()" title="Enriquece contatos via Anthropic AI + web search — busca telefone, email e site reais">
+      <button class="btn btn-ghost btn-sm" id="btn-enrich-free" onclick="startEnrichmentFree()" title="Grátis — recupera telefone, e-mail e dados de contato direto das fontes oficiais (BrasilAPI / Receita) pelo CNPJ. Sem custo e sem chave de API.">
+        <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;"><path d="M3 6v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7L9 4H5a2 2 0 0 0-2 2z"/><path d="M12 11v6M9 14h6"/></svg>
+        Enriquecer Grátis
+</button>
+      <button class="btn btn-ghost btn-sm" id="btn-enrich" onclick="startEnrichment()" title="Enriquecimento por IA (custo por lead) — usa busca na web para achar telefone, e-mail e site quando as fontes oficiais não têm.">
         <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M11 8v6M8 11h6"/></svg>
-        Enriquecer Contatos
+        Enriquecer com IA
 </button>
 </div>
 </div>
@@ -722,18 +725,6 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
 </table>
 </div>
 </div>
-</div>
-
-<!-- ══════════════════ PACOTES CURADOS ══════════════════ -->
-<div class="page" id="page-packs">
-  <div class="topbar">
-    <div><div class="page-title">Pacotes Curados</div><div class="page-sub">Listas de leads pré-montadas entregues a cada ciclo de 30 dias</div></div>
-    <button class="btn btn-accent btn-sm" onclick="openModal('modal-pack')">
-      <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      Novo Pacote
-</button>
-</div>
-  <div class="grid-3" id="packs-grid"></div>
 </div>
 
 <!-- ══════════════════ PLANOS ══════════════════ -->
@@ -807,7 +798,6 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
       <p style="font-size:13px;color:var(--muted);line-height:1.8;">
         Ao renovar o plano (ciclo de 30 dias), o contador <strong style="color:var(--text);">leads_used</strong> do assinante é zerado.<br>
         Clientes acessam seus leads pelo painel — filtrando, visualizando e exportando dentro do limite do ciclo.<br>
-        Pacotes curados são pré-atribuídos por segmento e entregues como alocação separada.
 </p>
 </div>
 </div>
@@ -1205,7 +1195,6 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
   </div>
 </div>
 
-<!-- ══════════════════ CONVITES ══════════════════ -->
 <!-- ══════ PAGE: CURRÍCULOS ══════ -->
 <div class="page" id="page-curriculos">
   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:18px;">
@@ -1242,120 +1231,6 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
     </div>
   </div>
 </div>
-
-<div class="page" id="page-convites">
-  <div class="topbar">
-    <div>
-      <div class="page-title">Convites</div>
-      <div class="page-sub">Envio automático via Resend — 6 por dia</div>
-    </div>
-    <div class="topbar-right">
-
-      <button class="btn btn-ghost btn-sm" onclick="loadConvites()">
-        <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
-        Atualizar
-      </button>
-      <button class="btn btn-accent btn-sm" id="btn-toggle-convites" onclick="toggleEnvioConvites()">
-        <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-        Iniciar Envios
-      </button>
-    </div>
-  </div>
-
-  <!-- Stats -->
-  <div class="stats-row" style="grid-template-columns:repeat(3,1fr);">
-    <div class="stat-card">
-      <div class="stat-icon" style="background:var(--blue-bg);color:var(--blue);">
-        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-      </div>
-      <div class="stat-lbl">Leads com email</div>
-      <div class="stat-val" id="conv-total">—</div>
-      <div class="stat-delta">disponíveis para convite</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon" style="background:var(--green-bg);color:var(--green);">
-        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-      </div>
-      <div class="stat-lbl">Já convidados</div>
-      <div class="stat-val" id="conv-enviados">—</div>
-      <div class="stat-delta">emails enviados</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon" style="background:var(--accent-bg);color:var(--accent);">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-      </div>
-      <div class="stat-lbl">Próximo envio</div>
-      <div class="stat-val" id="conv-proximo" style="font-size:18px;">—</div>
-      <div class="stat-delta" id="conv-status-txt">aguardando início</div>
-    </div>
-  </div>
-
-  <!-- Status bar -->
-  <div class="card" id="conv-status-card" style="display:none;">
-    <div class="card-body" style="display:flex;align-items:center;gap:14px;">
-      <div style="width:10px;height:10px;background:var(--green);border-radius:50%;animation:pulse 2s infinite;flex-shrink:0;"></div>
-      <div style="flex:1;">
-        <div style="font-size:13px;font-weight:500;color:var(--text);">Envios em andamento</div>
-        <div style="font-size:12px;color:var(--muted);" id="conv-last-sent">Último: —</div>
-      </div>
-      <div style="font-size:12px;color:var(--muted);">próximo em <strong id="conv-countdown">60:00</strong></div>
-    </div>
-  </div>
-
-  <!-- Editor do email -->
-  <div class="card">
-    <div class="card-head">
-      <div>
-        <div class="card-title">Mensagem do convite</div>
-        <div class="card-sub">Edite o texto abaixo — será enviado exatamente assim</div>
-      </div>
-    </div>
-    <div class="card-body">
-      <textarea id="conv-email-body" class="form-input" style="min-height:220px;font-family:monospace;font-size:12px;line-height:1.7;resize:vertical;"></textarea>
-      <div style="display:flex;justify-content:flex-end;margin-top:8px;">
-        <button class="btn btn-ghost btn-sm" onclick="resetEmailCorpo()">↺ Restaurar padrão</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Histórico com paginação -->
-  <div class="card">
-    <div class="card-head">
-      <div>
-        <div class="card-title">Histórico de Envios</div>
-        <div class="card-sub" id="conv-hist-sub">Carregando...</div>
-      </div>
-      <button class="btn btn-red btn-sm" onclick="limparHistoricoConvites()">
-        <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-        Limpar histórico
-      </button>
-    </div>
-    <div class="tbl-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Empresa</th>
-            <th>Email</th>
-            <th>Enviado em</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody id="conv-tbody">
-          <tr><td colspan="4" class="td-muted" style="text-align:center;padding:30px;">Carregando...</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 20px;border-top:1px solid var(--border);">
-      <span style="font-size:12px;color:var(--muted);" id="conv-page-info">—</span>
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-ghost btn-sm" onclick="convitesPage(-1)">← Anterior</button>
-        <button class="btn btn-ghost btn-sm" onclick="convitesPage(1)">Próxima →</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-
 
 <!-- ══════════════════ CONEXÕES B2B ══════════════════ -->
 <div class="page" id="page-conexoes">
@@ -1412,10 +1287,6 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
         <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
         Atualizar
       </button>
-      <button class="btn btn-accent btn-sm" onclick="enviarTodosAlertas()">
-        <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-        Enviar alertas pendentes
-      </button>
     </div>
   </div>
 
@@ -1439,11 +1310,11 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
     </div>
     <div class="stat-card">
       <div class="stat-icon" style="background:var(--green-bg);color:var(--green);">
-        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
       </div>
-      <div class="stat-lbl">Alertas enviados hoje</div>
-      <div class="stat-val" id="ren-enviados-hoje">—</div>
-      <div class="stat-delta">emails de renovação</div>
+      <div class="stat-lbl">Total para renovar</div>
+      <div class="stat-val" id="ren-total">—</div>
+      <div class="stat-delta">clientes que precisam de atenção</div>
     </div>
   </div>
 
@@ -1464,31 +1335,14 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
           <th>Plano</th>
           <th>Vencimento</th>
           <th>Situação</th>
-          <th>Último alerta</th>
-          <th>Ações</th>
         </tr></thead>
         <tbody id="ren-tbody">
-          <tr><td colspan="8" class="td-muted" style="text-align:center;padding:30px;">Carregando...</td></tr>
+          <tr><td colspan="6" class="td-muted" style="text-align:center;padding:30px;">Carregando...</td></tr>
         </tbody>
       </table>
     </div>
   </div>
 
-  <!-- Preview email de renovação -->
-  <div class="card">
-    <div class="card-head">
-      <div>
-        <div class="card-title">Mensagem de renovação</div>
-        <div class="card-sub">Editável — enviada para o email do cliente</div>
-      </div>
-    </div>
-    <div class="card-body">
-      <textarea id="ren-email-body" class="form-input" style="min-height:180px;font-family:monospace;font-size:12px;line-height:1.7;resize:vertical;"></textarea>
-      <div style="display:flex;justify-content:flex-end;margin-top:8px;">
-        <button class="btn btn-ghost btn-sm" onclick="resetRenovacaoCorpo()">↺ Restaurar padrão</button>
-      </div>
-    </div>
-  </div>
 </div>
 
 </main>
@@ -1887,41 +1741,6 @@ tbody td{padding:11px 15px;font-size:13px;color:var(--text);white-space:nowrap;}
   </div>
 </div>
 
-<!-- Novo Pacote -->
-<div class="modal-overlay" id="modal-pack">
-  <div class="modal">
-    <div class="modal-title">Novo Pacote Curado</div>
-    <div class="form-group"><label class="form-label">Nome do Pacote</label><input class="form-input" id="pack-name" placeholder="Construtoras SP — Maio 2026"></div>
-    <div class="form-group"><label class="form-label">Segmento</label>
-      <select class="form-input form-select" id="pack-seg">
-        <option>Construção Civil</option><option>Instalações Elétricas</option><option>Hidráulica e Saneamento</option>
-        <option>Fornecimento de Materiais</option><option>Acabamento</option><option>Estrutura e Fundações</option>
-        <option>Locação de Equipamentos</option><option>Projetos e Engenharia</option><option>Outros</option>
-</select>
-</div>
-    <div class="form-group"><label class="form-label">Público-alvo</label>
-      <select class="form-input form-select" id="pack-tipo">
-        <option value="todos">Todos</option>
-        <option value="fornecedor">Fornecedores</option>
-        <option value="construtora">Construtoras</option>
-        <option value="empreiteiro">Empreiteiros</option>
-</select>
-</div>
-    <div class="form-group"><label class="form-label">Plano Mínimo</label>
-      <select class="form-input form-select" id="pack-plan">
-        <option value="all">Todos os planos</option>
-        <option value="pro">Pro+</option>
-        <option value="agency">Apenas Agency</option>
-</select>
-</div>
-    <div class="form-group"><label class="form-label">Quantidade de Leads</label><input class="form-input" id="pack-count" type="number" placeholder="50" value="50"></div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('modal-pack')">Cancelar</button>
-      <button class="btn btn-accent" onclick="createPack()">Criar Pacote</button>
-</div>
-</div>
-</div>
-
 <div id="toast"></div>
 
 <script>
@@ -1955,7 +1774,7 @@ const PLAN_LIMITS = {free:10, starter:100, pro:300, agency:999999};
 
 let SB = null;
 let DEMO = false;
-let allUsers = [], allLeads = [], allExports = [], allPacks = [];
+let allUsers = [], allLeads = [], allExports = [];
 let usersCurrentPage = 1, leadsCurrentPage = 1;
 const USERS_PER_PAGE = 10, LEADS_PER_PAGE = 15;
 let leadsFilter = {search:'', seg:'', tipo:''};
@@ -2084,7 +1903,7 @@ async function adminLogout() {
 // 
 async function loadAll() {
   if (DEMO) return;
-  await Promise.all([loadUsers(), loadLeads(), loadExports(), loadPacks(), loadEmployeesQuiet()]);
+  await Promise.all([loadUsers(), loadLeads(), loadExports(), loadEmployeesQuiet()]);
   renderAll();
 }
 
@@ -2117,6 +1936,170 @@ async function loadUsers() {
 }
 
 // ══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
+// MOTOR DE ENRIQUECIMENTO GRÁTIS — fontes oficiais por CNPJ
+// BrasilAPI → publica.cnpj.ws → open.cnpja.com (CORS aberto, sem chave, sem custo)
+// Recupera telefone/e-mail que a Receita tem mas a importação não capturou.
+// ══════════════════════════════════════════════════════
+var enrichFreeRunning = false;
+
+function _soDigitos(v){ return String(v||'').replace(/\D/g,''); }
+function _telFmt(ddd, num){
+  ddd = _soDigitos(ddd); num = _soDigitos(num);
+  if(!num) return null;
+  return ddd ? `(${ddd}) ${num}` : num;
+}
+
+// Consulta as 3 fontes oficiais em sequência e devolve {telefone_1,telefone_2,email_comercial,site}
+async function enriquecerLeadGratis(lead){
+  const cnpj = _soDigitos(lead.cnpj);
+  if(cnpj.length !== 14) return { vazio:true };
+  const out = { telefone_1:null, telefone_2:null, email_comercial:null, site:null };
+
+  // Fonte 1 — BrasilAPI
+  try{
+    const r = await fetch('https://brasilapi.com.br/api/cnpj/v1/'+cnpj, { signal: AbortSignal.timeout(12000) });
+    if(r.ok){
+      const d = await r.json();
+      if(d.ddd_telefone_1) out.telefone_1 = _telFmt(d.ddd_telefone_1.slice(0,2), d.ddd_telefone_1.slice(2));
+      if(d.ddd_telefone_2) out.telefone_2 = _telFmt(d.ddd_telefone_2.slice(0,2), d.ddd_telefone_2.slice(2));
+      if(d.email) out.email_comercial = String(d.email).toLowerCase().trim();
+    }
+  }catch(e){}
+
+  // Fonte 2 — publica.cnpj.ws (preenche o que faltou)
+  if(!out.telefone_1 || !out.email_comercial){
+    try{
+      const r = await fetch('https://publica.cnpj.ws/cnpj/'+cnpj, { signal: AbortSignal.timeout(12000) });
+      if(r.ok){
+        const d = await r.json();
+        const est = d.estabelecimento || {};
+        if(!out.telefone_1 && est.ddd1 && est.telefone1) out.telefone_1 = _telFmt(est.ddd1, est.telefone1);
+        if(!out.telefone_2 && est.ddd2 && est.telefone2) out.telefone_2 = _telFmt(est.ddd2, est.telefone2);
+        if(!out.email_comercial && est.email) out.email_comercial = String(est.email).toLowerCase().trim();
+      }
+    }catch(e){}
+  }
+
+  // Fonte 3 — open.cnpja.com (fallback final)
+  if(!out.telefone_1 || !out.email_comercial){
+    try{
+      const r = await fetch('https://open.cnpja.com/office/'+cnpj, { signal: AbortSignal.timeout(12000) });
+      if(r.ok){
+        const d = await r.json();
+        if(!out.telefone_1 && d.phones?.[0]) out.telefone_1 = _telFmt(d.phones[0].area, d.phones[0].number);
+        if(!out.telefone_2 && d.phones?.[1]) out.telefone_2 = _telFmt(d.phones[1].area, d.phones[1].number);
+        if(!out.email_comercial && d.emails?.[0]?.address) out.email_comercial = String(d.emails[0].address).toLowerCase().trim();
+      }
+    }catch(e){}
+  }
+
+  const temAlgo = out.telefone_1 || out.telefone_2 || out.email_comercial || out.site;
+  return temAlgo ? out : { vazio:true };
+}
+
+async function startEnrichmentFree(){
+  if(enrichFreeRunning || enrichRunning) return;
+  enrichFreeRunning = true;
+  const btn = document.getElementById('btn-enrich-free');
+  const log = document.getElementById('enrich-log');
+  if(btn) btn.disabled = true;
+  log.style.display = 'block';
+  log.innerHTML = '';
+  const logLine = (msg,type) => {
+    const c = type==='ok'?'#4ade80':type==='warn'?'#fbbf24':type==='err'?'#f87171':'#94a3b8';
+    log.innerHTML += '<div style="color:'+c+';font-size:11px;line-height:1.7;">'+msg+'</div>';
+    log.scrollTop = log.scrollHeight;
+  };
+
+  // Alvo: tem CNPJ válido, falta telefone OU e-mail, e ainda não passou 2x pelo grátis
+  function alvo(l){
+    if(_soDigitos(l.cnpj).length !== 14) return false;
+    if((l.enrich_attempts || 0) >= 2) return false;
+    const semTel = !l.telefone_1 || _soDigitos(l.telefone_1).length < 10;
+    const semEmail = !l.email_comercial;
+    return semTel || semEmail;
+  }
+
+  const fila0 = allLeads.filter(alvo)
+    .sort((a,b)=> (a.enrich_attempts||0)-(b.enrich_attempts||0));
+
+  if(!fila0.length){
+    logLine('Nenhum lead com CNPJ válido e contato incompleto para enriquecer agora.', 'info');
+    if(btn) btn.disabled = false; enrichFreeRunning = false; return;
+  }
+
+  const tetoInput = prompt(
+    fila0.length + ' leads podem ser enriquecidos GRÁTIS (fontes oficiais por CNPJ).\n\nQuantos processar agora?\n(é gratuito — pode rodar em lotes grandes; respeita o limite das APIs públicas)',
+    Math.min(50, fila0.length).toString()
+  );
+  if(tetoInput === null){ if(btn) btn.disabled=false; enrichFreeRunning=false; return; }
+  const teto = Math.max(1, Math.min(parseInt(tetoInput)||50, fila0.length));
+  const fila = fila0.slice(0, teto);
+
+  logLine('Enriquecimento GRÁTIS — processando '+teto+' de '+fila0.length+' leads incompletos. Custo: R$0,00.', 'info');
+
+  var ok=0, vazios=0, erros=0;
+  for(var i=0;i<fila.length;i++){
+    if(!enrichFreeRunning) break;
+    const lead = fila[i];
+    logLine('['+(i+1)+'/'+fila.length+'] '+(lead.razao_social||lead.nome_fantasia||'').slice(0,40)+'...', 'info');
+
+    let r;
+    try{ r = await enriquecerLeadGratis(lead); }catch(e){ r=null; }
+
+    if(!r){ erros++; await new Promise(x=>setTimeout(x,800)); continue; }
+
+    const updates = {
+      enriched_at: new Date().toISOString(),
+      enrich_attempts: (lead.enrich_attempts||0)+1
+    };
+
+    if(!r.vazio){
+      if(r.telefone_1 && (!lead.telefone_1 || _soDigitos(lead.telefone_1).length<10)) updates.telefone_1 = r.telefone_1;
+      if(r.telefone_2 && !lead.telefone_2) updates.telefone_2 = r.telefone_2;
+      if(r.email_comercial && !lead.email_comercial) updates.email_comercial = r.email_comercial;
+      if(r.site && !lead.site) updates.site = r.site;
+
+      // Recalcula score com bônus por canal de contato (mesma lógica do enriquecimento pago)
+      const telFinal = updates.telefone_1 || lead.telefone_1;
+      const emailFinal = updates.email_comercial || lead.email_comercial;
+      const siteFinal = updates.site || lead.site;
+      const tel2Final = updates.telefone_2 || lead.telefone_2;
+      let bonus = 0;
+      if(telFinal) bonus += 12;
+      if(emailFinal) bonus += 10;
+      if(siteFinal) bonus += 8;
+      if(tel2Final) bonus += 4;
+      const novoScore = Math.min(100, Math.max(lead.score_lead||50, 50+bonus));
+      if(novoScore !== lead.score_lead) updates.score_lead = novoScore;
+    }
+
+    const camposReais = Object.keys(updates).filter(k => k!=='enriched_at' && k!=='enrich_attempts');
+    const { error } = await SB.from('leads').update(updates).eq('id', lead.id);
+    if(error){ erros++; logLine('Erro ao salvar: '+(error.message||''), 'err'); }
+    else if(camposReais.length){
+      ok++;
+      Object.assign(lead, updates);
+      const resumo = camposReais.map(k => k.replace('_',' ')+': '+String(updates[k]).slice(0,28)).join(' | ');
+      logLine('✓ '+(lead.razao_social||'').slice(0,28)+' → '+resumo, 'ok');
+    } else {
+      vazios++;
+      lead.enrich_attempts = (lead.enrich_attempts||0)+1;
+      logLine('○ '+(lead.razao_social||'').slice(0,28)+' — sem telefone/e-mail nas fontes oficiais', 'warn');
+    }
+
+    await new Promise(x=>setTimeout(x, 700)); // respeita rate-limit das APIs públicas
+  }
+
+  logLine('\nConcluído (grátis): '+ok+' enriquecidos | '+vazios+' sem dados oficiais | '+erros+' erros.', 'ok');
+  if(vazios>0) logLine('Dica: os '+vazios+' sem retorno podem ter contato achável na web — use "Enriquecer com IA" para esses.', 'info');
+  if(btn) btn.disabled = false;
+  enrichFreeRunning = false;
+  await loadLeads();
+  renderAll();
+}
+
 // MOTOR DE ENRIQUECIMENTO — Anthropic API + Web Search
 // ══════════════════════════════════════════════════════
 // Chave Anthropic gerenciada via Supabase Vault — Edge Function anthropic-proxy
@@ -2325,11 +2308,6 @@ async function loadExports() {
   allExports = data || [];
 }
 
-async function loadPacks() {
-  const {data} = await SB.from('packs').select('*').order('created_at',{ascending:false});
-  allPacks = data || [];
-}
-
 // ══════════════════════════════════════════════════════
 // DEMO DATA
 // ══════════════════════════════════════════════════════
@@ -2349,10 +2327,6 @@ function initDemo() {
     {user_email:'marcos@constrobr.com.br',leads_count:50,filters_used:'Fornecedores · SP',created_at:'2025-05-03T14:22:00Z'},
     {user_email:'julia@materialcivil.com.br',leads_count:200,filters_used:'Construtoras · RJ',created_at:'2025-05-03T11:15:00Z'},
     {user_email:'ana@instalacoes.com.br',leads_count:30,filters_used:'Instalações · Curitiba',created_at:'2025-05-02T09:30:00Z'},
-  ];
-  allPacks = [
-    {id:'p1',name:'Construtoras SP — Maio 2026',segment:'Construção Civil',target_plan:'pro',lead_count:50,status:'active'},
-    {id:'p2',name:'Fornecedores de Materiais RJ — Maio 2026',segment:'Fornecimento de Materiais',target_plan:'agency',lead_count:100,status:'active'},
   ];
   renderAll();
 }
@@ -2873,7 +2847,6 @@ function renderAll() {
   renderUsers();
   renderLeads();
   renderExports();
-  renderPacks();
   renderRevenue();
   renderAnalytics();
   updateBadges();
@@ -2910,7 +2883,6 @@ function renderOverview() {
     {dot:'var(--accent)',text:'<strong>Sistema</strong>— Base com <strong>'+allLeads.length.toLocaleString('pt-BR')+' leads</strong>de construção civil',time:'Agora'},
     {dot:'var(--blue)',text:'<strong>'+allUsers.length+' usuários</strong>registrados na plataforma',time:'Atual'},
     {dot:'var(--green)',text:'Contadores mensais ativos — resetam todo dia 1º',time:'Em andamento'},
-    {dot:'var(--accent2)',text:'Pacotes curados: <strong>'+allPacks.length+' pacotes</strong>configurados',time:'Atual'},
     {dot:'var(--purple)',text:'Status da plataforma: <strong style="color:var(--green)">Operacional</strong>',time:'Tudo funcionando'},
   ];
   document.getElementById('activity-list').innerHTML = acts.map(a =>`
@@ -3056,23 +3028,6 @@ function renderExports() {
       <td class="td-muted">${e.filters_used||'—'}</td>
       <td class="td-muted">${new Date(e.created_at).toLocaleString('pt-BR')}</td>
 </tr>`).join('') || '<tr><td colspan="4"><div class="empty"><p>Sem exportações ainda</p></div></td></tr>';
-}
-
-function renderPacks() {
-  document.getElementById('packs-grid').innerHTML = allPacks.map(p =>`
-    <div class="card" style="margin-bottom:0;">
-      <div class="card-head">
-        <div><div class="card-title">${p.name}</div><div class="card-sub">${p.segment||''} · ${p.target_plan||''}</div></div>
-        <span class="badge ${p.status==='active'?'b-green':'b-red'}">${p.status==='active'?'Ativo':'Inativo'}</span>
-</div>
-      <div class="card-body">
-        <div style="font-family:'Syne',sans-serif;font-size:34px;font-weight:800;color:var(--text);">${p.lead_count}</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:2px;">leads neste pacote</div>
-        <div style="display:flex;gap:6px;margin-top:14px;">
-          <button class="btn btn-red btn-sm" onclick="deletePack('${p.id}')">Remover</button>
-</div>
-</div>
-</div>`).join('') || '<div style="grid-column:1/-1;"><div class="empty"><p>Nenhum pacote ainda. Crie um!</p></div></div>';
 }
 
 function renderRevenue() {
@@ -3359,33 +3314,6 @@ async function deleteUser(id) {
   toast('Usuário desativado ', 'success');
 }
 
-async function createPack() {
-  const name = document.getElementById('pack-name').value.trim();
-  const segment = document.getElementById('pack-seg').value;
-  const target_plan = document.getElementById('pack-plan').value;
-  const tipo_publico = document.getElementById('pack-tipo').value;
-  const lead_count = parseInt(document.getElementById('pack-count').value)||50;
-  if (!name) { toast('Informe o nome do pacote', 'error'); return; }
-  const pack = {id:'p'+Date.now(), name, segment, target_plan, tipo_publico, lead_count, status:'active', created_at:new Date().toISOString()};
-  if (SB && !DEMO) {
-    await SB.from('packs').insert([{name,segment,target_plan,lead_count}]);
-    await loadPacks();
-  } else {
-    allPacks.push(pack);
-  }
-  closeModal('modal-pack');
-  renderPacks();
-  toast(`Pacote "${name}" criado `, 'success');
-}
-
-async function deletePack(id) {
-  if (!confirm('Remover este pacote?')) return;
-  if (SB && !DEMO) { await SB.from('packs').delete().eq('id',id); await loadPacks(); }
-  else { allPacks = allPacks.filter(p=>p.id!==id); }
-  renderPacks();
-  toast('Pacote removido ', 'success');
-}
-
 async function resetMonthlyCounters() {
   if (!confirm('Executar reset mensal de créditos?\n\n• Free → reseta para 10\n• Pago ativo → zera used, mantém plano\n• Pago vencido → rebaixa para free')) return;
   if (SB && !DEMO) {
@@ -3518,10 +3446,24 @@ function viewLead(id) {
   document.getElementById('modal-lead-title').textContent = l.nome_fantasia || l.razao_social || 'Detalhe do Lead';
   const tipoBadge = l.tipo_empresa === 'construtora' ? 'tipo-construtora' : (l.tipo_empresa === 'empreiteiro' ? 'tipo-empreiteiro' : 'tipo-fornecedor');
   const tipoLabel = l.tipo_empresa === 'construtora' ? ' Construtora' : (l.tipo_empresa === 'empreiteiro' ? ' Empreiteiro' : ' Fornecedor');
+  // Helpers de contato clicáveis
+  const _tel = t => { const d=String(t||'').replace(/\D/g,''); return d ? `<a href="tel:+55${d}" style="color:var(--accent);text-decoration:none;">${t}</a>` : '—'; };
+  const _mail = e => e ? `<a href="mailto:${e}" style="color:var(--accent);text-decoration:none;word-break:break-all;">${e}</a>` : '—';
+  const _site = u => { if(!u) return '—'; const href = /^https?:\/\//i.test(u) ? u : 'https://'+u; return `<a href="${href}" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;word-break:break-all;">${u}</a>`; };
+
+  // Bloco de contatos (vários telefones, e-mails, site, localização) em destaque
+  const contatos = [
+    ['Telefone 1', _tel(l.telefone_1)],
+    ['Telefone 2', _tel(l.telefone_2)],
+    ['E-mail 1', _mail(l.email_comercial)],
+    ['E-mail 2', _mail(l.email_2)],
+    ['Site', _site(l.site)],
+    ['Localização', (l.municipio||'—') + ' · ' + (l.estado||'—')],
+  ];
+
   const fields = [
     ['CNPJ', l.cnpj],['Razão Social', l.razao_social],['Nome Fantasia', l.nome_fantasia],
-    ['Situação', l.situacao_cadastral],['Cidade / UF', (l.municipio||'—') + ' · ' + (l.estado||'—')],
-    ['Telefone', l.telefone_1],['E-mail', l.email_comercial],
+    ['Situação', l.situacao_cadastral],
     ['Sócio / Decisor', l.nome_socio_1],['Segmento', l.segmento_simplificado],
     ['Anos de empresa', (l.tempo_empresa_anos||'?') + ' anos'],
     ['Capital Social', l.capital_social ? 'R$'+Number(l.capital_social).toLocaleString('pt-BR') : '—'],
@@ -3530,8 +3472,15 @@ function viewLead(id) {
     ['Score do Lead', l.score_lead || '—'],
     ['Observações', l.observacoes || '—'],
   ];
+
+  const temContato = l.telefone_1 || l.telefone_2 || l.email_comercial || l.email_2 || l.site;
   document.getElementById('modal-lead-body').innerHTML = `
-    <div style="margin-bottom:12px;"><span class="badge ${tipoBadge}">${tipoLabel}</span></div>
+    <div style="margin-bottom:12px;"><span class="badge ${tipoBadge}">${tipoLabel}</span>${temContato ? '' : ' <span class="badge b-yellow" style="margin-left:6px;">Sem contato — enriqueça</span>'}</div>
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;margin-bottom:8px;">Contatos & Localização</div>
+    <div class="lead-detail-grid" style="margin-bottom:16px;">
+      ${contatos.map(([k,v]) =>`<div class="detail-field"><label>${k}</label><span>${v}</span></div>`).join('')}
+    </div>
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;margin-bottom:8px;">Dados da Empresa</div>
     <div class="lead-detail-grid">
       ${fields.map(([k,v]) =>`<div class="detail-field"><label>${k}</label><span>${v||'—'}</span></div>`).join('')}
 </div>`;
@@ -3625,7 +3574,6 @@ function nav(page) {
     }
     if (page==='employees') renderEmployees();
     if (page==='curriculos') loadCurriculos(1);
-    if (page==='convites') loadConvites();
     if (page==='renovacoes') loadRenovacoes();
     if (page==='conexoes') loadConexoesAdmin();
   }, 60);
@@ -3687,8 +3635,7 @@ DADOS DO PAINEL ADMIN (atualizados):
 - Total leads na base: ${allLeads.length} (Construtoras: ${constrCount}, Fornecedores: ${fornCount}, Empreiteiros: ${emprCount})
 - Usuários próximos do limite (>80%): ${nearLimit}
 - Exportações totais: ${allExports.length}
-- Top segmentos: ${topSegs || 'N/A'}
-- Pacotes curados ativos: ${allPacks.length}`;
+- Top segmentos: ${topSegs || 'N/A'}`;
 }
 
 function wexAddMessage(role, text) {
@@ -4382,432 +4329,69 @@ function resetImportModal() {
 // INIT
 // 
 // 
-// CONVITES
-// 
-let convitesAtivo = false;
-let conviteTimer = null;
-let conviteCountdownTimer = null;
-let conviteSegundos = 3600;
-const CONVITE_INTERVALO = 3600;
-let convitesCurrentPage = 1;
-const CONVITES_PER_PAGE = 20;
-let allConvites = [];
-
-// Resend API Key
-const SEND_EMAIL_URL = 'https://tbnoiwkproawwncuorpw.supabase.co/functions/v1/send-email';
-
-const EMAIL_CORPO = `Olá,
-
-Somos a WexioLead, plataforma B2B especializada em leads para construção civil.
-
-Conectamos fornecedores, construtoras e empreiteiros com os parceiros certos — de forma rápida, verificada e inteligente.
-
-Leads verificados com score de qualidade 0–100
-Filtros por segmento, cidade e porte
-Assistente IA especializada no setor
-10 leads gratuitos para começar, sem cartão de crédito
-
-Acesse agora e teste gratuitamente: https://wexiolead.com
-
-Atenciosamente,
-Equipe WexioLead
-wexiolead@yahoo.com`;
-
-async function loadConvites() {
-  if (!SB) return;
-
-  // Mostrar preview da mensagem
-  const bodyEl = document.getElementById('conv-email-body');
-  if (bodyEl && !bodyEl.value) bodyEl.value = EMAIL_CORPO;
-
-  try {
-    const { count: totalComEmail } = await SB
-      .from('leads')
-      .select('*', { count: 'exact', head: true })
-      .not('email_comercial', 'is', null)
-      .neq('email_comercial', '');
-
-    const { data: convData, error } = await SB
-      .from('convites')
-      .select('*')
-      .order('enviado_em', { ascending: false });
-
-    allConvites = convData || [];
-    const totalEnviados = allConvites.filter(c => c.status === 'enviado').length;
-
-    document.getElementById('conv-total').textContent = (totalComEmail || 0).toLocaleString('pt-BR');
-    document.getElementById('conv-enviados').textContent = totalEnviados.toLocaleString('pt-BR');
-    document.getElementById('badge-convites').textContent = totalEnviados;
-
-    renderConviteHistorico();
-  } catch(e) {
-    document.getElementById('conv-tbody').innerHTML =
-      '<tr><td colspan="4" class="td-muted" style="text-align:center;padding:30px;">Crie a tabela <strong>convites</strong> no Supabase com o SQL fornecido.</td></tr>';
-  }
-}
-
-function renderConviteHistorico() {
-  const tbody = document.getElementById('conv-tbody');
-  const total = allConvites.length;
-  const pages = Math.ceil(total / CONVITES_PER_PAGE) || 1;
-  if (convitesCurrentPage > pages) convitesCurrentPage = 1;
-
-  document.getElementById('conv-hist-sub').textContent =
-    total ? `${total} envio${total !== 1 ? 's' : ''} registrado${total !== 1 ? 's' : ''}` : 'Nenhum envio ainda';
-  document.getElementById('conv-page-info').textContent = `Página ${convitesCurrentPage} de ${pages}`;
-
-  const slice = allConvites.slice(
-    (convitesCurrentPage - 1) * CONVITES_PER_PAGE,
-    convitesCurrentPage * CONVITES_PER_PAGE
-  );
-
-  if (!slice.length) {
-    tbody.innerHTML = '<tr><td colspan="4" class="td-muted" style="text-align:center;padding:30px;">Nenhum convite enviado ainda.</td></tr>';
-    return;
-  }
-
-  tbody.innerHTML = slice.map(c => `
-    <tr>
-      <td style="font-weight:500;">${c.razao_social || '—'}</td>
-      <td class="td-muted">${c.email}</td>
-      <td class="td-muted">${c.enviado_em ? new Date(c.enviado_em).toLocaleString('pt-BR') : '—'}</td>
-      <td><span class="badge ${c.status === 'enviado' ? 'b-green' : 'b-red'}">${c.status === 'enviado' ? 'Enviado' : 'Erro'}</span></td>
-    </tr>
-  `).join('');
-}
-
-function convitesPage(dir) {
-  const pages = Math.ceil(allConvites.length / CONVITES_PER_PAGE) || 1;
-  convitesCurrentPage = Math.max(1, Math.min(pages, convitesCurrentPage + dir));
-  renderConviteHistorico();
-}
-
-// 6 emails por dia = 1 a cada 4 horas → ~180/30 dias (dentro do free do Resend)
-const EMAILS_POR_DIA = 6;
-const CONVITE_INTERVALO_SEG = Math.floor(24 * 3600 / EMAILS_POR_DIA); // 14400s = 4h
-
-async function enviarProximoConvite() {
-  if (!SB) return;
-
-  // Verificar limite diário
-  const hoje = new Date().toISOString().slice(0, 10);
-  const { count: enviadosHoje } = await SB
-    .from('convites')
-    .select('*', { count: 'exact', head: true })
-    .gte('enviado_em', hoje + 'T00:00:00')
-    .eq('status', 'enviado');
-
-  if ((enviadosHoje || 0) >= EMAILS_POR_DIA) {
-    toast(`Limite de ${EMAILS_POR_DIA} emails diários atingido. Retoma amanhã.`, 'info');
-    pararEnvioConvites();
-    return;
-  }
-
-  try {
-    const { data: jaEnviados } = await SB.from('convites').select('email');
-    const emailsEnviados = new Set((jaEnviados || []).map(r => r.email));
-
-    const { data: leads } = await SB
-      .from('leads')
-      .select('email_comercial, razao_social')
-      .not('email_comercial', 'is', null)
-      .neq('email_comercial', '')
-      .limit(500);
-
-    const proximo = (leads || []).find(l => l.email_comercial && !emailsEnviados.has(l.email_comercial));
-    if (!proximo) {
-      toast('Todos os leads com email já foram convidados!', 'info');
-      pararEnvioConvites();
-      return;
-    }
-
-    const corpoAtual = document.getElementById('conv-email-body')?.value || EMAIL_CORPO;
-
-    // Envio via Resend API
-    const { data: { session: _se1 } } = await SB.auth.getSession();
-    const res = await fetch(SEND_EMAIL_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (_se1?.access_token || SB_KEY) },
-      body: JSON.stringify({
-        to: proximo.email_comercial,
-        subject: 'Encontre leads qualificados para sua empresa — WexioLead',
-        text: corpoAtual
-      })
-    });
-
-    const result = await res.json();
-
-    if (!res.ok) {
-      throw new Error(result.message || 'Erro Resend: ' + res.status);
-    }
-
-    // Registra sucesso no Supabase
-    await SB.from('convites').insert({
-      email:        proximo.email_comercial,
-      razao_social: proximo.razao_social || '',
-      status:       'enviado',
-      enviado_em:   new Date().toISOString()
-    });
-
-    document.getElementById('conv-last-sent').textContent =
-      `Último: ${proximo.razao_social || proximo.email_comercial} — ${new Date().toLocaleTimeString('pt-BR')}`;
-    toast(`Enviado para ${proximo.email_comercial}`, 'success');
-    await loadConvites();
-
-  } catch(e) {
-    console.error('Erro envio Resend:', e);
-    try {
-      await SB.from('convites').insert({
-        email: '(erro)',
-        razao_social: e.message || 'Falha no envio',
-        status: 'erro',
-        enviado_em: new Date().toISOString()
-      });
-    } catch(_) {}
-    toast('Erro ao enviar: ' + (e.message || 'verifique o console'), 'error');
-  }
-}
-
-function toggleEnvioConvites() {
-  if (convitesAtivo) {
-    pararEnvioConvites();
-  } else {
-    iniciarEnvioConvites();
-  }
-}
-
-function iniciarEnvioConvites() {
-  convitesAtivo = true;
-  conviteSegundos = CONVITE_INTERVALO_SEG;
-  const btn = document.getElementById('btn-toggle-convites');
-  btn.innerHTML = '<svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Pausar';
-  btn.classList.remove('btn-accent');
-  btn.classList.add('btn-ghost');
-  document.getElementById('conv-status-card').style.display = 'block';
-  document.getElementById('conv-status-txt').textContent = `${EMAILS_POR_DIA} emails/dia · enviando`;
-  document.getElementById('conv-proximo').textContent = '4h';
-
-  enviarProximoConvite();
-
-  conviteTimer = setInterval(() => {
-    enviarProximoConvite();
-    conviteSegundos = CONVITE_INTERVALO_SEG;
-  }, CONVITE_INTERVALO_SEG * 1000);
-
-  conviteCountdownTimer = setInterval(() => {
-    conviteSegundos--;
-    if (conviteSegundos <= 0) conviteSegundos = CONVITE_INTERVALO_SEG;
-    const h = String(Math.floor(conviteSegundos / 3600)).padStart(2, '0');
-    const m = String(Math.floor((conviteSegundos % 3600) / 60)).padStart(2, '0');
-    const s = String(conviteSegundos % 60).padStart(2, '0');
-    const el = document.getElementById('conv-countdown');
-    if (el) el.textContent = `${h}:${m}:${s}`;
-  }, 1000);
-}
-
-function pararEnvioConvites() {
-  convitesAtivo = false;
-  clearInterval(conviteTimer);
-  clearInterval(conviteCountdownTimer);
-  const btn = document.getElementById('btn-toggle-convites');
-  btn.innerHTML = '<svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;"><polygon points="5 3 19 12 5 21 5 3"/></svg> Iniciar Envios';
-  btn.classList.add('btn-accent');
-  btn.classList.remove('btn-ghost');
-  document.getElementById('conv-status-card').style.display = 'none';
-  document.getElementById('conv-proximo').textContent = '—';
-  document.getElementById('conv-status-txt').textContent = 'aguardando início';
-}
-
-function resetEmailCorpo() {
-  const el = document.getElementById('conv-email-body');
-  if (el) el.value = EMAIL_CORPO;
-  toast('Mensagem restaurada para o padrão.', 'info');
-}
-
 // ══════════════════════════════════════════
 // RENOVAÇÕES
 // ══════════════════════════════════════════
-const EMAIL_RENOVACAO = `Olá, {nome_cliente}!
-
-Passando para avisar que o seu plano {plano} na WexioLead está {situacao}.
-
-Para continuar tendo acesso a todos os recursos — leads verificados, filtros avançados e a assistente Wex — é só renovar pelo link abaixo:
-
-https://wexiolead.com/#precos
-
-Qualquer dúvida estamos à disposição.
-
-Atenciosamente,
-Equipe WexioLead
-contato@wexiolead.com`;
-
 let allRenovacoes = [];
-
-function resetRenovacaoCorpo() {
-  const el = document.getElementById('ren-email-body');
-  if (el) el.value = EMAIL_RENOVACAO;
-  toast('Mensagem restaurada para o padrão.', 'info');
-}
 
 async function loadRenovacoes() {
   if (!SB) return;
-
-  // Inicializar textarea
-  const bodyEl = document.getElementById('ren-email-body');
-  if (bodyEl && !bodyEl.value) bodyEl.value = EMAIL_RENOVACAO;
-
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   const em7 = new Date(hoje); em7.setDate(em7.getDate() + 7);
   const hojeStr = hoje.toISOString().slice(0,10);
   const em7Str  = em7.toISOString().slice(0,10);
 
   try {
-    // Buscar clientes com vencimento_plano <= 7 dias ou vencido
     const { data: clientes } = await SB
       .from('employee_clients')
       .select('*, employees(nome, email)')
       .not('vencimento_plano', 'is', null)
       .lte('vencimento_plano', em7Str)
-      .not('email_cliente', 'is', null)
-      .neq('email_cliente', '')
       .order('vencimento_plano', { ascending: true });
 
     allRenovacoes = clientes || [];
-
-    const vencidos  = allRenovacoes.filter(c => c.vencimento_plano < hojeStr).length;
-    const em7dias   = allRenovacoes.filter(c => c.vencimento_plano >= hojeStr).length;
-
-    // Alertas enviados hoje
-    const { count: enviadosHoje } = await SB
-      .from('alertas_renovacao')
-      .select('*', { count: 'exact', head: true })
-      .gte('enviado_em', hojeStr + 'T00:00:00');
+    const vencidos = allRenovacoes.filter(c => c.vencimento_plano < hojeStr).length;
+    const em7dias  = allRenovacoes.filter(c => c.vencimento_plano >= hojeStr).length;
 
     document.getElementById('ren-vencidos').textContent = vencidos;
     document.getElementById('ren-em7dias').textContent  = em7dias;
-    document.getElementById('ren-enviados-hoje').textContent = enviadosHoje || 0;
-    document.getElementById('badge-renovacoes').textContent  = vencidos + em7dias;
+    document.getElementById('ren-total').textContent    = allRenovacoes.length;
+    document.getElementById('badge-renovacoes').textContent = vencidos + em7dias;
     document.getElementById('ren-sub').textContent =
       `${allRenovacoes.length} cliente${allRenovacoes.length !== 1 ? 's' : ''} precisando de atenção`;
 
     renderRenovacoes();
   } catch(e) {
     document.getElementById('ren-tbody').innerHTML =
-      '<tr><td colspan="8" class="td-muted" style="text-align:center;padding:30px;">Crie a tabela <strong>alertas_renovacao</strong> no Supabase.</td></tr>';
+      '<tr><td colspan="6" class="td-muted" style="text-align:center;padding:30px;">Erro ao carregar renovações.</td></tr>';
   }
 }
 
-async function renderRenovacoes() {
+function renderRenovacoes() {
   const tbody = document.getElementById('ren-tbody');
   const hoje = new Date(); hoje.setHours(0,0,0,0);
-  const hojeStr = hoje.toISOString().slice(0,10);
 
   if (!allRenovacoes.length) {
-    tbody.innerHTML = '<tr><td colspan="8" class="td-muted" style="text-align:center;padding:30px;">Nenhum cliente com vencimento próximo.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="td-muted" style="text-align:center;padding:30px;">Nenhum cliente com vencimento próximo.</td></tr>';
     return;
   }
-
-  // Buscar últimos alertas enviados
-  const { data: alertas } = await SB
-    .from('alertas_renovacao')
-    .select('employee_client_id, enviado_em')
-    .in('employee_client_id', allRenovacoes.map(c => c.id))
-    .order('enviado_em', { ascending: false });
-
-  const ultimoAlerta = {};
-  (alertas || []).forEach(a => {
-    if (!ultimoAlerta[a.employee_client_id]) ultimoAlerta[a.employee_client_id] = a.enviado_em;
-  });
 
   tbody.innerHTML = allRenovacoes.map(c => {
     const venc = new Date(c.vencimento_plano + 'T12:00:00');
     const diff = Math.ceil((venc - hoje) / (1000*60*60*24));
-    const vencido = diff < 0;
-    const situBadge = vencido
+    const situBadge = diff < 0
       ? '<span class="badge b-red">Vencido</span>'
       : `<span class="badge b-yellow">Vence em ${diff}d</span>`;
     const funcNome = c.employees?.nome || '—';
-    const ultimo = ultimoAlerta[c.id]
-      ? new Date(ultimoAlerta[c.id]).toLocaleDateString('pt-BR')
-      : '—';
-    const jaEnviadoHoje = ultimoAlerta[c.id]?.slice(0,10) === hojeStr;
-
     return `<tr>
       <td style="font-size:12px;color:var(--muted);">${funcNome}</td>
-      <td style="font-weight:500;">${c.nome_cliente}</td>
-      <td class="td-muted" style="font-size:12px;">${c.email_cliente}</td>
+      <td style="font-weight:500;">${c.nome_cliente || '—'}</td>
+      <td class="td-muted" style="font-size:12px;">${c.email_cliente || '—'}</td>
       <td><span class="badge b-orange">${(c.plano||'free').toUpperCase()}</span></td>
       <td class="td-muted" style="font-size:12px;">${venc.toLocaleDateString('pt-BR')}</td>
       <td>${situBadge}</td>
-      <td class="td-muted" style="font-size:12px;">${ultimo}</td>
-      <td>
-        <button class="btn btn-sm ${jaEnviadoHoje ? 'btn-ghost' : 'btn-accent'}"
-          onclick="enviarAlertaRenovacao('${c.id}','${c.email_cliente}','${c.nome_cliente.replace(/'/g,"\'")}','${c.plano||'free'}','${diff < 0 ? 'vencido' : 'vencendo em ' + diff + ' dia(s)'}')"
-          ${jaEnviadoHoje ? 'disabled title="Já enviado hoje"' : ''}>
-          ${jaEnviadoHoje ? 'Enviado' : 'Enviar'}
-        </button>
-      </td>
     </tr>`;
   }).join('');
-}
-
-async function enviarAlertaRenovacao(clienteId, emailCliente, nomeCliente, plano, situacao) {
-  const corpo = (document.getElementById('ren-email-body')?.value || EMAIL_RENOVACAO)
-    .replace('{nome_cliente}', nomeCliente)
-    .replace('{plano}', plano.toUpperCase())
-    .replace('{situacao}', situacao);
-
-  try {
-    const { data: { session: _se2 } } = await SB.auth.getSession();
-    const res = await fetch(SEND_EMAIL_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (_se2?.access_token || SB_KEY) },
-      body: JSON.stringify({
-        to: emailCliente,
-        subject: `Seu plano WexioLead está ${situacao}`,
-        text: corpo
-      })
-    });
-
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.message || 'Erro ' + res.status);
-    }
-
-    // Registrar alerta no Supabase
-    await SB.from('alertas_renovacao').insert({
-      employee_client_id: clienteId,
-      email_cliente:      emailCliente,
-      enviado_em:         new Date().toISOString()
-    });
-
-    toast(`Alerta enviado para ${emailCliente}`, 'success');
-    await loadRenovacoes();
-  } catch(e) {
-    toast('Erro ao enviar: ' + e.message, 'error');
-  }
-}
-
-async function enviarTodosAlertas() {
-  const hojeStr = new Date().toISOString().slice(0,10);
-  const { data: jaEnviados } = await SB
-    .from('alertas_renovacao')
-    .select('employee_client_id')
-    .gte('enviado_em', hojeStr + 'T00:00:00');
-  const jaSet = new Set((jaEnviados||[]).map(a => a.employee_client_id));
-
-  const pendentes = allRenovacoes.filter(c => !jaSet.has(c.id) && c.email_cliente);
-  if (!pendentes.length) { toast('Nenhum alerta pendente para hoje.', 'info'); return; }
-
-  toast(`Enviando ${pendentes.length} alertas...`, 'info');
-  for (const c of pendentes) {
-    const venc = new Date(c.vencimento_plano + 'T12:00:00');
-    const diff = Math.ceil((venc - new Date()) / (1000*60*60*24));
-    const sit  = diff < 0 ? 'vencido' : `vencendo em ${diff} dia(s)`;
-    await enviarAlertaRenovacao(c.id, c.email_cliente, c.nome_cliente, c.plano||'free', sit);
-    await new Promise(r => setTimeout(r, 500)); // pequeno delay entre envios
-  }
-  toast('Todos os alertas enviados!', 'success');
 }
 
 
